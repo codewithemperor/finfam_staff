@@ -17,6 +17,12 @@ interface RecruitmentProgressProps {
   stages?: StageDefinition[];
   /** Show the one-line description under each stage label. */
   showDescriptions?: boolean;
+  /**
+   * Optional explicit per-stage states (e.g. from getStageStates(status))
+   * for statuses where the mapped stage is already completed. When omitted,
+   * states are derived from currentStage by position, as before.
+   */
+  states?: Partial<Record<string, StageState>>;
   className?: string;
 }
 
@@ -52,6 +58,7 @@ export function RecruitmentProgress({
   currentStage,
   stages = RECRUITMENT_STAGES,
   showDescriptions = true,
+  states,
   className,
 }: RecruitmentProgressProps) {
   const currentIndex = currentStage
@@ -61,7 +68,7 @@ export function RecruitmentProgress({
   return (
     <ol className={cn("m-0 flex list-none flex-col p-0", className)}>
       {stages.map((stage, index) => {
-        const state: StageState =
+        const derivedState: StageState =
           currentStage === null
             ? "upcoming"
             : index < currentIndex
@@ -69,6 +76,7 @@ export function RecruitmentProgress({
               : index === currentIndex
                 ? "current"
                 : "upcoming";
+        const state: StageState = states?.[stage.id] ?? derivedState;
         const styles = stateStyles[state];
         const isLast = index === stages.length - 1;
 

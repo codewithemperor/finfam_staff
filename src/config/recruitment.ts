@@ -32,7 +32,7 @@ export const RECRUITMENT_STAGES: StageDefinition[] = [
   {
     id: "ORIENTATION",
     label: "Orientation",
-    description: "Attend the staff orientation workshop.",
+    description: "Complete the online staff orientation workshop.",
   },
   {
     id: "ASSESSMENT",
@@ -102,7 +102,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "Please attend the staff orientation workshop. Details and the schedule will be shared with you.",
+      "Your orientation is ready. Start the Staff Orientation Workshop online — it covers how FinFam works, your role, and the standards expected from every team member. Your progress is saved as you go.",
   },
   ORIENTATION_COMPLETED: {
     id: "ORIENTATION_COMPLETED",

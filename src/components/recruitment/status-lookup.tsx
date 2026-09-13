@@ -19,7 +19,11 @@ import {
   RecruitmentProgress,
 } from "@/components/recruitment/recruitment-progress";
 import { StatusBadge } from "@/components/recruitment/status-badge";
-import { CANDIDATE_STATUS_DETAILS } from "@/config/recruitment";
+import { ButtonLink } from "@/components/ui/button-link";
+import {
+  CANDIDATE_STATUS_DETAILS,
+  getStageStates,
+} from "@/config/recruitment";
 import { ApiClientError, apiFetch } from "@/lib/api/client";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type { CandidateStatusView } from "@/types/recruitment";
@@ -238,9 +242,29 @@ function ResultCard({ data }: { data: CandidateStatusView }) {
 
       <RecruitmentProgress
         currentStage={statusDefinition.stage}
+        states={getStageStates(data.status)}
         showDescriptions={false}
         className="mt-7 max-w-xs"
       />
+
+      {data.status === "ORIENTATION_PENDING" && (
+        <div className="mt-5">
+          <ButtonLink href={`/orientation/${data.referenceNumber}`}>
+            Start your orientation
+          </ButtonLink>
+        </div>
+      )}
+
+      {data.status === "ORIENTATION_COMPLETED" && (
+        <div className="mt-5">
+          <ButtonLink
+            href={`/orientation/${data.referenceNumber}`}
+            variant="outline"
+          >
+            Review your orientation
+          </ButtonLink>
+        </div>
+      )}
 
       <div className="mt-7 rounded-lg bg-surface p-4">
         <p className="text-sm font-semibold text-foreground">

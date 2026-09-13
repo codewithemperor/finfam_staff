@@ -13,6 +13,7 @@ export const siteConfig = {
   },
   nav: [
     { href: "/", label: "Open roles" },
+    { href: "/orientation", label: "Orientation" },
     { href: "/status", label: "Check status" },
   ],
 } as const;

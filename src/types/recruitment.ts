@@ -74,3 +74,33 @@ export interface ApplicationSubmissionResult {
   status: CandidateStatusId;
   submittedAt: string;
 }
+
+/* -------------------------------------------------------------------------
+ * Orientation (FSOW) — stage 1 after the application
+ * ---------------------------------------------------------------------- */
+
+/** Server-persisted state of one completed orientation section. */
+export interface OrientationCompletedSection {
+  id: string;
+  completedAt: string; // ISO string — dates are serialized across the API
+}
+
+/**
+ * Orientation progress for one candidate, as returned by the orientation
+ * API/service. Section *content* lives in src/config/orientation.ts; this
+ * payload is only the candidate's state. `orientation` is null when the
+ * candidate has not completed any section yet.
+ */
+export interface OrientationView {
+  referenceNumber: string;
+  fullName: string;
+  status: CandidateStatusId;
+  orientation: {
+    /** Resume point — the section the candidate is currently on. */
+    currentSectionId: string | null;
+    /** Set once the candidate explicitly completed the workshop. */
+    completedAt: string | null;
+    acknowledgedAt: string | null;
+    sections: OrientationCompletedSection[];
+  } | null;
+}

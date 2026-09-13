@@ -1,13 +1,14 @@
 // ---------------------------------------------------------------------------
-// FinFam Recruitment Portal — initial schema (scaffold)
+// FinFam Recruitment Portal — schema
 //
-// Deliberately lean. See docs/PLANNING.md and docs/CONTENT-QUESTIONS.md before
-// extending: the recruitment state machine and the assessment / offer /
-// appointment rules are finalized in the product planning phase (next phase).
+// Implemented stages: Application (scaffold) + FSOW Orientation (stage 1).
+// See docs/PLANNING.md and docs/CONTENT-QUESTIONS.md before extending: the
+// assessment / offer / appointment rules are finalized stage-by-stage in the
+// product planning phase.
 //
-// Intended evolution (do NOT implement until planned):
-//   Orientation, Assessment/AssessmentQuestion/AssessmentAttempt/
-//   AssessmentAnswer/AssessmentResult, Offer, Appointment, Staff, Onboarding.
+// Future evolution (do NOT implement until planned):
+//   Assessment/AssessmentQuestion/AssessmentAttempt/AssessmentAnswer/
+//   AssessmentResult, Offer, Appointment, Staff, Onboarding.
 // ---------------------------------------------------------------------------
 
 generator client {
@@ -78,6 +79,7 @@ model Candidate {
 
   applications Application[]
   events       StageEvent[]
+  orientation  Orientation?
 
   @@index([status])
   @@map("candidates")
@@ -111,4 +113,45 @@ model StageEvent {
 
   @@index([candidateId, occurredAt])
   @@map("stage_events")
+}
+
+/// A candidate's progress through the FinFam Staff Orientation Workshop
+/// (FSOW) — stage 1 after the application. Created lazily when the candidate
+/// completes their first section; one row per candidate.
+model Orientation {
+  id          String    @id @default(cuid())
+  candidateId String    @unique
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  /// Resume point: the section the candidate is currently on (stable id from
+  /// src/config/orientation.ts, e.g. "your-role"). Derived on write, stored
+  /// so "continue where you stopped" survives content reordering.
+  currentSectionId String?
+  /// When the candidate acknowledged the integrity policy in the completion
+  /// confirmation (server-verified — never trusted from the client).
+  acknowledgedAt DateTime?
+  /// When the candidate explicitly completed the workshop. Null until the
+  /// completion action is accepted by the server.
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sections OrientationSection[]
+
+  @@map("orientations")
+}
+
+/// Completion record for one orientation section. Append-only: one row per
+/// completed section per candidate (enforced by the unique constraint); rows
+/// are never edited or deleted.
+model OrientationSection {
+  id            String      @id @default(cuid())
+  orientationId String
+  orientation   Orientation @relation(fields: [orientationId], references: [id], onDelete: Cascade)
+  /// Stable section id from src/config/orientation.ts (e.g. "about-finfam").
+  sectionId     String
+  completedAt   DateTime    @default(now())
+
+  @@unique([orientationId, sectionId])
+  @@index([orientationId])
+  @@map("orientation_sections")
 }

@@ -21,3 +21,26 @@ Stage Summary:
 - Verified in browser at 4 breakpoints; lint clean; dev server healthy.
 - Key decisions: HeroUI v3 (not v2) per latest docs; postgres via embedded binaries (documented swap to managed URL); ButtonLink pattern for CTA navigation; rewards deliberately not published pending business confirmation (docs/CONTENT-QUESTIONS.md).
 - NEXT PHASE (do not start automatically): RECRUITMENT PORTAL PRODUCT PLANNING — plan each stage (orientation → assessment → offer → appointment → activation → onboarding) individually.
+
+---
+Task ID: 2
+Agent: Z.ai Code (main orchestrator)
+Task: Stage 1 — FinFam Staff Orientation Workshop (FSOW): plan + implement only the orientation stage
+
+Work Log:
+- Inspected scaffold end-to-end before coding (HeroUI v3 setup, tokens, PageShell/PageHeader/ButtonLink, RecruitmentProgress/StatusBadge/StatusLookup, apply-form conventions, API envelope + service layering, Prisma schema, docs). Reused existing patterns throughout; no new UI library, no refactors.
+- Wrote the stage plan (UX journey, data, API) before implementation, per brief §3.
+- Prisma: added Orientation (1:1 candidate; currentSectionId resume point, acknowledgedAt, completedAt) + OrientationSection (append-only completion rows, unique [orientationId, sectionId]); migration 20260913203601_orientation_stage applied; prisma client regenerated; dev server restarted to pick it up.
+- Content: src/config/orientation.ts — 8 sequential sections (about-finfam, products-services, your-role, support-package, reward-structure, professional-standards, monitoring-accountability, fraud-misrepresentation) with structured blocks (paragraph/heading/list/alert) + key points; copy strictly from supplied material, no invented claims, rewards NOT published ("being finalised" alert incl. Established Member threshold named as unconfirmed, no numbers).
+- State helpers: src/lib/orientation.ts (pure: completed/current/locked per section, progress counts, resume point).
+- Service: src/server/services/orientation.ts — all rules server-side: sequential enforcement (422 with helpful copy), first section completed → APPLICANT→ORIENTATION_PENDING + StageEvent ENTERED, idempotent re-completes, explicit completion (acknowledgement + all-read required) → ORIENTATION_COMPLETED + StageEvent COMPLETED + completedAt/acknowledgedAt, 409 on mutating completed orientation. Transactions via db.$transaction.
+- APIs (envelope {ok,data|error}, zod re-validated server-side): GET /api/orientation/[reference]; POST /api/orientation/[reference]/sections; POST /api/orientation/[reference]/complete. curl contract verified: 200/404/422/409 incl. idempotency.
+- UI: /orientation entry (reference form, mirrors /status pattern); /orientation/[reference] overview (desktop: "What you'll learn" + sticky progress rail with Continue/Start CTA, accessible progressbar, RecruitmentProgress journey w/ new `states` prop using getStageStates); /orientation/[reference]/[section] content pages (desktop: content + "In this section" key-points rail; mobile: single column reading); SectionReadFooter ("Mark as read & continue" persisted server-side, prev/next); CompleteOrientationButton (Modal + acknowledgement checkbox + toast + router.refresh); gate panel for locked sections; in-page not-found panels; segment loading.tsx/error.tsx.
+- Integrations: status page — "Start your orientation" CTA for ORIENTATION_PENDING, "Review your orientation" for ORIENTATION_COMPLETED, stepper now renders stage-completed correctly; header nav + "Orientation" (375px tuned to one line); ORIENTATION_PENDING nextStep copy + stage description updated.
+- Browser verification (agent-browser): full golden path on fresh candidate (entry → 8 sections → lock gating → complete modal validation error → acknowledgement → completed state), status page badges/CTAs/events (ENTERED + COMPLETED), resume flow with second candidate, unknown reference + unknown section panels; screenshots at 375/768/1024/1440; no horizontal overflow at 375; keyboard focus outline verified. Fixed during verification: missing normalizeReferenceNumber imports in 2 POST routes; ButtonLink imported from wrong module (section footer); 768px overview recomposed to 2 columns (was single column with dead space); mobile header nav wrapping.
+- Ops note: sandbox reaps dev servers spawned normally — dev server now runs via double-fork orphan (setsid) with .env-sourced DATABASE_URL (survives across tool calls; db + server healthy).
+
+Stage Summary:
+- Stage 1 (FSOW) implemented end-to-end and browser-verified; recruitment status APPLICANT → ORIENTATION_PENDING → ORIENTATION_COMPLETED with append-only StageEvents; no fake data, no client-trusted progress; rewards/conflicting thresholds remain unpublished (docs/CONTENT-QUESTIONS.md items 1, 2, plus new item 5: official vision/mission wording).
+- Lint clean; dev.log clean; responsive recomposition rule applied (overview 2-col from md, section content+rail from lg; mobile priority order respected).
+- NOT implemented (per brief §25): assessment, offer, appointment, staff activation, onboarding, admin tooling. STOPPING here — next stage must be planned separately before implementation.

@@ -1,13 +1,13 @@
 # FinFam Recruitment Portal
 
 A focused recruitment portal that moves a candidate from application to
-activation with minimal manual intervention. This repository currently
-contains the **project scaffold**: architecture, design system, database and
-API foundations, and the engineering conventions every future stage builds on.
+activation with minimal manual intervention.
 
-The recruitment workflow itself (orientation, assessment, offers,
-appointments, activation) is intentionally **not implemented yet** — it is
-planned stage-by-stage in the next phase (see [Next phase](#next-phase)).
+**Implemented stages:** application (scaffold) and **Stage 1 — FinFam Staff
+Orientation Workshop (FSOW)** (`/orientation`). The later stages
+(assessment, offer, appointment, activation, onboarding) are intentionally
+**not implemented yet** — each is planned stage-by-stage before it is built
+(see [Next phase](#next-phase)).
 
 ---
 
@@ -82,17 +82,29 @@ src/
     page.tsx                     Welcome / open role landing
     apply/page.tsx               Application form (form conventions exemplar)
     status/page.tsx              Candidate status lookup
+    orientation/
+      page.tsx                   FSOW entry (reference-number lookup)
+      [reference]/page.tsx       Orientation overview (list + progress rail)
+      [reference]/[section]/     Section content pages (8, sequential)
+      loading.tsx, error.tsx     Segment-level loading/error convention
     loading.tsx                  Route-level loading convention
     error.tsx                    Route-level error convention
     not-found.tsx                404 convention
     api/
       applications/route.ts      POST — submit an application
       candidates/[reference]/    GET  — candidate status by reference number
+      orientation/
+        [reference]/route.ts           GET  — orientation state
+        [reference]/sections/route.ts  POST — mark a section as read
+        [reference]/complete/route.ts  POST — complete the workshop
       health/route.ts            GET  — liveness + database connectivity
   components/
     layout/                      PageShell, SiteHeader, SiteFooter,
                                  PageContainer, PageHeader
     recruitment/                 RecruitmentProgress, StatusBadge, StatusLookup
+    orientation/                 SectionList, ProgressCard, Content,
+                                 SectionReadFooter, CompleteOrientationButton,
+                                 OrientationEntryForm, NotFoundPanel
     forms/                       ApplyForm (form conventions exemplar)
     ui/                          ButtonLink (button-styled link)
     providers.tsx                Client providers (Toast.Provider)
@@ -100,18 +112,23 @@ src/
     site.ts                      Site name, nav, support contact
     recruitment.ts               Stages, status definitions, status→stage mapping
     content.ts                   Landing-page content (placeholders flagged)
+    orientation.ts               FSOW section content (single source of truth)
   lib/
     db.ts                        Server-only Prisma client
     errors.ts                    AppError + factories
     reference.ts                 Reference number generation/validation
+    orientation.ts               Pure orientation state helpers (config + state)
     api/response.ts              Server response envelope helpers
     api/client.ts                Client fetch helper (ApiClientError)
     validation/application.ts    Shared zod schema (authoritative on server)
+    validation/orientation.ts    Shared zod schemas for orientation actions
     utils.ts                     cn() class merge
-  server/services/               Business logic (applications, candidates)
+  server/services/               Business logic (applications, candidates,
+                                 orientation)
   types/                         Shared API + recruitment domain types
 prisma/
-  schema.prisma                  Candidate, Application, StageEvent (+ enums)
+  schema.prisma                  Candidate, Application, StageEvent,
+                                 Orientation, OrientationSection (+ enums)
   migrations/                    Prisma migration history
 scripts/
   postgres.sh                    Local PostgreSQL control (start/stop/status)
@@ -123,22 +140,40 @@ docs/
 
 **Data flow rule:** UI → API route handler → service (`src/server/services`)
 → Prisma → PostgreSQL. UI components never import Prisma, and client code
-never imports `src/lib/db.ts` or anything under `src/server/`.
+never imports `src/lib/db.ts` or anything under `src/server/`. Server
+components read stage state through the service layer directly (the service
+is the API for server rendering); every *mutation* goes through an API route
+handler and is validated server-side — the client never decides progress.
 
 ---
 
-## Database schema (scaffold scope)
-
-Deliberately lean — extended only as each stage is planned:
+## Database schema
 
 - **Candidate** — person + `referenceNumber` (public lookup key), `status`
-  (`CandidateStatus` mirrors the draft state machine from the brief).
+  (`CandidateStatus` mirrors the recruitment state machine).
 - **Application** — one submitted application for a role.
 - **StageEvent** — append-only timeline of stage transitions (powers the
   status page; later, the admin audit trail).
+- **Orientation** (Stage 1) — one row per candidate: resume point
+  (`currentSectionId`), `acknowledgedAt`, `completedAt`.
+- **OrientationSection** — append-only completion records, one per read
+  section (unique per candidate + section).
 
-Future models (Assessment, Offer, Appointment, Staff, Onboarding…) are noted
-in `prisma/schema.prisma` and added during the planning phase, not before.
+Section *content* lives in `src/config/orientation.ts`; the database stores
+only candidate progress. Future models (Assessment, Offer, Appointment,
+Staff, Onboarding…) are added when their stage is planned, not before.
+
+### Orientation stage rules (server-enforced)
+
+- Sections are completed **in order**; each requires an explicit
+  “Mark as read & continue” — opening a page is never counted as progress.
+- Completing the first section moves the candidate
+  `APPLICANT → ORIENTATION_PENDING` and records a StageEvent (`ENTERED`).
+- Orientation is complete only via the explicit confirmation
+  (“Complete orientation?” modal + integrity acknowledgement) after all
+  sections are read: status → `ORIENTATION_COMPLETED`, StageEvent
+  (`COMPLETED`), `completedAt`/`acknowledgedAt` persisted. Re-submissions
+  are idempotent; mutating a completed orientation returns 409.
 
 ## API contract
 
@@ -152,6 +187,13 @@ Every route handler returns the same envelope:
 - Validation errors: `VALIDATION_ERROR` (422) with per-field messages.
 - Unknown reference: `NOT_FOUND` (404) with actionable copy.
 - Duplicate application email: `CONFLICT` (409) with field error.
+- Orientation endpoints:
+  - `GET /api/orientation/[reference]` — orientation state for the candidate.
+  - `POST /api/orientation/[reference]/sections` `{ sectionId }` — mark a
+    section as read. Out-of-order → 422; already-completed section → 200
+    (idempotent); completed orientation → 409.
+  - `POST /api/orientation/[reference]/complete` `{ acknowledgement: true }`
+    — completes the workshop. Missing sections or acknowledgement → 422.
 - Unexpected failures: logged server-side (`[api] Unhandled error:`),
   returned as a safe generic message (500). Stack traces, SQL and driver
   details never reach the client.
@@ -182,14 +224,20 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
 - **States** — every async operation has loading, error, and empty states
   (`app/loading.tsx`, `app/error.tsx`, per-feature skeletons).
 - **Server/Client split** — pages are server components; `"use client"` only
-  where interactivity is required (forms, lookup flow, toast).
+  where interactivity is required (forms, lookup flow, orientation actions,
+  toast).
+- **Responsive recomposition** — desktop/tablet are not mobile stretched
+  wider: when content relationships justify it, layouts split into 2+ columns
+  (e.g. orientation overview: section list + progress rail from `md` up;
+  section pages: content + “In this section” rail from `lg` up).
 
 ## Next phase
 
-**Do not start implementing the recruitment workflow automatically.** The
-next phase plans each stage individually (orientation → assessment → offer →
-appointment → activation → onboarding), defining user flow, pages, APIs,
-validation, business rules, and states per stage.
+Stage 1 (FSOW orientation) is complete and browser-verified. **Do not start
+implementing the next stage automatically.** The assessment stage (and each
+stage after it) is planned individually — user flow, pages, APIs, validation,
+business rules, and states — before any implementation.
 
-Two business decisions are already blocking content implementation — see
+Business decisions still outstanding (reward figures, Established Member
+threshold, official vision/mission wording, support inbox) are tracked in
 [docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md).

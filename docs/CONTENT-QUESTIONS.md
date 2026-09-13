@@ -4,9 +4,9 @@ The supplied FinFam recruitment material contains business rules and
 financial/reward figures. Per the project ground rules, implementation must
 not silently pick a version when the source material contradicts itself.
 
-**Nothing in this list has been implemented.** Each item below blocks the
-corresponding stage and must be confirmed before the affected content is
-coded into `src/config/content.ts` or the stage services.
+**Nothing in this list has been silently resolved.** Each item below blocks
+the corresponding content and must be confirmed before the affected copy is
+changed in `src/config/`.
 
 ## 1. "Established Member" savings threshold — CONFLICTING FIGURES
 
@@ -18,9 +18,11 @@ thresholds in different sections**.
   reward communication on the landing page, in the Responsibility & Reward
   policy (offer stage), and possibly in assessment content.
 - **Decision needed:** which figure is authoritative?
-- **Status:** ⛔ Not implemented. The landing page shows a neutral notice
-  ("Reward figures are being finalised") until this is resolved
-  (`src/config/content.ts` → `rewardsPending: true`).
+- **Status:** ⛔ Unresolved. Neither figure is published anywhere. The
+  landing page shows a neutral notice ("Reward figures are being finalised",
+  `src/config/content.ts` → `rewardsPending: true`) and orientation section
+  5 (`reward-structure` in `src/config/orientation.ts`) uses the same
+  treatment — it names the threshold as *being confirmed* without a number.
 
 ## 2. Reward structure figures — PENDING
 
@@ -29,7 +31,9 @@ structure (amounts, conditions, payout timing) has not been supplied as one
 consistent set.
 
 - **Decision needed:** the confirmed reward structure for the Staff Member role.
-- **Status:** ⛔ Not implemented. Same placeholder mechanism as above.
+- **Status:** ⛔ Unresolved. Same "being finalised" treatment as above on the
+  landing page and in orientation section 5. No reward mechanics are
+  described beyond "rewards are attached to the role's responsibilities".
 
 ## 3. Support contact channels — PLACEHOLDER
 
@@ -48,6 +52,20 @@ Responsibilities and expectations on the landing page
 stage planning.
 
 - **Status:** ⚠️ Generic, clearly-flagged placeholder copy.
+
+## 5. Official vision/mission wording — ORIENTATION
+
+Orientation section 1 ("About FinFam") is built strictly from the supplied
+brief: the name (Financially Blessed Family), the government-registered
+digital cooperative ecosystem, and the save / grow / prosper purpose. The
+brief asks for vision and mission statements, but no official wording was
+supplied, so none was invented.
+
+- **Decision needed:** the official vision/mission statements (or
+  confirmation that the purpose language now in place is sufficient).
+- **Affects:** orientation section 1 copy (`src/config/orientation.ts`).
+- **Status:** ⚠️ Purpose-level content in place; no invented corporate
+  claims.
 
 ---
 
