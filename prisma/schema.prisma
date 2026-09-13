@@ -1,0 +1,114 @@
+// ---------------------------------------------------------------------------
+// FinFam Recruitment Portal — initial schema (scaffold)
+//
+// Deliberately lean. See docs/PLANNING.md and docs/CONTENT-QUESTIONS.md before
+// extending: the recruitment state machine and the assessment / offer /
+// appointment rules are finalized in the product planning phase (next phase).
+//
+// Intended evolution (do NOT implement until planned):
+//   Orientation, Assessment/AssessmentQuestion/AssessmentAttempt/
+//   AssessmentAnswer/AssessmentResult, Offer, Appointment, Staff, Onboarding.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Lifecycle status of a candidate. The list mirrors the business's draft
+/// state machine (see docs/PLANNING.md). Transitions between states will be
+/// enforced by the server-side stage service in the planning phase — not by
+/// ad-hoc writes.
+enum CandidateStatus {
+  APPLICANT
+  ORIENTATION_PENDING
+  ORIENTATION_COMPLETED
+  ASSESSMENT_PENDING
+  ASSESSMENT_PASSED
+  ASSESSMENT_FAILED
+  OFFER_PENDING
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  APPOINTMENT_ISSUED
+  ACTIVATION_PENDING
+  APPROVED_STAFF
+}
+
+/// High-level stages of the recruitment journey, in order.
+enum RecruitmentStage {
+  APPLICATION
+  ORIENTATION
+  ASSESSMENT
+  OFFER
+  APPOINTMENT
+  ACTIVATION
+}
+
+/// Kind of event recorded against a candidate's stage timeline.
+enum StageEventType {
+  ENTERED
+  COMPLETED
+  FAILED
+  NOTE
+}
+
+/// Status of a specific application.
+enum ApplicationStatus {
+  SUBMITTED
+  WITHDRAWN
+}
+
+/// A person going through the FinFam recruitment journey.
+model Candidate {
+  id              String          @id @default(cuid())
+  /// Public, non-guessable lookup key used by candidates to check their
+  /// status. Not a secret on its own; never put PII in URLs instead.
+  referenceNumber String          @unique
+  fullName        String
+  email           String          @unique
+  phone           String
+  city            String?
+  status          CandidateStatus @default(APPLICANT)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  applications Application[]
+  events       StageEvent[]
+
+  @@index([status])
+  @@map("candidates")
+}
+
+/// A submitted application for a specific role.
+model Application {
+  id          String            @id @default(cuid())
+  candidateId String
+  candidate   Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  roleTitle   String
+  status      ApplicationStatus @default(SUBMITTED)
+  submittedAt DateTime          @default(now())
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([candidateId])
+  @@map("applications")
+}
+
+/// Append-only timeline of stage transitions. Powers the candidate status
+/// page and (later) the admin audit trail. Never mutated, only appended.
+model StageEvent {
+  id          String           @id @default(cuid())
+  candidateId String
+  candidate   Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  stage       RecruitmentStage
+  type        StageEventType
+  description String?
+  occurredAt  DateTime         @default(now())
+
+  @@index([candidateId, occurredAt])
+  @@map("stage_events")
+}

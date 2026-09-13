@@ -1,0 +1,110 @@
+/* ---------------------------------------------------------------------------
+   FinFam Recruitment Portal — global styles & design tokens
+   ---------------------------------------------------------------------------
+   Stack: Tailwind CSS v4 + HeroUI v3 (styles imported below).
+   Import order matters: `tailwindcss` first, then `@heroui/styles`.
+
+   Token philosophy (see docs/DESIGN-SYSTEM.md):
+   - The FinFam green lives in ONE place: `--accent`.
+     Every green in the UI derives from it. Do not hard-code greens.
+   - The interface is white + neutral surfaces + dark text + FinFam green.
+   - No gradients, no glassmorphism, no glow. Calm, professional, financial.
+--------------------------------------------------------------------------- */
+
+@import "tailwindcss";
+@import "@heroui/styles";
+
+/* Map shared semantic tokens into Tailwind utilities
+   (bg-primary, text-muted-foreground, bg-surface, border-divider, ...) */
+@theme inline {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--overlay);
+
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted);
+
+  --color-border: var(--border);
+  --color-divider: var(--separator);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-disabled: var(--disabled);
+}
+
+/* Light theme (the portal ships light-only for the MVP).
+   To rebrand later, change --accent (and its foreground) here only. */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* FinFam green — single source of truth for the brand color */
+  --accent: #0c7a43;
+  --accent-foreground: #ffffff;
+
+  /* Base */
+  --background: #ffffff;
+  --foreground: #18181b;
+
+  /* Surfaces */
+  --surface: #fafafa;
+  --overlay: #ffffff;
+
+  /* Neutrals */
+  --muted: #71717a;
+  --default: #f4f4f5;
+
+  /* Lines */
+  --border: oklch(0.55 0.006 286 / 18%);
+  --separator: #e4e4e7;
+
+  /* Status */
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #dc2626;
+  --info: #0e7490;
+  --disabled: #a1a1aa;
+
+  /* Shape: restrained corners, appropriate for a financial product */
+  --radius: 0.5rem;
+  --field-radius: calc(var(--radius) * 1.25);
+}
+
+/* Base document behaviour */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Consistent, quiet scrollbars for scrollable regions */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent)
+      transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--foreground) 18%, transparent);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
