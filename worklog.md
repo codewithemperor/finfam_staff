@@ -150,3 +150,20 @@ Stage Summary:
 - Stage 3 is live: ASSESSMENT_PASSED → Review Agreement → read 7-section document (figures pending) → explicit acknowledged accept → OFFER_ACCEPTED, versioned audit row + events, journey shows Agreement ✓ → Appointment ● with honest coming-next; one-way lock holds against back/direct URLs/direct API; decline NOT implemented (business decision pending, CQ §16); no Stage 4 work.
 - Fixtures: FF-E9KUVN OFFER_ACCEPTED (accepted v1.0), FF-QEY98E OFFER_PENDING (entry-only), FF-WVA24D OFFER_ACCEPTED (accepted v1.0 via UI E2E), rest unchanged.
 - STOPPING per brief — Stage 4 (Provisional Appointment) NOT started; awaiting separate instruction.
+
+---
+Task ID: weekly-report
+Agent: Z.ai Code (main)
+Task: Produce a weekly progress report as a Word document (report.doc) covering all work done so far.
+
+Work Log:
+- Read the full worklog (7 prior task entries) plus README API section, Prisma schema enums and migration history to source facts; no invented figures.
+- Loaded the docx skill (create route + report scene + design-system + common-rules + toc + docx-js-core); selected report Template E (review/summary), R1 cover recipe with DS-1 Deep Sea palette (green-teal accent matches the FinFam brand).
+- Wrote .zscripts/gen-report.js: 3-section architecture (R1 cover margin-0, TOC front matter with UPPER_ROMAN numbering, body with DECIMAL restart at 1); English-adapted calcTitleLayout (single-line 34pt title), Times New Roman typography, 4 styled tables (verification coverage, migrations, 14 endpoints, open items), 8 numbered sections (~3,000 words).
+- Post-processing: add_toc_placeholders.py --auto (15 headings, exit 0); custom .zscripts/patch-report-footers.py to patch footer PAGE fields (first footer -> ROMAN, second -> arabic) and strip the empty <w:pgNumType/>; postcheck.py passed 9/9 with 0 errors 0 warnings.
+- Visual verification via LibreOffice PDF render: cover, TOC and all body pages inspected - tables, headers, footers, page numbers all correct; no blank pages.
+
+Stage Summary:
+- Delivered /home/z/my-project/report.docx (primary, modern format) and /home/z/my-project/report.doc (legacy copy, verified identical rendering).
+- Report covers: foundation, Stage 1 FSOW, Stage 2 Assessment, journey unification, Stage 3 agreement (accept-only), QA coverage, system inventory (4 migrations / 14 endpoints / 9 tables), open business items (CQ register), ops lessons, next-week plan (Stage 4 awaiting instruction).
+- No product code touched.
