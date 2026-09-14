@@ -112,7 +112,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "You have completed orientation. Your assessment will be available shortly.",
+      "You have completed orientation. Your assessment is ready — open the Assessment page to start it.",
   },
   ASSESSMENT_PENDING: {
     id: "ASSESSMENT_PENDING",
@@ -122,7 +122,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "Your assessment is ready. You will be able to start it from this page once it opens.",
+      "Your assessment is ready. It has 30 multiple-choice questions and a 70% pass mark. Your answers are saved as you go, so you can leave and return.",
   },
   ASSESSMENT_PASSED: {
     id: "ASSESSMENT_PASSED",
@@ -139,10 +139,12 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     label: "Assessment not passed",
     tone: "danger",
     stage: "ASSESSMENT",
-    stageCompleted: true,
+    // The stage interaction is not over: the interim policy allows a retake
+    // (docs/CONTENT-QUESTIONS.md §6), so the assessment stays current.
+    stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "You did not meet the pass mark for this assessment. The recruitment team will contact you about re-application options.",
+      "You did not meet the pass mark this time. You can retake the assessment from the Assessment page. The final retake policy is being finalised.",
   },
   OFFER_PENDING: {
     id: "OFFER_PENDING",

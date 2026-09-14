@@ -14,6 +14,7 @@ export const siteConfig = {
   nav: [
     { href: "/", label: "Open roles" },
     { href: "/orientation", label: "Orientation" },
+    { href: "/assessment", label: "Assessment" },
     { href: "/status", label: "Check status" },
   ],
 } as const;

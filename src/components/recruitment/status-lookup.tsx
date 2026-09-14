@@ -257,6 +257,33 @@ function ResultCard({ data }: { data: CandidateStatusView }) {
 
       {data.status === "ORIENTATION_COMPLETED" && (
         <div className="mt-5">
+          <ButtonLink href={`/assessment/${data.referenceNumber}`}>
+            Take your assessment
+          </ButtonLink>
+        </div>
+      )}
+
+      {data.status === "ASSESSMENT_PENDING" && (
+        <div className="mt-5">
+          <ButtonLink href={`/assessment/${data.referenceNumber}`}>
+            Take your assessment
+          </ButtonLink>
+        </div>
+      )}
+
+      {data.status === "ASSESSMENT_FAILED" && (
+        <div className="mt-5">
+          <ButtonLink href={`/assessment/${data.referenceNumber}`}>
+            Review your assessment
+          </ButtonLink>
+        </div>
+      )}
+
+      {data.status === "ASSESSMENT_PASSED" && (
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <ButtonLink href={`/assessment/${data.referenceNumber}`}>
+            Review your assessment result
+          </ButtonLink>
           <ButtonLink
             href={`/orientation/${data.referenceNumber}`}
             variant="outline"

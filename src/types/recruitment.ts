@@ -104,3 +104,65 @@ export interface OrientationView {
     sections: OrientationCompletedSection[];
   } | null;
 }
+
+/* -------------------------------------------------------------------------
+ * Automated Interview Assessment — stage 2 after orientation
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One assessment question as the CLIENT may see it: id, text, options.
+ * Never includes the correct answer, insights, or any scoring metadata —
+ * the answer key is server-only (src/server/assessment-content.ts).
+ */
+export interface SafeAssessmentQuestion {
+  id: string;
+  /** 1-based position within the attempt's persisted order. */
+  index: number;
+  text: string;
+  options: string[];
+  category: string;
+}
+
+/** The candidate's saved answer for one question (0-based option index). */
+export interface SavedAssessmentAnswer {
+  questionId: string;
+  selectedOption: number;
+}
+
+/**
+ * An active (not yet submitted) attempt. Questions come back in the
+ * attempt's persisted order — the client must never supply ordering.
+ */
+export interface AssessmentAttemptState {
+  attemptNumber: number;
+  startedAt: string;
+  questions: SafeAssessmentQuestion[];
+  answers: SavedAssessmentAnswer[];
+}
+
+/** Final result of a submitted attempt — computed server-side only. */
+export interface AssessmentResultState {
+  attemptNumber: number;
+  submittedAt: string;
+  correctCount: number;
+  marksAwarded: number;
+  totalMarks: number;
+  percentage: number;
+  passed: boolean;
+}
+
+/** Everything the assessment hub needs to render one of its phases. */
+export interface AssessmentView {
+  referenceNumber: string;
+  fullName: string;
+  status: CandidateStatusId;
+  /** True when the candidate has explicitly completed orientation. */
+  orientationCompleted: boolean;
+  phase: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED";
+  /** Present only while an attempt is active. */
+  attempt: AssessmentAttemptState | null;
+  /** Present only after a submission (the latest attempt's result). */
+  result: AssessmentResultState | null;
+  /** Attempt history summary — supports the (unresolved) retry policy. */
+  attemptCount: number;
+}

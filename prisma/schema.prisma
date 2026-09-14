@@ -1,14 +1,14 @@
 // ---------------------------------------------------------------------------
 // FinFam Recruitment Portal — schema
 //
-// Implemented stages: Application (scaffold) + FSOW Orientation (stage 1).
+// Implemented stages: Application (scaffold), FSOW Orientation (stage 1),
+// Automated Interview Assessment (stage 2).
 // See docs/PLANNING.md and docs/CONTENT-QUESTIONS.md before extending: the
-// assessment / offer / appointment rules are finalized stage-by-stage in the
-// product planning phase.
+// offer / appointment rules are finalized stage-by-stage in the product
+// planning phase.
 //
 // Future evolution (do NOT implement until planned):
-//   Assessment/AssessmentQuestion/AssessmentAttempt/AssessmentAnswer/
-//   AssessmentResult, Offer, Appointment, Staff, Onboarding.
+//   Offer, Appointment, Staff, Onboarding.
 // ---------------------------------------------------------------------------
 
 generator client {
@@ -80,6 +80,7 @@ model Candidate {
   applications Application[]
   events       StageEvent[]
   orientation  Orientation?
+  attempts     AssessmentAttempt[]
 
   @@index([status])
   @@map("candidates")
@@ -154,4 +155,71 @@ model OrientationSection {
   @@unique([orientationId, sectionId])
   @@index([orientationId])
   @@map("orientation_sections")
+}
+
+/// One run of the Automated Interview Assessment (stage 2). Created when the
+/// candidate explicitly starts (or retakes) the assessment. A candidate may
+/// have several attempts over time; the active attempt is the one without a
+/// submittedAt. The final result is persisted on this row at submission —
+/// computed exclusively server-side (src/server/assessment-content.ts).
+model AssessmentAttempt {
+  id            String    @id @default(cuid())
+  candidateId   String
+  candidate     Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  /// 1-based counter per candidate (resumes never create new attempts).
+  attemptNumber Int
+  startedAt     DateTime  @default(now())
+  /// Null while the attempt is active; set once the server accepts a
+  /// submission. Submission is idempotent-safe — double submits never
+  /// create duplicate results.
+  submittedAt   DateTime?
+  // --- Final result (set only by the server-side scoring service) ---------
+  correctCount  Int?
+  marksAwarded  Int?
+  totalMarks    Int?
+  percentage    Float?
+  passed        Boolean?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  questions AssessmentAttemptQuestion[]
+  answers   AssessmentAnswer[]
+
+  @@unique([candidateId, attemptNumber])
+  @@index([candidateId])
+  @@map("assessment_attempts")
+}
+
+/// Persisted question order for one attempt (snapshot of the authoritative
+/// config order at start time). Keeps resume/navigation stable for the life
+/// of the attempt even if the config later changes.
+model AssessmentAttemptQuestion {
+  id         String            @id @default(cuid())
+  attemptId  String
+  attempt    AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  /// Stable question id from src/config/assessment.ts (e.g. "q-01").
+  questionId String
+  /// 0-based position in this attempt's fixed order.
+  position   Int
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, position])
+  @@map("assessment_attempt_questions")
+}
+
+/// The candidate's saved answer to one question of one attempt. Upserted on
+/// every change (idempotent autosave); answers are rejected after the
+/// attempt has been submitted.
+model AssessmentAnswer {
+  id             String            @id @default(cuid())
+  attemptId      String
+  attempt        AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId     String
+  /// 0-based index of the chosen option, validated server-side.
+  selectedOption Int
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("assessment_answers")
 }
