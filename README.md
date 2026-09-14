@@ -240,6 +240,18 @@ Every route handler returns the same envelope:
     requests return the persisted decision (idempotent). Eligibility,
     transitions, the versioned Agreement row and the StageEvent are all
     enforced/written server-side in one transaction.
+- Appointment endpoint (the Provisional Appointment — stage 4):
+  - `GET /api/appointment/[reference]` — for an eligible (OFFER_ACCEPTED)
+    candidate the FIRST read lazily issues the letter exactly once
+    (OFFER_ACCEPTED → APPOINTMENT_ISSUED, one Appointment row, one
+    FFL/HR/PLA/NNN reference from a transactional singleton sequence, one
+    APPOINTMENT/COMPLETED StageEvent — all in one transaction); every later
+    read returns the same issued record unchanged (read-only). Candidates
+    not yet at the appointment stage get an honest `issued: false` view —
+    reading issues nothing for them; unknown references get the neutral
+    404. There is deliberately NO issue API and NO PDF download API
+    (printing uses the browser); email delivery is out of scope
+    (docs/CONTENT-QUESTIONS.md §26). Rendered by `/appointment/[reference]`.
 - Unified journey endpoints:
   - `GET /api/journey/[reference]` — the server-derived recruitment journey
     for one application: current stage, completed/locked stages, the ONE

@@ -30,7 +30,7 @@ export function PageShell({ children, size = "default", className }: PageShellPr
       <SiteHeader />
       <main id="main-content" className={cn("flex-1", className)}>
         <PageContainer size={size}>
-          <div className="py-10 sm:py-12">{children}</div>
+          <div className="py-10 print:py-0 sm:py-12">{children}</div>
         </PageContainer>
       </main>
       <SiteFooter />

@@ -4,12 +4,14 @@
 // Implemented stages: Application (scaffold), FSOW Orientation (stage 1),
 // Automated Interview Assessment (stage 2), Responsibility & Reward
 // Agreement (stage 3 — persisted as the OFFER stage/statuses; the
-// candidate-facing label is "Agreement", see src/config/recruitment.ts).
+// candidate-facing label is "Agreement", see src/config/recruitment.ts),
+// and the Provisional Appointment (stage 4 — lazy issuance, one letter per
+// candidate, see src/server/services/appointment.ts).
 // See docs/CONTENT-QUESTIONS.md before extending: stage rules are
 // finalized stage-by-stage in the product planning phase.
 //
 // Future evolution (do NOT implement until planned):
-//   Appointment, Activation, Onboarding.
+//   Activation, Onboarding.
 // ---------------------------------------------------------------------------
 
 generator client {
@@ -83,6 +85,7 @@ model Candidate {
   orientation  Orientation?
   attempts     AssessmentAttempt[]
   agreement    Agreement?
+  appointment  Appointment?
 
   @@index([status])
   @@map("candidates")
@@ -250,4 +253,71 @@ model Agreement {
   updatedAt   DateTime  @updatedAt
 
   @@map("agreements")
+}
+
+/// The candidate's issued Provisional Letter of Appointment — stage 4 of
+/// the journey. Issued lazily and exactly once, server-side, when an
+/// OFFER_ACCEPTED candidate first opens the appointment stage
+/// (src/server/services/appointment.ts); viewing again is a read-only
+/// record and NEVER re-issues or mutates the letter.
+///
+/// Hybrid historical-integrity model: the columns below are the immutable,
+/// candidate-specific SNAPSHOT (who, which letter, when, under which
+/// content version) while the letter TEXT itself lives in an append-only
+/// content registry (src/config/appointment.ts, APPOINTMENT_CONTENT_
+/// VERSIONS) resolved by `version`. An appointment issued under v1.0 must
+/// stay reproducible as v1.0 forever — later wording changes append new
+/// registry versions and never touch issued ones. There is deliberately no
+/// separate effectiveDate column: the letter date IS `issuedAt` for the
+/// MVP (docs/CONTENT-QUESTIONS.md §23 keeps the distinction open).
+model Appointment {
+  id          String    @id @default(cuid())
+  candidateId String    @unique
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  /// Official letter reference in the FFL/HR/PLA/NNN format. Allocated
+  /// server-side from the AppointmentSequence inside the issuance
+  /// transaction — never derived from client input, never from count(*).
+  /// The unique constraint is the final backstop against duplicates.
+  appointmentReference String @unique
+  /// Pinned content-registry version (e.g. "1.0") the letter was issued
+  /// under. Immutable after issuance.
+  version     String
+  /// Printed candidate name, snapshotted from Candidate.fullName at
+  /// issuance. Never read from the client at render time.
+  printedName String
+  /// Official appointment designation, snapshotted at issuance. The
+  /// approved MVP value is "Remote Staff" (the designation used by the
+  /// official Provisional Letter of Appointment) — not renamed to any
+  /// other role title (docs/CONTENT-QUESTIONS.md §21).
+  roleTitle   String
+  /// Server issuance timestamp. Doubles as the printed letter date for
+  /// the MVP; no separate effectiveDate exists (§23).
+  issuedAt    DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("appointments")
+}
+
+/// Server-controlled sequence behind the FFL/HR/PLA/NNN appointment
+/// references. A single row per sequence: `value` holds the LAST allocated
+/// number; allocation is an atomic `UPDATE ... SET value = value + 1
+/// RETURNING value` inside the issuance transaction, so concurrent
+/// issuances can never receive the same number (the unique constraint on
+/// appointments.appointmentReference stays the final backstop).
+///
+/// Initialisation: the supplied official sample letter carries
+/// FFL/HR/PLA/012 and is treated as the most recently existing appointment
+/// (an externally issued document — it is NOT written into the database).
+/// The sequence therefore starts at 12, making the first system-issued
+/// reference FFL/HR/PLA/013. Documented assumption; see
+/// docs/CONTENT-QUESTIONS.md §22.
+model AppointmentSequence {
+  id    String @id @default(cuid())
+  /// Singleton sequence name (one row: "PROVISIONAL_APPOINTMENT").
+  name  String @unique
+  /// Last allocated sequence number (initialised to 12 by migration).
+  value Int
+
+  @@map("appointment_sequences")
 }

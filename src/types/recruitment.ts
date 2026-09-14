@@ -207,6 +207,73 @@ export interface AgreementView {
 }
 
 /* -------------------------------------------------------------------------
+ * Provisional Appointment — stage 4 (after the agreement)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One content block of the appointment letter body — same plain-document
+ * philosophy as the agreement blocks: readable letter typography, not
+ * cards. Content lives in the append-only registry
+ * (src/config/appointment.ts); nothing here is secret.
+ */
+export type AppointmentBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "subheading"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "alert"; tone: "accent" | "warning"; title: string; text: string };
+
+/**
+ * The immutable letter content of ONE registry version. An appointment is
+ * always rendered from the version pinned on its record — never from the
+ * current pointer — so issued letters never change retroactively.
+ */
+export interface AppointmentContent {
+  /** Subject line of the letter. */
+  subject: string;
+  /** Letter body in order: after the salutation, before the closing. */
+  body: AppointmentBlock[];
+}
+
+/**
+ * The issued letter as the client may see it: the persisted snapshot
+ * (reference, name, role, date, version) plus the content resolved from
+ * the pinned registry version.
+ */
+export interface IssuedAppointmentView {
+  /** Official letter reference (FFL/HR/PLA/NNN) — distinct from the FF- recruitment reference. */
+  appointmentReference: string;
+  /** Content-registry version the letter was issued under (pinned). */
+  version: string;
+  /** Printed candidate name — snapshotted at issuance, never client-supplied. */
+  printedName: string;
+  /** Official appointment designation — snapshotted at issuance. */
+  roleTitle: string;
+  issuedAt: string; // ISO string — doubles as the printed letter date (MVP)
+  content: AppointmentContent;
+}
+
+/**
+ * Appointment-stage view returned by GET /api/appointment/[reference].
+ * `issued` is false for any candidate who has not reached the appointment
+ * stage yet — the page then redirects to the unified journey; no letter
+ * is created or implied by reading.
+ */
+export interface AppointmentView {
+  referenceNumber: string;
+  fullName: string;
+  status: CandidateStatusId;
+  issued: boolean;
+  appointment: IssuedAppointmentView | null;
+}
+
+/** Appointment record summary (read-only) on the unified journey. */
+export interface JourneyAppointmentSummary {
+  appointmentReference: string;
+  version: string;
+  issuedAt: string;
+}
+
+/* -------------------------------------------------------------------------
  * Unified recruitment journey — one application, one reference, one journey
  * ---------------------------------------------------------------------- */
 
@@ -268,6 +335,8 @@ export interface RecruitmentJourneyView {
   assessmentResult: JourneyAssessmentSummary | null;
   /** Present once the agreement has been accepted (record view). */
   agreementRecord: JourneyAgreementSummary | null;
+  /** Present once a provisional appointment has been issued (record view). */
+  appointmentRecord: JourneyAppointmentSummary | null;
   events: CandidateStageEvent[];
 }
 

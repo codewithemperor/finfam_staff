@@ -108,3 +108,32 @@
     background: transparent;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Print / Save as PDF
+   ---------------------------------------------------------------------------
+   The appointment letter is the portal's print target: the app chrome
+   (header, footer, action rail, buttons) opts out via Tailwind
+   `print:hidden`, and what remains is the letter document itself — the
+   SAME content that renders on screen, no duplicate template.
+--------------------------------------------------------------------------- */
+@media print {
+  /* Sensible print margins; the browser dialog can override them. */
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  /* Keep letter blocks from splitting awkwardly across pages. */
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+
+  /* Keep headings attached to the content that follows them. */
+  .print-break-after-avoid {
+    break-after: avoid;
+  }
+}

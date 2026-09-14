@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
  */
 export function SiteHeader({ className }: { className?: string }) {
   return (
-    <header className={cn("border-b border-border bg-background", className)}>
+    <header className={cn("border-b border-border bg-background print:hidden", className)}>
       <PageContainer>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 sm:h-16 sm:flex-nowrap sm:gap-4 sm:py-0">
           <Link

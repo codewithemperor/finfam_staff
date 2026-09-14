@@ -16,6 +16,13 @@ standing reward ambiguity (§1, §2, §15) and the agreement content was
 version-bumped **v1.0 → v1.1** accordingly (see §10, §17, §20 below for the
 open edges).
 
+**Stage 4 note.** The Provisional Appointment (stage 4) shipped with the
+explicit MVP business defaults approved for this stage (see the "Stage 4 MVP
+decisions" block below and §21–§28). Each default is documented so it can be
+changed later WITHOUT affecting historical appointments: issued letters pin
+their content version (`src/config/appointment.ts`, immutable registry) and
+their own snapshot (name, role, reference, issue date).
+
 ## Status index
 
 ### ✅ RESOLVED
@@ -42,6 +49,18 @@ Candidates who already accepted v1.0 keep v1.0 on their record.
 | December 2026 confirmation | Appointment is provisional, subject to performance review; confirmation expected Dec 2026 | The actual confirmation requirements (recorded as a future business rule only — NOT implemented) | §20 |
 | Agreement wording | All v1.1 facts are from the appointment letter | Final business/legal sign-off on the wording, incl. the new "Important conditions" section | §18 |
 
+### 🏷️ STAGE 4 MVP DECISIONS (explicitly approved for this stage; changeable without touching historical appointments)
+
+| Item | MVP decision USED in Stage 4 | Still open after Stage 4 | Where recorded |
+| --- | --- | --- | --- |
+| Official appointment designation | **Remote Staff** (follows the official letter; descriptive text may explain the functional role but never replaces the designation) | One canonical title portal-wide (§4) | §21 |
+| Appointment reference format | **FFL/HR/PLA/NNN**, server-controlled transactional sequence, zero-padded ≥3 digits, unique/monotonic; sequence initialised at 12 so the first system-issued letter is **013** (012 = the supplied sample letter, which is NOT stored in the database) | Is the prefix permanent? Numbering scope per-letter-type vs global | §22 |
+| Letter date | **`issuedAt`** — the server-issued timestamp prints as the letter date; no hard-coded dates, no separate `effectiveDate` column | Effective-date semantics for future HR policy | §23 |
+| Signatory | **"Management, FinFam"** text-only closing (follows the latest official letter; named officers from older material are NOT used) | Named signatory alignment (Tosin Eboh / Mosunmola Esther Afolami vs "Management") | §24 |
+| Signature / logo | No signature images (none exist; none invented); no logo invented | Supply official signature/logo assets | §25 |
+| Email delivery | **Out of scope** — the portal alone provides access to the appointment; no provider/queue/template built | Provider, sender identity, timing of the integration stage | §26 |
+| Acceptance step | **No second acceptance** — stage 3 already records the explicit, auditable agreement acceptance; the appointment is an issued record, not a decision form | Whether the business ever wants a recorded acknowledgement | §27 |
+
 ### ⛔ STILL UNRESOLVED
 
 | # | Item |
@@ -60,14 +79,13 @@ Candidates who already accepted v1.0 keep v1.0 on their record.
 | §14 | Reference expiration |
 | §16 | Decline policy (portal remains accept-only by decision; the underlying reversal/deadline policy is still open) |
 | §17 | Re-acceptance policy for future agreement versions |
-| §21 | Canonical role-title presentation on the appointment letter (added during Stage 4 planning) |
-| §22 | Appointment reference numbering format & sequence policy (added during Stage 4 planning) |
-| §23 | Appointment effective-date semantics (added during Stage 4 planning) |
-| §24 | Appointment signatory format (added during Stage 4 planning) |
-| §25 | Signature/logo assets for generated letters (added during Stage 4 planning) |
-| §26 | Appointment email delivery — Stage 4 MVP or later (added during Stage 4 planning) |
-| §27 | Separate appointment acknowledgement vs Stage 3 acceptance (added during Stage 4 planning) |
-| §28 | December 2026 confirmation requirements — future rule, NOT to be built (added during Stage 4 planning) |
+| §21 | Canonical role-title presentation portal-wide (the appointment letter itself now uses "Remote Staff" — see Stage 4 decisions) |
+| §22 | Appointment reference format permanence & numbering scope (format `FFL/HR/PLA/NNN` from 013 is now implemented — see Stage 4 decisions) |
+| §23 | Appointment effective-date semantics for future HR policy (`issuedAt` prints as the letter date — see Stage 4 decisions) |
+| §24 | Named signatory alignment ("Management, FinFam" is implemented — see Stage 4 decisions) |
+| §25 | Signature/logo assets for generated letters (letters ship text-only — see Stage 4 decisions) |
+| §26 | Appointment email delivery — deferred from Stage 4; provider/sender identity still open |
+| §28 | December 2026 confirmation requirements — future rule, NOT to be built |
 
 ---
 
@@ -438,7 +456,7 @@ items whose detailed rules are NOT yet supplied:
 
 ---
 
-## 21. Canonical role title on the appointment letter — UNRESOLVED (Stage 4 planning)
+## 21. Canonical role title on the appointment letter — STAGE 4 DEFAULT USED ("Remote Staff"); portal-wide title still open
 
 The supplied material contains four designations. Where each appears today:
 
@@ -451,106 +469,124 @@ The supplied material contains four designations. Where each appears today:
 - **"Staff Member"** — the generic title used by the application form and
   journey copy.
 
-- **Planning proposal (NOT implemented):** the appointment letter uses
-  **"Remote Staff"** as its appointment designation — that is what the
-  authoritative Stage 4 document itself says — optionally with one sentence
-  connecting it to the functional role the candidate was recruited for. No
-  portal-wide renaming happens in Stage 4.
-- **Decision needed:** the exact canonical presentation on the letter
-  (Remote Staff only / both titles / another approved formulation), and
-  eventually one canonical title portal-wide (§4).
-- **Status:** ⛔ Unresolved; planning-stage question.
+- **IMPLEMENTED (Stage 4 default):** the generated appointment letter uses
+  **"Remote Staff"** as its official appointment designation — snapshotted
+  per appointment (`appointments.roleTitle`) — and the opening paragraph
+  describes the functional responsibility without renaming the role.
+- **Still open:** one canonical title portal-wide (§4). Nothing outside the
+  appointment letter was renamed in Stage 4.
+- **Status:** 🏷️ Stage 4 default applied; portal-wide alignment pending.
 
-## 22. Appointment reference numbering — UNRESOLVED (Stage 4 planning)
+## 22. Appointment reference numbering — IMPLEMENTED (FFL/HR/PLA/NNN from 013); format permanence still open
 
 The official sample letter carries reference **FFL/HR/PLA/012**. The
 recruitment reference (FF-XXXXXX) and the appointment reference are
-different concepts and must never be conflated.
+different concepts and are never conflated.
 
-- **Planning proposal (NOT implemented):** server-generated sequential
-  appointment references in the official format `FFL/HR/PLA/{NNN}`
-  (zero-padded, growing beyond 3 digits naturally), allocated from a
-  transactional singleton counter so concurrent issuances can never
-  collide. Candidates never supply it.
-- **Decision needed:** is `FFL/HR/PLA/` the permanent prefix? Should the
-  portal sequence continue after the sample's 012, start at 001, or use a
-  different scheme (e.g. a year component)? Is the numbering per-letter-type
-  or global?
-- **Status:** ⛔ Unresolved; planning-stage question.
+- **IMPLEMENTED (Stage 4):** server-generated sequential appointment
+  references in the official format `FFL/HR/PLA/{NNN}` (zero-padded to at
+  least three digits, growing naturally beyond that), allocated from a
+  transactional singleton row (`appointment_sequences`, atomic
+  `UPDATE … RETURNING` inside the issuance transaction) so concurrent
+  issuances can never collide; the unique constraint on
+  `appointments.appointmentReference` is the final backstop. Candidates
+  never supply it and it is never derived from `count(*)`.
+- **Initial sequence (documented assumption):** the sample's 012 is treated
+  as the most recently existing appointment — the sample itself is NOT
+  written into the database — so the first system-issued letter is
+  **FFL/HR/PLA/013**. The sequence may skip a number if a transaction rolls
+  back after allocation; monotonicity and uniqueness are the guarantees.
+- **Still open:** is `FFL/HR/PLA/` the permanent prefix? Numbering
+  per-letter-type or global? Any future year component?
+- **Status:** 🏷️ Stage 4 default applied; format permanence pending.
 
-## 23. Appointment effective date — UNRESOLVED (Stage 4 planning)
+## 23. Appointment effective date — STAGE 4 DEFAULT USED (letter date = issuedAt); semantics still open
 
 The sample letter is dated September 1, 2026 (a source-document date, not a
 rule for future letters).
 
-- **Planning proposal (NOT implemented):** one server-set `issuedAt` field
-  (the portal issuance moment), printed as the letter date. No
-  `effectiveDate` column until its meaning is confirmed — the two must not
-  be silently conflated.
-- **Decision needed:** should the appointment take effect at the issue date,
-  at the agreement acceptance date, at a fixed resumption/commencement date
-  set by HR, or another defined date?
-- **Status:** ⛔ Unresolved; planning-stage question.
+- **IMPLEMENTED (Stage 4 default):** one server-set `issuedAt` field (the
+  portal issuance moment) prints as the letter date. No hard-coded dates —
+  September 1, 2026 belongs to the sample document only. No `effectiveDate`
+  column exists; the two are NOT silently conflated — the distinction is
+  deliberately left unmodelled until HR defines it.
+- **Still open:** should the appointment take effect at the issue date, at
+  the agreement acceptance date, at a fixed resumption/commencement date
+  set by HR, or another defined date? A column can be added later without
+  touching issued rows.
+- **Status:** 🏷️ Stage 4 default applied; effective-date policy pending.
 
-## 24. Appointment signatory — UNRESOLVED (Stage 4 planning)
+## 24. Appointment signatory — STAGE 4 DEFAULT USED ("Management, FinFam"); named-officer alignment still open
 
 The earlier recruitment material names **Tosin Eboh — President, FinFam**
 and **Mosunmola Esther Afolami — Global Executive Secretary, FinFam**. The
 supplied appointment letter closes with **"Management, FinFam"**.
 
-- **Decision needed:** the official Stage 4 signatory format for generated
-  appointment letters (named officers / "Management, FinFam" / another
-  approved formulation).
-- **Status:** ⛔ Unresolved; planning-stage question. Nothing is silently
-  chosen; the plan defaults to the supplied letter's "Management, FinFam"
-  pending confirmation.
+- **IMPLEMENTED (Stage 4 default):** generated letters close with the
+  text-only **"Management / FinFam"** (APPOINTMENT_SIGNATORY_LINES in
+  `src/config/appointment.ts`). The named officers from older recruitment
+  content are NOT used.
+- **Still open:** the official signatory format going forward (named
+  officers / "Management, FinFam" / another approved formulation). Changing
+  it means appending a new content version — issued letters are untouched.
+- **Status:** 🏷️ Stage 4 default applied; signatory confirmation pending.
 
-## 25. Signature / logo assets for generated letters — UNRESOLVED (Stage 4 planning)
+## 25. Signature / logo assets for generated letters — STAGE 4 SHIPS TEXT-ONLY; assets still missing
 
-- **Decision needed:** do generated appointment letters require real
-  signature images or the FinFam Multipurpose Cooperative Society Limited
-  logo? No such assets have been supplied, so none are invented; the letter
-  ships text-only until assets exist.
-- **Status:** ⛔ Unresolved; planning-stage question.
+- **IMPLEMENTED (Stage 4 default):** no signature images are rendered and
+  none were invented (no fake, generated, or handwritten signatures); the
+  letter closes with plain text. No logo was invented or recreated; if the
+  business later supplies the official FinFam Multipurpose Cooperative
+  Society Limited logo, it can be added to the letterhead rendering as a
+  new content version.
+- **Still open:** do generated letters require real signature images or the
+  official logo? Assets have not been supplied.
+- **Status:** 🏷️ Text-only shipped; official assets pending.
 
-## 26. Appointment email delivery — Stage 4 MVP or later? (Stage 4 planning)
+## 26. Appointment email delivery — DEFERRED (Stage 4 MVP decision)
 
 The original recruitment brief says appointment letters should eventually
 reach the candidate's registered email. No email infrastructure exists in
 the portal (the support inbox itself is still a placeholder, §3).
 
-- **Planning recommendation (NOT implemented):** defer automatic email to a
-  later integration phase; the Stage 4 view/download experience must not
-  depend on email delivery.
-- **Decision needed:** ship email in the Stage 4 MVP or later? Which
-  provider/sender identity?
-- **Status:** ⛔ Unresolved; planning-stage question.
+- **Stage 4 MVP decision:** email delivery is OUT OF SCOPE. No provider
+  integration, sending, templates, jobs, retries, queues or SMTP were
+  built. The candidate accesses their appointment entirely through the
+  recruitment portal (journey CTA → read-only letter → print/save as PDF).
+- **Still open:** which provider/sender identity, and when the email
+  integration stage happens.
+- **Status:** 🏷️ Deferred by Stage 4 decision; provider pending.
 
-## 27. Separate appointment acknowledgement? (Stage 4 planning)
+## 27. Separate appointment acknowledgement? — NO (Stage 4 decision)
 
 Earlier recruitment material mentions an "Accept and Download" step for the
 appointment letter. The candidate has already explicitly accepted the
 Responsibility & Reward Agreement (stage 3) — the harder, auditable
 decision.
 
-- **Planning recommendation (NOT implemented):** no second acceptance.
-  Issuing and viewing the letter is sufficient for the MVP; adding another
-  accept step would duplicate the stage 3 decision without new information.
-- **Decision needed:** does the business require a separate appointment
-  acknowledgement (e.g. an "Accept and Download" click recorded on the
-  appointment)?
-- **Status:** ⛔ Unresolved; planning-stage question.
+- **IMPLEMENTED (Stage 4 decision):** no second acceptance. There is no
+  accept-appointment checkbox, signature requirement, acknowledgement API
+  or duplicate confirmation modal. The appointment is a formal ISSUED
+  record: the candidate views/prints it; only stage 3 records a decision.
+- **Still open:** whether the business ever wants a recorded acknowledgement
+  on the appointment itself (it can be added without touching issued
+  letters).
+- **Status:** 🏷️ Resolved for the Stage 4 MVP by decision; revisit only if
+  the business asks.
 
-## 28. December 2026 confirmation requirements — FUTURE RULE ONLY (Stage 4 planning)
+## 28. December 2026 confirmation requirements — FUTURE RULE ONLY
 
 Extends §20: the appointment is provisional and subject to performance
 review, with confirmation expected in December 2026 upon meeting the stated
 requirements. The requirements are NOT supplied.
 
-- **Explicitly out of scope for Stage 4:** no confirmation workflow, no
-  scheduled December action, no automated confirmation, and no conflation
-  of *provisional appointment* with *staff activation* or *final
-  confirmation* — three distinct concepts.
+- **Stage 4 treatment:** the confirmed statement IS included in the
+  appointment letter content (v1.0, "Provisional appointment" section) —
+  strictly as words on the letter. NO confirmation workflow was built: no
+  confirmation model, status, cron task, scheduled action, reminder,
+  automatic approval, performance calculator, confirmation API or page.
+  *Provisional appointment*, *staff activation* and *final confirmation*
+  remain three distinct concepts.
 - **Status:** ⚠️ Partially confirmed (existence + timing); requirements
   pending from the business before anything is built.
 

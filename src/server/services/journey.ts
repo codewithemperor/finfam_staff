@@ -36,8 +36,12 @@ import type {
  *   Completed stages are records, not re-enterable workflows.
  * - After ASSESSMENT_PASSED the agreement (persisted as the OFFER stage)
  *   is the current stage: the one action is "Review Agreement". After it
- *   is accepted, the appointment stage is next but NOT implemented yet —
- *   the view carries an honest "coming next" note instead of a fake CTA.
+ *   is accepted, the appointment stage becomes current with ONE action:
+ *   "View Provisional Appointment" — the first open issues the letter
+ *   (lazily, server-side). After issuance the appointment stage is a
+ *   completed record, the letter stays reachable as a read-only document
+ *   (the one-way-lock exception), and Activation is shown as the current
+ *   stage with an honest note and NO CTA — Activation is not implemented.
  * - StageEvent history is read for display only; CandidateStatus and the
  *   stage records remain the authoritative current state.
  */
@@ -136,10 +140,18 @@ function deriveNextAction(
     case "ASSESSMENT_PASSED":
       // The agreement (the OFFER stage) is the current, actionable stage.
       return { label: "Review Agreement", href: `/agreement/${referenceNumber}` };
+    case "OFFER_ACCEPTED":
+      // The appointment stage is current: ONE action. The first open
+      // issues the letter server-side; later opens are the read-only
+      // record — the URL is the same either way.
+      return {
+        label: "View Provisional Appointment",
+        href: `/appointment/${referenceNumber}`,
+      };
     default:
-      // OFFER_ACCEPTED / OFFER_DECLINED and every later status: the next
-      // stage (appointment) is not implemented yet — no action, honest
-      // note instead. A declined agreement never advances the journey.
+      // APPOINTMENT_ISSUED and every later status: the next stage
+      // (activation) is not implemented yet — no action, honest note
+      // instead. A declined agreement never advances the journey.
       return null;
   }
 }
@@ -180,6 +192,11 @@ type JourneyCandidate = {
   agreement: {
     version: string;
     acceptedAt: Date | null;
+  } | null;
+  appointment: {
+    appointmentReference: string;
+    version: string;
+    issuedAt: Date;
   } | null;
   events: {
     id: string;
@@ -233,6 +250,13 @@ async function loadJourneyCandidate(
       },
       agreement: {
         select: { version: true, acceptedAt: true },
+      },
+      appointment: {
+        select: {
+          appointmentReference: true,
+          version: true,
+          issuedAt: true,
+        },
       },
       events: {
         orderBy: { occurredAt: "desc" },
@@ -328,6 +352,13 @@ export async function getRecruitmentJourney(
             acceptedAt: candidate.agreement.acceptedAt.toISOString(),
           }
         : null,
+    appointmentRecord: candidate.appointment
+      ? {
+          appointmentReference: candidate.appointment.appointmentReference,
+          version: candidate.appointment.version,
+          issuedAt: candidate.appointment.issuedAt.toISOString(),
+        }
+      : null,
     events,
   };
 }

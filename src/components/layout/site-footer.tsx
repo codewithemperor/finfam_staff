@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  */
 export function SiteFooter({ className }: { className?: string }) {
   return (
-    <footer className={cn("mt-auto border-t border-border bg-background", className)}>
+    <footer className={cn("mt-auto border-t border-border bg-background print:hidden", className)}>
       <PageContainer>
         <div className="flex flex-col gap-1 py-5 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>

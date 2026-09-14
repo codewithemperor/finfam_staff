@@ -166,6 +166,33 @@ export default async function ApplicationJourneyPage({
               </div>
             </div>
           )}
+
+          {/* The issued appointment is a record too — but an issued DOCUMENT
+              stays reopenable read-only (the one-way-lock exception). Opening
+              it again can never re-issue or change the letter. */}
+          {journey.appointmentRecord && (
+            <div className="mt-6 flex max-w-xl flex-wrap items-center justify-between gap-4 border-t border-divider pt-5">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Provisional Appointment
+                </p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  <span className="font-mono tracking-wider">
+                    {journey.appointmentRecord.appointmentReference}
+                  </span>{" "}
+                  · issued{" "}
+                  {format(new Date(journey.appointmentRecord.issuedAt), "d MMMM yyyy")}
+                </p>
+              </div>
+              <ButtonLink
+                href={`/appointment/${journey.referenceNumber}`}
+                variant="outline"
+                size="sm"
+              >
+                View letter
+              </ButtonLink>
+            </div>
+          )}
         </section>
 
         {/* ----------------------------------------------------------- */}

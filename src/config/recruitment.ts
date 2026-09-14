@@ -168,7 +168,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "Thank you for accepting. Your provisional appointment is the next step of your FinFam recruitment journey. Appointment details will become available here when the next stage is ready — we'll contact you when it does.",
+      "Thank you for accepting. Your Provisional Letter of Appointment is ready — open it to read your appointment as a Remote Staff, including your role, compensation policy and the expectations that come with it.",
   },
   OFFER_DECLINED: {
     id: "OFFER_DECLINED",
@@ -188,10 +188,13 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     label: "Appointment issued",
     tone: "success",
     stage: "APPOINTMENT",
-    stageCompleted: false,
+    // Issuance completes the appointment stage: the journey moves on to
+    // Activation as the current stage. The issued letter itself stays
+    // available as a read-only record (the one-way-lock exception).
+    stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "Your appointment letter is ready to download from this page.",
+      "Congratulations — your Provisional Letter of Appointment has been issued and stays available on this page. The next stage, Staff Activation, is not open yet: your staff ID and onboarding details follow once activation begins, and we'll contact you when it does.",
   },
   ACTIVATION_PENDING: {
     id: "ACTIVATION_PENDING",
@@ -216,19 +219,45 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
 };
 
 /**
- * Map a candidate status onto per-stage states for the progress stepper.
+ * Map a candidate status onto per-stage states for the progress rails.
+ *
+ * Mirrors the unified journey derivation (journey.ts → deriveStageStates)
+ * so every rail agrees with the journey screen: a status whose stage was
+ * just completed (e.g. OFFER_ACCEPTED, APPOINTMENT_ISSUED) marks its own
+ * stage completed and points the current stage at the NEXT one (the
+ * appointment, then activation); APPLICANT's application is already
+ * submitted, so orientation is current for them too.
  */
 export function getStageStates(
   status: CandidateStatusId,
 ): Record<RecruitmentStageId, "completed" | "current" | "upcoming"> {
   const def = CANDIDATE_STATUS_DETAILS[status];
-  const currentIndex = RECRUITMENT_STAGES.findIndex((s) => s.id === def.stage);
-  const completionBoundary = def.stageCompleted ? currentIndex : currentIndex - 1;
+  const mappedIndex = RECRUITMENT_STAGES.findIndex((s) => s.id === def.stage);
+  const applicationIndex = RECRUITMENT_STAGES.findIndex(
+    (s) => s.id === "APPLICATION",
+  );
+
+  // Last stage index that counts as completed.
+  const completedBoundary =
+    status === "APPLICANT"
+      ? applicationIndex
+      : def.stageCompleted
+        ? mappedIndex
+        : mappedIndex - 1;
+
+  // The current stage is the first stage AFTER the completed boundary.
+  const currentIndex = def.journeyComplete
+    ? -1
+    : status === "APPLICANT"
+      ? RECRUITMENT_STAGES.findIndex((s) => s.id === "ORIENTATION")
+      : def.stageCompleted
+        ? mappedIndex + 1
+        : mappedIndex;
 
   return Object.fromEntries(
     RECRUITMENT_STAGES.map((stage, index) => [
       stage.id,
-      def.journeyComplete || index <= completionBoundary
+      def.journeyComplete || index <= completedBoundary
         ? "completed"
         : index === currentIndex
           ? "current"
