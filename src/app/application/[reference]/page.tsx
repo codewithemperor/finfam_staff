@@ -150,6 +150,22 @@ export default async function ApplicationJourneyPage({
               </ButtonLink>
             </div>
           )}
+
+          {/* The accepted agreement is a record, not a re-enterable stage —
+              shown read-only, no link, no way back in. */}
+          {journey.agreementRecord && (
+            <div className="mt-6 flex max-w-xl flex-wrap items-center justify-between gap-4 border-t border-divider pt-5">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Responsibility &amp; Reward Agreement
+                </p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Accepted — version {journey.agreementRecord.version} ·{" "}
+                  {format(new Date(journey.agreementRecord.acceptedAt), "d MMM yyyy")}
+                </p>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ----------------------------------------------------------- */}

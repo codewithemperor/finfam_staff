@@ -41,13 +41,15 @@ export const RECRUITMENT_STAGES: StageDefinition[] = [
   },
   {
     id: "OFFER",
-    label: "Offer",
-    description: "Review and respond to your offer.",
+    // Persisted stage id is OFFER; the candidate-facing stage is the
+    // Responsibility & Reward Agreement (see prisma/schema.prisma).
+    label: "Agreement",
+    description: "Review and accept your Responsibility & Reward Agreement.",
   },
   {
     id: "APPOINTMENT",
     label: "Appointment",
-    description: "Download your appointment letter.",
+    description: "Receive your provisional appointment.",
   },
   {
     id: "ACTIVATION",
@@ -132,7 +134,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "Congratulations — you passed the assessment and your result has been recorded. The next stage of your application is being prepared; we'll contact you when it opens.",
+      "Congratulations — you passed the assessment and your result has been recorded. Your next step is to review your Responsibility & Reward Agreement: the role's responsibilities, support package, reward structure and the standards expected from every FinFam team member.",
   },
   ASSESSMENT_FAILED: {
     id: "ASSESSMENT_FAILED",
@@ -148,33 +150,38 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
   },
   OFFER_PENDING: {
     id: "OFFER_PENDING",
-    label: "Offer pending",
+    // Persisted status is OFFER_PENDING; candidate-facing stage is the
+    // Responsibility & Reward Agreement.
+    label: "Agreement pending",
     tone: "neutral",
     stage: "OFFER",
     stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "Your offer is ready for review. Please read the responsibility and reward policy before responding.",
+      "Your Responsibility & Reward Agreement is ready. Read each section carefully — it sets out your role, responsibilities, support package, reward structure and the professional standards expected from every FinFam team member. When you are ready, accept it to move your application forward.",
   },
   OFFER_ACCEPTED: {
     id: "OFFER_ACCEPTED",
-    label: "Offer accepted",
+    label: "Agreement accepted",
     tone: "success",
     stage: "OFFER",
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "Thank you for accepting. Your appointment letter is being generated.",
+      "Thank you for accepting. Your provisional appointment is the next step of your FinFam recruitment journey. Appointment details will become available here when the next stage is ready — we'll contact you when it does.",
   },
   OFFER_DECLINED: {
     id: "OFFER_DECLINED",
-    label: "Offer declined",
+    label: "Agreement declined",
     tone: "danger",
     stage: "OFFER",
-    stageCompleted: true,
+    // A declined agreement is a recorded decision, NOT a completed stage:
+    // the journey must stay at the agreement and never advance toward an
+    // appointment (docs/CONTENT-QUESTIONS.md §16).
+    stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "You have declined the offer. If this was a mistake, please contact the recruitment team as soon as possible.",
+      "You have declined the Responsibility & Reward Agreement, so your application cannot move forward. If this was a mistake, please contact the recruitment team as soon as possible.",
   },
   APPOINTMENT_ISSUED: {
     id: "APPOINTMENT_ISSUED",

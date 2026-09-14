@@ -51,7 +51,15 @@ Responsibilities and expectations on the landing page
 `TODO(business)`. Replace with the official content during the Welcome/Jobs
 stage planning.
 
-- **Status:** ⚠️ Generic, clearly-flagged placeholder copy.
+- **Decision needed (extended during Stage 3):** the official role title
+  and wording for the whole portal. The Stage 3 brief names the agreement's
+  role "Marketing & Customer Care Executive" / "FinFam Growth Ambassador",
+  and the agreement (v1.0) uses that naming with a bridging sentence to the
+  portal's generic "Staff Member" title. Whether the application form,
+  journey copy and landing page should adopt the official title portal-wide
+  is still open.
+- **Status:** ⚠️ Generic, clearly-flagged placeholder copy in the portal;
+  the agreement carries the official naming pending portal-wide alignment.
 
 ## 5. Official vision/mission wording — ORIENTATION
 

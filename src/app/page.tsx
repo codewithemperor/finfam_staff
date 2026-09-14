@@ -132,8 +132,9 @@ export default function WelcomePage() {
           </p>
         )}
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Candidates who reach the offer stage receive the full responsibility
-          and reward policy before deciding whether to accept.
+          Candidates who reach the agreement stage review the full
+          Responsibility &amp; Reward Agreement before deciding whether to
+          accept.
         </p>
       </section>
 

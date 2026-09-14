@@ -156,6 +156,57 @@ export interface AssessmentResultState {
 }
 
 /* -------------------------------------------------------------------------
+ * Responsibility & Reward Agreement — stage 3 (the OFFER stage)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One content block of the agreement document (mirrors the orientation
+ * block shapes so the document renders as plain, readable typography).
+ * Content lives in src/config/agreement.ts; nothing here is secret.
+ */
+export type AgreementBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "heading"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "alert"; tone: "accent" | "warning"; title: string; text: string };
+
+export interface AgreementSection {
+  /** Stable section id — used as the anchor target for the page contents. */
+  id: string;
+  title: string;
+  blocks: AgreementBlock[];
+}
+
+/** The agreement content + version the candidate reviews (safe to serve). */
+export interface AgreementContent {
+  version: string;
+  sections: AgreementSection[];
+}
+
+/** The candidate's recorded decision — accept-only until §16 is resolved. */
+export interface AgreementDecision {
+  kind: "ACCEPTED";
+  decidedAt: string; // ISO string — dates are serialized across the API
+  version: string;
+}
+
+/**
+ * Agreement-stage view returned by GET /api/agreement/[reference] and used
+ * by the agreement page. Contains only what the candidate already knows
+ * plus the public agreement content — no PII beyond the supplied name.
+ */
+export interface AgreementView {
+  referenceNumber: string;
+  fullName: string;
+  roleTitle: string;
+  status: CandidateStatusId;
+  /** True only while the agreement is the candidate's undecided stage. */
+  eligible: boolean;
+  decision: AgreementDecision | null;
+  agreement: AgreementContent;
+}
+
+/* -------------------------------------------------------------------------
  * Unified recruitment journey — one application, one reference, one journey
  * ---------------------------------------------------------------------- */
 
@@ -184,6 +235,12 @@ export interface JourneyAssessmentSummary {
   totalMarks: number;
 }
 
+/** Agreement record summary (read-only) once the agreement was accepted. */
+export interface JourneyAgreementSummary {
+  version: string;
+  acceptedAt: string;
+}
+
 /**
  * Safe journey view returned by GET /api/journey/[reference] and rendered
  * by the unified application screen. Derived by the server from persisted
@@ -209,6 +266,8 @@ export interface RecruitmentJourneyView {
   currentStageDetail: string | null;
   /** Present once an assessment attempt has been submitted (record view). */
   assessmentResult: JourneyAssessmentSummary | null;
+  /** Present once the agreement has been accepted (record view). */
+  agreementRecord: JourneyAgreementSummary | null;
   events: CandidateStageEvent[];
 }
 

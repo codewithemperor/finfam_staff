@@ -2,13 +2,14 @@
 // FinFam Recruitment Portal — schema
 //
 // Implemented stages: Application (scaffold), FSOW Orientation (stage 1),
-// Automated Interview Assessment (stage 2).
-// See docs/PLANNING.md and docs/CONTENT-QUESTIONS.md before extending: the
-// offer / appointment rules are finalized stage-by-stage in the product
-// planning phase.
+// Automated Interview Assessment (stage 2), Responsibility & Reward
+// Agreement (stage 3 — persisted as the OFFER stage/statuses; the
+// candidate-facing label is "Agreement", see src/config/recruitment.ts).
+// See docs/CONTENT-QUESTIONS.md before extending: stage rules are
+// finalized stage-by-stage in the product planning phase.
 //
 // Future evolution (do NOT implement until planned):
-//   Offer, Appointment, Staff, Onboarding.
+//   Appointment, Activation, Onboarding.
 // ---------------------------------------------------------------------------
 
 generator client {
@@ -81,6 +82,7 @@ model Candidate {
   events       StageEvent[]
   orientation  Orientation?
   attempts     AssessmentAttempt[]
+  agreement    Agreement?
 
   @@index([status])
   @@map("candidates")
@@ -222,4 +224,30 @@ model AssessmentAnswer {
   @@unique([attemptId, questionId])
   @@index([attemptId])
   @@map("assessment_answers")
+}
+
+/// The candidate's recorded decision on the Responsibility & Reward
+/// Agreement — the OFFER stage of the journey (candidate-facing label:
+/// "Agreement"). One row per candidate, created only when an explicit,
+/// server-validated acceptance is received; opening or viewing the
+/// agreement NEVER creates a row or implies acceptance. The `version`
+/// pins the exact agreement content the candidate accepted
+/// (src/config/agreement.ts) so later content changes stay auditable.
+///
+/// Decline is NOT modelled yet — the decline policy is an unresolved
+/// business decision (docs/CONTENT-QUESTIONS.md §16); the OFFER_DECLINED
+/// status exists in the enum for that future decision.
+model Agreement {
+  id          String    @id @default(cuid())
+  candidateId String    @unique
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  /// Content version identifier the acceptance applies to (e.g. "1.0").
+  version     String
+  /// When the candidate explicitly accepted. Null until acceptance is
+  /// accepted by the server (never set by viewing).
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("agreements")
 }

@@ -34,9 +34,10 @@ import type {
  *   APPLICANT, whose current stage is the (not yet entered) orientation.
  * - Progression is one-way: a completed stage never becomes current again.
  *   Completed stages are records, not re-enterable workflows.
- * - The next stage after ASSESSMENT_PASSED (offer / agreement) is NOT
- *   implemented yet, so there is intentionally no action for it — the view
- *   carries an honest "coming next" note instead of a fake CTA.
+ * - After ASSESSMENT_PASSED the agreement (persisted as the OFFER stage)
+ *   is the current stage: the one action is "Review Agreement". After it
+ *   is accepted, the appointment stage is next but NOT implemented yet —
+ *   the view carries an honest "coming next" note instead of a fake CTA.
  * - StageEvent history is read for display only; CandidateStatus and the
  *   stage records remain the authoritative current state.
  */
@@ -80,8 +81,7 @@ function deriveStageStates(status: CandidateStatusId): {
   // The current stage is the first stage AFTER the completed boundary —
   // including for statuses that just completed a stage (e.g.
   // ORIENTATION_COMPLETED → the assessment is current;
-  // ASSESSMENT_PASSED → the offer/agreement stage is current, though not
-  // actionable yet while it remains unimplemented).
+  // ASSESSMENT_PASSED → the agreement is current).
   const currentIndex = definition.journeyComplete
     ? -1
     : status === "APPLICANT"
@@ -133,9 +133,13 @@ function deriveNextAction(
     case "ASSESSMENT_FAILED":
       // The hub shows resume/result state; the runner is reached from there.
       return { label: "Continue assessment", href: `/assessment/${referenceNumber}` };
+    case "ASSESSMENT_PASSED":
+      // The agreement (the OFFER stage) is the current, actionable stage.
+      return { label: "Review Agreement", href: `/agreement/${referenceNumber}` };
     default:
-      // ASSESSMENT_PASSED and every later status: the next stage (offer /
-      // agreement) is not implemented yet — no action, honest note instead.
+      // OFFER_ACCEPTED / OFFER_DECLINED and every later status: the next
+      // stage (appointment) is not implemented yet — no action, honest
+      // note instead. A declined agreement never advances the journey.
       return null;
   }
 }
@@ -145,9 +149,6 @@ function deriveNextAction(
  * yet. Falls back to the status definition's nextStep for later statuses.
  */
 function deriveUpcomingNote(status: CandidateStatusId): string | null {
-  if (status === "ASSESSMENT_PASSED") {
-    return "There is nothing you need to do right now. The next stage of your application — reviewing your responsibility and reward agreement — is being prepared and will open on this page. We'll contact you when it does.";
-  }
   return CANDIDATE_STATUS_DETAILS[status].nextStep;
 }
 
@@ -176,6 +177,10 @@ type JourneyCandidate = {
     questions: { questionId: string }[];
     answers: { questionId: string }[];
   }[];
+  agreement: {
+    version: string;
+    acceptedAt: Date | null;
+  } | null;
   events: {
     id: string;
     stage: RecruitmentStageId;
@@ -225,6 +230,9 @@ async function loadJourneyCandidate(
           questions: { select: { questionId: true } },
           answers: { select: { questionId: true } },
         },
+      },
+      agreement: {
+        select: { version: true, acceptedAt: true },
       },
       events: {
         orderBy: { occurredAt: "desc" },
@@ -311,6 +319,13 @@ export async function getRecruitmentJourney(
             passed: latestSubmitted.passed === true,
             marksAwarded: latestSubmitted.marksAwarded,
             totalMarks: latestSubmitted.totalMarks,
+          }
+        : null,
+    agreementRecord:
+      candidate.agreement?.acceptedAt != null
+        ? {
+            version: candidate.agreement.version,
+            acceptedAt: candidate.agreement.acceptedAt.toISOString(),
           }
         : null,
     events,

@@ -158,10 +158,31 @@ handler and is validated server-side — the client never decides progress.
   (`currentSectionId`), `acknowledgedAt`, `completedAt`.
 - **OrientationSection** — append-only completion records, one per read
   section (unique per candidate + section).
+- **Agreement** (Stage 3 — the Responsibility & Reward Agreement, persisted
+  as the OFFER stage) — one row per candidate, created only by an explicit
+  server-validated acceptance: `version` (pins the accepted content from
+  `src/config/agreement.ts`) + `acceptedAt`. Viewing never creates a row.
 
-Section *content* lives in `src/config/orientation.ts`; the database stores
-only candidate progress. Future models (Assessment, Offer, Appointment,
-Staff, Onboarding…) are added when their stage is planned, not before.
+Section *content* lives in `src/config/orientation.ts` and
+`src/config/agreement.ts`; the database stores only candidate progress and
+decisions. Future models (Appointment, Activation, Onboarding…) are added
+when their stage is planned, not before.
+
+### Agreement stage rules (server-enforced)
+
+- Opening the agreement (page or `GET` API) lazily and idempotently moves
+  the candidate `ASSESSMENT_PASSED → OFFER_PENDING` and records a
+  StageEvent (`ENTERED`) exactly once — viewing NEVER implies acceptance.
+- Acceptance is explicit: the request must carry the literal
+  acknowledgement and the version the candidate reviewed; the server
+  re-validates everything and writes the `OFFER_ACCEPTED` transition, the
+  versioned `Agreement` row and a StageEvent (`COMPLETED`) in ONE
+  transaction. Repeated requests are idempotent — the persisted decision
+  is returned, never duplicated.
+- One-way progression: after acceptance the agreement stage is closed —
+  direct URLs and API calls can no longer render or accept it.
+- Decline is deliberately not implemented — the decline policy is an
+  unresolved business decision (docs/CONTENT-QUESTIONS.md §16).
 
 ### Orientation stage rules (server-enforced)
 
@@ -208,6 +229,17 @@ Every route handler returns the same envelope:
   - `POST /api/assessment/[reference]/submit` `{}` — server-side scoring
     (answer key is server-only). Pass = 70% (21/30). Double submit is
     idempotent — the persisted result is returned, never duplicated.
+- Agreement endpoints (the Responsibility & Reward Agreement — persisted
+  as the OFFER stage; candidate-facing label "Agreement"):
+  - `GET /api/agreement/[reference]` — agreement content + version, the
+    candidate's decision state and eligibility. Reading records the stage
+    entry (idempotent) — viewing never implies acceptance.
+  - `POST /api/agreement/[reference]/accept`
+    `{ acknowledgement: true, version }` — record acceptance. Missing
+    acknowledgement or a stale version → 422; wrong stage → 409; repeated
+    requests return the persisted decision (idempotent). Eligibility,
+    transitions, the versioned Agreement row and the StageEvent are all
+    enforced/written server-side in one transaction.
 - Unified journey endpoints:
   - `GET /api/journey/[reference]` — the server-derived recruitment journey
     for one application: current stage, completed/locked stages, the ONE
