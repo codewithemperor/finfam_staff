@@ -9,20 +9,27 @@ import type { AgreementSection } from "@/types/recruitment";
  * section MUST bump the version so accepted versions stay auditable
  * (docs/CONTENT-QUESTIONS.md §17).
  *
+ * v1.1 (current): compensation and Established Member definitions were
+ * formally confirmed by the Provisional Letter of Appointment dated
+ * September 1, 2026 (Ref: FFL/HR/PLA/012). The reward structure now
+ * publishes the confirmed figures (₦650 per Established Member, the
+ * ₦5,000 threshold, the non-cumulative bonus tiers, the 200-member
+ * monthly target, the payment timing, the referral-link tracking rule
+ * and the December 2026 annual-recognition note), a concise
+ * "Important conditions" section was added from the same letter, and the
+ * confirmed privacy rule was added to Professional conduct. Candidates
+ * who already accepted v1.0 keep that version on their record — v1.1
+ * applies to candidates who have not yet accepted
+ * (docs/CONTENT-QUESTIONS.md §17 interim proposal).
+ *
  * Rules for this file (see docs/CONTENT-QUESTIONS.md):
  * - Content is drawn strictly from the supplied FinFam material. No
- *   employment/legal terms are invented (§18) — the "Important Conditions"
- *   section is deliberately absent until the business confirms conditions.
- * - Reward figures and the Established Member threshold are NOT published —
- *   the source material conflicts and is unresolved (§1, §2, §15). The
- *   reward section names the structure and carries the same
- *   "figures being finalised" treatment used on the landing page and in
- *   orientation section 5.
+ *   employment/legal terms are invented (§18) — the "Important conditions"
+ *   section contains only terms the appointment letter confirms.
  * - No unconfirmed benefit claims (including the ₦500 cashback item, §10).
  */
-
 export const AGREEMENT_META = {
-  version: "1.0",
+  version: "1.1",
 } as const;
 
 /**
@@ -100,20 +107,57 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
     blocks: [
       {
         type: "paragraph",
-        text: "The role carries a reward structure attached to its responsibilities:",
+        text: "Your monthly earnings follow one confirmed formula:",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly earnings = Established Members × ₦650 + applicable target bonus.",
+      },
+      {
+        type: "paragraph",
+        text: "An Established Member is a member who, during their first month, completes all three of the following:",
       },
       {
         type: "list",
         items: [
-          "A reward for each member you bring to Established Member status.",
-          "An applicable target bonus when set targets are met.",
+          "Membership signup.",
+          "A first deposit.",
+          "Savings of not less than ₦5,000 maintained during their first month.",
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "The applicable target bonus is set by how many Established Members you have in the month:",
+      },
+      {
+        type: "list",
+        items: [
+          "0–99 Established Members — ₦0 target bonus.",
+          "100–199 Established Members — ₦10,000 target bonus.",
+          "200 or more Established Members — ₦20,000 target bonus.",
         ],
       },
       {
         type: "alert",
         tone: "accent",
-        title: "Reward figures are being finalised",
-        text: "The exact reward amounts, the savings threshold for becoming an Established Member, and the conditions attached to target bonuses are still being confirmed by the business. This agreement does not publish figures, and no figure you may have seen elsewhere should be treated as final. The confirmed figures and conditions will be communicated to you in writing, and your written agreement is what counts.",
+        title: "Bonuses are not cumulative",
+        text: "Only one bonus tier applies per month. For example: 100 Established Members earn ₦75,000 (100 × ₦650 + ₦10,000); 200 earn ₦150,000 (200 × ₦650 + ₦20,000); 300 earn ₦215,000 (300 × ₦650 + ₦20,000).",
+      },
+      {
+        type: "paragraph",
+        text: "The monthly target is 200 Established Members. The target is not a ceiling — every Established Member above 200 continues to earn ₦650.",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly earnings are paid at month end, or at the latest during the first week of the following month.",
+      },
+      {
+        type: "paragraph",
+        text: "Your referral link is how the members you bring in are tracked. The link itself does not generate commissions — your earnings come from your Established Members, as described above.",
+      },
+      {
+        type: "paragraph",
+        text: "Year-end recognition of top performers and community builders takes effect from December 2026. Details will be communicated before it applies.",
       },
     ],
   },
@@ -141,6 +185,16 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
     ],
   },
   {
+    id: "important-conditions",
+    title: "Important conditions",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "Your participation under this agreement is provisional and subject to performance review. Confirmation is expected in December 2026, upon meeting the stated requirements; those requirements will be communicated to you by FinFam.",
+      },
+    ],
+  },
+  {
     id: "professional-conduct",
     title: "Professional conduct",
     blocks: [
@@ -155,6 +209,7 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
           "Never create fake accounts or register members without their knowledge and consent.",
           "Never submit false or misleading reports.",
           "Never misuse member or customer information, and protect it from anyone who should not have it.",
+          "Never request a member's account balances or login details.",
           "Never share your passwords or account access, or allow anyone else to use them.",
         ],
       },

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- internal docx generator script, CommonJS by design */
 /**
  * FinFam Recruitment Portal - Weekly Progress Report
  * STRAIGHT format per user template: no cover page, no TOC - content flows directly.

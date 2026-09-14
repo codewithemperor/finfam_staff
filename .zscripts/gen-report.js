@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- internal docx generator script, CommonJS by design */
 /**
  * FinFam Recruitment Portal - Weekly Progress Report (.docx)
  * Recipe: R1 (Pure Paragraph Left) cover, DS-1 Deep Sea palette.

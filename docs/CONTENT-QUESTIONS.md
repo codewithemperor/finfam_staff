@@ -4,36 +4,119 @@ The supplied FinFam recruitment material contains business rules and
 financial/reward figures. Per the project ground rules, implementation must
 not silently pick a version when the source material contradicts itself.
 
-**Nothing in this list has been silently resolved.** Each item below blocks
-the corresponding content and must be confirmed before the affected copy is
-changed in `src/config/`.
+**Status convention.** Every item below carries an explicit status. Resolved
+items are kept in this document as an audit trail — they are marked with the
+authoritative source that closed them, never silently deleted.
 
-## 1. "Established Member" savings threshold — CONFLICTING FIGURES
+**Reconciliation note (post-Stage 3).** The official **Provisional Letter of
+Appointment** dated **September 1, 2026** (Ref: **FFL/HR/PLA/012**) was
+supplied after Stage 3 shipped. It is the current authoritative business
+reference for the compensation/reward information. It resolved the long
+standing reward ambiguity (§1, §2, §15) and the agreement content was
+version-bumped **v1.0 → v1.1** accordingly (see §10, §17, §20 below for the
+open edges).
 
-The source material defines an *Established Member* with **different savings
-thresholds in different sections**.
+## Status index
+
+### ✅ RESOLVED
+
+| Item | Confirmed by | Where recorded |
+| --- | --- | --- |
+| Established Member savings threshold — **₦5,000** (₦2,000 vs ₦5,000 conflict closed) | Appointment letter (Sep 1, 2026) | §1 |
+| Reward formula — **Established Members × ₦650 + applicable target bonus** | Appointment letter (Sep 1, 2026) | §2, §15 |
+| Bonus tiers — 0–99 → ₦0 · 100–199 → ₦10,000 · 200+ → ₦20,000 | Appointment letter (Sep 1, 2026) | §2 |
+| **Non-cumulative** bonus rule — only one tier applies per month | Appointment letter (Sep 1, 2026) | §2 |
+| Monthly target — **200 Established Members** (a target, not a ceiling) | Appointment letter (Sep 1, 2026) | §2 |
+| Payment timing — month end, or latest during the first week of the following month | Appointment letter (Sep 1, 2026) | §2 |
+| Referral link is **tracking-only** — the link itself does not generate commissions | Appointment letter (Sep 1, 2026) | §2 |
+| Privacy rule — never request a member's account balances or login details | Appointment letter (Sep 1, 2026) | §2 |
+
+All of the above are published in Agreement **v1.1** (`src/config/agreement.ts`).
+Candidates who already accepted v1.0 keep v1.0 on their record.
+
+### ⚠️ PARTIALLY RESOLVED
+
+| Item | Confirmed | Still open | Where recorded |
+| --- | --- | --- | --- |
+| Annual recognition / year-end rewards | Existence + effective December 2026 | Eligibility criteria, reward details (to follow before Q4) | §20 |
+| December 2026 confirmation | Appointment is provisional, subject to performance review; confirmation expected Dec 2026 | The actual confirmation requirements (recorded as a future business rule only — NOT implemented) | §20 |
+| Agreement wording | All v1.1 facts are from the appointment letter | Final business/legal sign-off on the wording, incl. the new "Important conditions" section | §18 |
+
+### ⛔ STILL UNRESOLVED
+
+| # | Item |
+| --- | --- |
+| §3 | Support contact channels (email/WhatsApp placeholder) |
+| §4 | **Canonical role title** — "Remote Staff" (appointment letter) vs "Marketing & Customer Care Executive / FinFam Growth Ambassador" (recruitment material) vs portal's generic "Staff Member" |
+| §5 | Official vision/mission wording |
+| §6 | Assessment retry policy / maximum attempts |
+| §7 | Unanswered questions at submission |
+| §8 | Insight/explanation visibility |
+| §9 | Question randomization |
+| §10 | ₦500 cashback claim (still unconfirmed — not encoded anywhere) |
+| §11 | Reference recovery verification |
+| §12 | Completed-stage read-only history |
+| §13 / §19 | Identity model for consequential actions (reference-only access, OTP question) |
+| §14 | Reference expiration |
+| §16 | Decline policy (portal remains accept-only by decision; the underlying reversal/deadline policy is still open) |
+| §17 | Re-acceptance policy for future agreement versions |
+
+---
+
+## 1. "Established Member" savings threshold — RESOLVED (₦5,000)
+
+The source material originally defined an *Established Member* with
+**different savings thresholds in different sections** (₦2,000 vs ₦5,000).
 
 - **Where it appears:** reward/policy sections of the recruitment material.
-- **Why it matters:** the threshold determines eligibility language and
+- **Why it mattered:** the threshold determines eligibility language and
   reward communication on the landing page, in the Responsibility & Reward
-  policy (offer stage), and possibly in assessment content.
-- **Decision needed:** which figure is authoritative?
-- **Status:** ⛔ Unresolved. Neither figure is published anywhere. The
-  landing page shows a neutral notice ("Reward figures are being finalised",
-  `src/config/content.ts` → `rewardsPending: true`) and orientation section
-  5 (`reward-structure` in `src/config/orientation.ts`) uses the same
-  treatment — it names the threshold as *being confirmed* without a number.
+  Agreement (offer stage), and possibly in assessment content.
+- **Resolution:** the **Provisional Letter of Appointment dated September 1,
+  2026 (Ref: FFL/HR/PLA/012)** confirms **₦5,000**. A member becomes
+  *Established* when, during their first month, they (1) complete membership
+  signup, (2) make their first deposit, and (3) maintain savings of not less
+  than ₦5,000. The earlier ₦2,000 figure is superseded and must not appear
+  in any content going forward.
+- **Status:** ✅ Resolved. Published in Agreement v1.1
+  (`src/config/agreement.ts` → reward structure). The landing page
+  (`src/config/content.ts`) and orientation section 5
+  (`src/config/orientation.ts`) still carry the neutral
+  "figures being finalised" notice — those are pre-Stage-3 surfaces,
+  deliberately left untouched by the Stage 3 reconciliation; aligning them
+  with the confirmed figures needs a separate instruction.
 
-## 2. Reward structure figures — PENDING
+## 2. Reward structure figures — RESOLVED (published in Agreement v1.1)
 
-Reward/commission figures exist in the source material but the full reward
-structure (amounts, conditions, payout timing) has not been supplied as one
-consistent set.
+The full reward structure was originally unavailable as one consistent set;
+Agreement v1.0 therefore named the structure without figures.
 
-- **Decision needed:** the confirmed reward structure for the Staff Member role.
-- **Status:** ⛔ Unresolved. Same "being finalised" treatment as above on the
-  landing page and in orientation section 5. No reward mechanics are
-  described beyond "rewards are attached to the role's responsibilities".
+- **Resolution:** the **Provisional Letter of Appointment dated September 1,
+  2026 (Ref: FFL/HR/PLA/012)** supplies the complete, self-consistent
+  structure now published in Agreement v1.1 (`src/config/agreement.ts`):
+  - **Core formula:** Monthly Earnings = Established Members × ₦650 +
+    Applicable Target Bonus.
+  - **Target bonus tiers:** 0–99 Established Members → ₦0;
+    100–199 → ₦10,000; 200+ → ₦20,000.
+  - **Non-cumulative rule:** bonuses are NOT cumulative — only one tier
+    applies per month (worked examples from the letter: 100 members =
+    ₦75,000; 200 = ₦150,000; 300 = ₦215,000).
+  - **Monthly target:** 200 Established Members — a target, not a ceiling;
+    members above 200 continue to earn ₦650 each.
+  - **Payment timing:** monthly earnings are paid at month end, or at the
+    latest during the first week of the following month.
+  - **Referral tracking:** staff must use their referral link; the link is
+    for tracking and does not itself generate commissions.
+  - **Privacy rule:** never request account balances or login details from
+    members (encoded in the Professional conduct section of v1.1).
+  - **Annual recognition:** effective December 2026, details to follow
+    (partially confirmed — see §20).
+- **Status:** ✅ Resolved for everything listed above. No unconfirmed
+  benefit claims were added — the ₦500 cashback item (§10) remains
+  unconfirmed and is still not encoded anywhere.
+- **Follow-up flag:** the landing page and orientation section 5 still show
+  the neutral "figures being finalised" notice (see §1 — separate
+  instruction needed to align those earlier-stage surfaces).
 
 ## 3. Support contact channels — PLACEHOLDER
 
@@ -44,22 +127,30 @@ automation is planned) must be supplied.
 - **Decision needed:** official support email + channel strategy.
 - **Status:** ⚠️ Placeholder in place, clearly marked with `TODO(business)`.
 
-## 4. Role details — PLACEHOLDER
+## 4. Role details & CANONICAL ROLE TITLE — UNRESOLVED (now three candidate titles)
 
 Responsibilities and expectations on the landing page
 (`src/config/content.ts`) are scaffold placeholders marked
 `TODO(business)`. Replace with the official content during the Welcome/Jobs
 stage planning.
 
-- **Decision needed (extended during Stage 3):** the official role title
-  and wording for the whole portal. The Stage 3 brief names the agreement's
-  role "Marketing & Customer Care Executive" / "FinFam Growth Ambassador",
-  and the agreement (v1.0) uses that naming with a bridging sentence to the
-  portal's generic "Staff Member" title. Whether the application form,
-  journey copy and landing page should adopt the official title portal-wide
-  is still open.
-- **Status:** ⚠️ Generic, clearly-flagged placeholder copy in the portal;
-  the agreement carries the official naming pending portal-wide alignment.
+- **Decision needed:** the **official canonical role title** that should
+  appear consistently across the recruitment application, agreement,
+  provisional appointment letter, staff records, and onboarding materials.
+  The supplied material now contains **three** designations that must not be
+  silently reconciled:
+  - **"Remote Staff"** — the appointment designation used by the official
+    Provisional Letter of Appointment (Sep 1, 2026);
+  - **"Marketing & Customer Care Executive" / "FinFam Growth Ambassador"** —
+    the functional role titles used by the earlier recruitment material and
+    the agreement (v1.0 and v1.1, with a bridging sentence to the portal's
+    generic title);
+  - **"Staff Member"** — the generic title used by the application form and
+    journey copy.
+- **Status:** ⛔ Unresolved. Nothing was renamed in the portal during the
+  Stage 3 reconciliation; the agreement keeps its v1.0 role naming and the
+  appointment letter's "Remote Staff" stands as the appointment designation.
+  Portal-wide alignment is a business decision.
 
 ## 5. Official vision/mission wording — ORIENTATION
 
@@ -144,8 +235,9 @@ confirmed as official FinFam policy.
   Under what conditions?
 - **Status:** ⛔ Unresolved. It is NOT encoded anywhere — not on the landing
   page, not in orientation content, and NOT in any assessment question,
-  option or insight. If confirmed later, it must be added consistently
-  across all three surfaces.
+  option or insight. The Provisional Letter of Appointment (Sep 1, 2026)
+  does not mention it, so the reconciliation did not change this. If
+  confirmed later, it must be added consistently across all three surfaces.
 
 ## 11. Reference recovery verification — INTERIM BEHAVIOUR
 
@@ -155,8 +247,8 @@ should prove their identity when recovering a lost reference.
 
 - **Decision needed:** what verification is required before a reference is
   revealed (e.g. email/OTP code, phone verification, support contact with
-  manual identity checks)? Is revealing the reference at all acceptable,
-  or should recovery always route through a human support channel?
+  manual identity checks)? Is revealing the reference at all acceptable, or
+  should recovery always route through a human support channel?
 - **Interim behaviour (implemented):** the candidate must supply the FULL
   name, email AND phone exactly as entered on the application; only the
   reference number is revealed — never application details, NIN/BVN/bank
@@ -203,8 +295,7 @@ system was specified), but it is worth an explicit business decision.
 - **Interim behaviour (implemented):** reference-only access everywhere;
   all candidate-facing data is limited to what the candidate already knows;
   stage mutations are guarded by server-side state, not by client trust.
-- **Status:** ⛔ Unresolved; revisit before Stage 3 (agreement) ships.
-  Revisited during Stage 3 planning — see §19.
+- **Status:** ⛔ Unresolved; revisited during Stage 3 planning — see §19.
 
 ## 14. Reference expiration — NONE IMPLEMENTED
 
@@ -216,48 +307,49 @@ archived or re-activated has not been specified.
   candidates who never complete orientation/assessment?
 - **Status:** ⛔ Unresolved; no expiration logic exists.
 
-## 15. Agreement reward figures vs. §2 — STAGE 3 BRIEF LISTS ₦650
+## 15. Agreement reward figures vs. §2 — RESOLVED (₦650 CONFIRMED)
 
-The Stage 3 planning brief describes the agreement's Reward Structure
+The Stage 3 planning brief described the agreement's Reward Structure
 section as "Established Members × ₦650" plus an "Applicable Target Bonus".
-Section 2 above currently blocks publishing any reward figures because the
-supplied material never arrived as one consistent set, and §1 blocks the
-Established Member *savings threshold* (₦2,000 vs ₦5,000 conflict).
+§2 originally blocked publishing any reward figures because the supplied
+material never arrived as one consistent set, and §1 blocked the
+Established Member *savings threshold* (₦2,000 vs ₦5,000 conflict). Agreement
+v1.0 therefore shipped with a "figures being finalised" treatment and no
+encoded numbers.
 
-- **Decision needed:** is "₦650 per Established Member + applicable target
-  bonus" now the confirmed, authoritative reward structure (superseding
-  §2)? If yes, the threshold conflict in §1 must also be resolved before
-  the phrase "Established Member" can carry a number. If not confirmed,
-  the agreement's reward section will ship with the same
-  "figures being finalised" treatment used on the landing page and in
-  orientation section 5 — the structure is named, the figures are not.
-- **Status:** ⛔ Unresolved. No figure has been encoded in
-  `src/config/agreement.ts`; the config carries a pending/confirmed switch
-  so confirmed figures are a content change plus a version bump.
+- **Resolution:** the **Provisional Letter of Appointment dated September 1,
+  2026 (Ref: FFL/HR/PLA/012)** confirms the full structure: ₦650 per
+  Established Member, the ₦5,000 threshold, the 0–99 / 100–199 / 200+ bonus
+  tiers (₦0 / ₦10,000 / ₦20,000), the non-cumulative one-tier-per-month
+  rule, the 200-member monthly target, the payment timing, the
+  referral-tracking rule, and the December 2026 annual-recognition note.
+- **Status:** ✅ Resolved. This was a meaning-bearing content change, so the
+  agreement version was bumped **v1.0 → v1.1** (why: compensation and
+  Established Member definitions were formally confirmed by the Provisional
+  Letter of Appointment dated September 1, 2026). Accepted v1.0 records
+  were not touched — see §17.
 
-## 16. Agreement decline & reversal policy — NOT SPECIFIED
+## 16. Agreement decline & reversal policy — ACCEPT-ONLY (decision recorded; underlying policy still open)
 
-The shipped state machine already reserves `OFFER_DECLINED` with
-candidate-facing copy ("If this was a mistake, please contact the
-recruitment team"), which implies the portal can record a decline. But the
-decline policy itself was never supplied.
+The shipped state machine reserves `OFFER_DECLINED` with candidate-facing
+copy, which implies the portal could record a decline. The decline policy
+itself was never supplied.
 
-- **Decision needed:** (a) may a candidate decline the agreement through
-  the portal at all, or must declines go through a human channel?
-  (b) Is a recorded decline reversible — by whom, and how (support action,
-  re-issuing the agreement, fresh application)? (c) Is there a deadline
-  for responding to the agreement?
-- **Interim proposal (planned, pending confirmation):** the portal offers
-  an explicit decline action; the decision is recorded (status
-  `OFFER_DECLINED`, append-only StageEvent, timestamp); a decline is NOT
-  reversible through the portal — the candidate contacts the recruitment
-  team, matching the existing copy. A decline can never advance the
-  journey: the agreement stage stays current with no action available.
-- **Status:** ⛔ Unresolved; interim proposal documented here. If the
-  business rules out self-service decline, the decline endpoint and button
-  are dropped and declinedAt is removed from the schema before migration.
+- **Decision made:** the business directed Stage 3 to ship
+  **Accept-only** — no `declinedAt` column, no decline API, no decline UI,
+  no decline transition. The earlier interim proposal (self-service decline)
+  is superseded and nothing was implemented. `OFFER_DECLINED` remains an
+  unused enum value reserved for a future business decision, and its
+  journey mapping keeps `stageCompleted: false` so a decline could never
+  advance the journey.
+- **Still open (policy):** (a) may a candidate ever decline through the
+  portal, or must declines go through a human channel? (b) Is a recorded
+  decline reversible — by whom, and how? (c) Is there a deadline for
+  responding to the agreement?
+- **Status:** ⛔ Policy unresolved; ⚠️ accept-only behaviour in place by
+  explicit instruction.
 
-## 17. Agreement versioning & re-acceptance — NOT SPECIFIED
+## 17. Agreement versioning & re-acceptance — NOT SPECIFIED (v1.0 → v1.1 now live)
 
 Agreement acceptance records the exact content version accepted (auditable).
 What happens when the agreement content changes AFTER candidates have
@@ -267,11 +359,14 @@ accepted an older version has not been specified.
   candidates who accepted v1.0 re-accept? Does an already-accepted journey
   pause until re-acceptance, or do new versions apply only to candidates
   who have not yet accepted?
-- **Interim proposal (planned, pending confirmation):** new versions apply
-  only to candidates who have not yet accepted; existing acceptances of
-  older versions remain valid and auditable; no re-acceptance flow exists
-  until the business asks for one.
-- **Status:** ⛔ Unresolved; interim proposal documented here.
+- **Interim proposal (now in effect):** new versions apply only to
+  candidates who have not yet accepted; existing acceptances of older
+  versions remain valid and auditable; no re-acceptance flow exists until
+  the business asks for one. This was exercised for the first time by the
+  v1.0 → v1.1 bump: the two accepted v1.0 records (FF-E9KUVN, FF-WVA24D)
+  remain untouched on v1.0, and new acceptances pin v1.1.
+- **Status:** ⛔ Policy still to be confirmed by the business; the interim
+  proposal is now live behaviour, not just a plan.
 
 ## 18. Agreement wording approval — LEGAL/BUSINESS SENSITIVE
 
@@ -280,13 +375,20 @@ are business- (and possibly legally-) sensitive statements the candidate
 formally accepts. No employment-contract or legal language may be invented
 by implementation.
 
-- **Decision needed:** who approves the final wording of the agreement and
-  the acknowledgement sentence? Are there conditions the business wants in
-  the "Important Conditions" section (none are confirmed today, so that
-  section is omitted from v1.0 rather than filled with invented terms)?
-- **Status:** ⛔ Unresolved. v1.0 contains only content supportable from
-  the supplied FinFam material; the acknowledgement sentence follows the
-  Stage 3 brief's suggested wording and is flagged for approval.
+- **What changed in v1.1:** the reward structure now carries the figures
+  confirmed by the Provisional Letter of Appointment (Sep 1, 2026); a new
+  concise **"Important conditions"** section was added containing only
+  letter-confirmed terms (provisional participation, performance review,
+  December 2026 confirmation expectation); one letter-confirmed privacy rule
+  was added to Professional conduct. No termination, probation, deduction,
+  reversal, or confidentiality language was invented. The acknowledgement
+  sentence is unchanged from v1.0.
+- **Decision needed:** who approves the final wording of the agreement
+  (including the new "Important conditions" section) and the acknowledgement
+  sentence before it is treated as final?
+- **Status:** ⛔ Unresolved. v1.1 contains only content supportable from the
+  supplied FinFam material; the acknowledgement sentence follows the Stage 3
+  brief's suggested wording and is flagged for approval.
 
 ## 19. Identity model for consequential actions — REFERENCE-ONLY (§13 revisited)
 
@@ -295,21 +397,40 @@ journey (agreement acceptance) behind the same reference-as-lookup-key
 access model documented in §13. The portal does not authenticate its users.
 
 - **Decision needed:** is reference-only access acceptable for agreement
-  acceptance/decline, or should this stage require an additional
-  verification step (e.g. OTP to the application email/phone) first? The
-  same question applies to every later stage (appointment letters,
-  activation).
-- **Interim proposal (planned, pending confirmation):** keep the existing
-  reference-only access model consistently (no new verification
-  infrastructure in Stage 3); the weakness is documented, not worsened —
-  the agreement API exposes no new personal data. The version echo in the
-  accept payload protects against stale-version submissions, not against
-  reference holders (that would require authentication).
-- **Status:** ⛔ Unresolved; flagged for explicit business sign-off before
-  Stage 3 ships.
+  acceptance, or should this stage require an additional verification step
+  (e.g. OTP to the application email/phone) first? The same question applies
+  to every later stage (appointment letters, activation).
+- **Interim behaviour (in effect):** the reference-only access model is used
+  consistently (no new verification infrastructure in Stage 3); the weakness
+  is documented, not worsened — the agreement API exposes no new personal
+  data. The version echo in the accept payload protects against
+  stale-version submissions, not against reference holders (that would
+  require authentication).
+- **Status:** ⛔ Unresolved; flagged for explicit business sign-off.
+
+## 20. Annual recognition & December 2026 confirmation — PARTIALLY CONFIRMED (new)
+
+The Provisional Letter of Appointment (Sep 1, 2026) confirms two future
+items whose detailed rules are NOT yet supplied:
+
+- **Year-end recognition / rewards.** Effective December 2026, top
+  performers and community builders may be eligible for year-end rewards.
+  The existence and timing are confirmed; the eligibility criteria and
+  reward details are to follow before Q4. Agreement v1.1 states only the
+  confirmed fact. Do not invent eligibility criteria.
+- **December 2026 confirmation.** Participation is provisional and subject
+  to performance review, with confirmation expected in December 2026 upon
+  meeting the stated requirements. The requirements themselves are not
+  supplied. This is recorded as a **future business rule only** — the portal
+  implements NO confirmation workflow, and this must not be built as part
+  of any stage until the business specifies it.
+
+- **Status:** ⚠️ Partially confirmed; details pending from the business
+  before Q4.
 
 ---
 
 **Rule going forward:** when new source material contains contradictory
 figures, add a numbered section here instead of choosing one. Implementation
-waits for confirmation.
+waits for confirmation. When a question is resolved, mark it with the
+authoritative source and keep it here as the audit trail.
