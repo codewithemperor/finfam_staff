@@ -43,8 +43,12 @@ export const STAGE_EVENT_TYPES = [
 
 export type StageEventTypeId = (typeof STAGE_EVENT_TYPES)[number];
 
-/** State of a single stage inside the recruitment progress component. */
-export type StageState = "completed" | "current" | "upcoming";
+/**
+ * State of a single stage inside the recruitment progress component.
+ * `locked` marks a future stage the candidate cannot enter yet — progress
+ * is informational, never navigation.
+ */
+export type StageState = "completed" | "current" | "upcoming" | "locked";
 
 /** Visual tone used by status badges and alerts. */
 export type StatusTone = "neutral" | "success" | "warning" | "danger";
@@ -149,6 +153,63 @@ export interface AssessmentResultState {
   totalMarks: number;
   percentage: number;
   passed: boolean;
+}
+
+/* -------------------------------------------------------------------------
+ * Unified recruitment journey — one application, one reference, one journey
+ * ---------------------------------------------------------------------- */
+
+/** State of one stage on the unified journey screen. */
+export type JourneyStageState = "completed" | "current" | "locked";
+
+/** One stage of the journey as the unified application screen renders it. */
+export interface JourneyStageView {
+  id: RecruitmentStageId;
+  label: string;
+  state: JourneyStageState;
+}
+
+/** The ONE primary action available for the candidate's current stage. */
+export interface JourneyNextAction {
+  label: string;
+  href: string;
+}
+
+/** Assessment record summary (read-only) once an attempt was submitted. */
+export interface JourneyAssessmentSummary {
+  attemptNumber: number;
+  submittedAt: string;
+  passed: boolean;
+  marksAwarded: number;
+  totalMarks: number;
+}
+
+/**
+ * Safe journey view returned by GET /api/journey/[reference] and rendered
+ * by the unified application screen. Derived by the server from persisted
+ * state (CandidateStatus + stage records) — the client never decides which
+ * stage is current. Contains only what the candidate already knows plus
+ * their own progress; no PII beyond the name they supplied.
+ */
+export interface RecruitmentJourneyView {
+  referenceNumber: string;
+  fullName: string;
+  roleTitle: string;
+  status: CandidateStatusId;
+  submittedAt: string;
+  /** Every stage in journey order with completed/current/locked state. */
+  stages: JourneyStageView[];
+  /** The stage the candidate is on (null only for a finished journey). */
+  currentStage: RecruitmentStageId | null;
+  /** The one obvious next action — null when the next stage is not open yet. */
+  nextAction: JourneyNextAction | null;
+  /** Honest "what happens next" copy when no action is available yet. */
+  upcomingNote: string | null;
+  /** Concrete resume detail for the current stage, e.g. "4 of 8 sections read". */
+  currentStageDetail: string | null;
+  /** Present once an assessment attempt has been submitted (record view). */
+  assessmentResult: JourneyAssessmentSummary | null;
+  events: CandidateStageEvent[];
 }
 
 /** Everything the assessment hub needs to render one of its phases. */

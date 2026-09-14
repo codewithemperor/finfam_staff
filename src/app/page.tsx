@@ -2,7 +2,12 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { ButtonLink } from "@/components/ui/button-link";
 import { PageShell } from "@/components/layout/page-shell";
-import { RecruitmentProgress } from "@/components/recruitment/recruitment-progress";
+import {
+  ContinueApplicationForm,
+} from "@/components/recruitment/continue-application-form";
+import {
+  RecruitmentProgress,
+} from "@/components/recruitment/recruitment-progress";
 import { OPEN_POSITION } from "@/config/content";
 import { Alert } from "@heroui/react";
 
@@ -27,9 +32,30 @@ export default function WelcomePage() {
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <ButtonLink href="/apply">Apply now</ButtonLink>
-          <ButtonLink href="/status" variant="outline">
-            Check application status
+          <ButtonLink href="/continue" variant="outline">
+            Continue application
           </ButtonLink>
+        </div>
+      </section>
+
+      {/* Continue Application — the single returning-candidate entry point.
+          Same shared form as /continue; one journey, one reference. */}
+      <section
+        id="continue"
+        className="mt-16 scroll-mt-20 border-t border-divider pt-10 sm:mt-20"
+      >
+        <div className="max-w-2xl">
+          <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Already started an application?
+          </h2>
+          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+            Continue where you left off using your application reference.
+            We&apos;ll take you straight to your current stage — you don&apos;t
+            need to remember where you stopped.
+          </p>
+        </div>
+        <div className="mt-6">
+          <ContinueApplicationForm />
         </div>
       </section>
 

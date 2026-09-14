@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Lock } from "lucide-react";
 
 import { OrientationContent } from "@/components/orientation/orientation-content";
@@ -35,6 +36,8 @@ export async function generateMetadata({ params }: SectionPageProps): Promise<Me
  * (left) and context — key points plus saved progress (right); mobile keeps
  * the reading experience single-column. Sections the candidate has not
  * reached yet are gated server-side: the URL never exposes unread content.
+ * Completed orientations are closed entirely — the journey page is the
+ * single resume point.
  */
 export default async function OrientationSectionPage({
   params,
@@ -55,6 +58,11 @@ export default async function OrientationSectionPage({
       );
     }
     throw error;
+  }
+
+  // One-way progression: past orientation, section URLs are dead ends.
+  if (view.status !== "APPLICANT" && view.status !== "ORIENTATION_PENDING") {
+    redirect(`/application/${view.referenceNumber}`);
   }
 
   const overviewHref = `/orientation/${view.referenceNumber}`;

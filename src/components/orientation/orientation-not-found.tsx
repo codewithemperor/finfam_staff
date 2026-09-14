@@ -15,11 +15,11 @@ export function OrientationNotFoundPanel({ message }: { message: string }) {
         {message}
       </p>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <ButtonLink href="/orientation" variant="outline">
-          Try another reference
+        <ButtonLink href="/continue" variant="outline">
+          Continue your application
         </ButtonLink>
-        <ButtonLink href="/status" variant="outline">
-          Check your application status
+        <ButtonLink href="/continue/recover" variant="outline">
+          Forgot your reference?
         </ButtonLink>
       </div>
     </div>

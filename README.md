@@ -208,6 +208,17 @@ Every route handler returns the same envelope:
   - `POST /api/assessment/[reference]/submit` `{}` — server-side scoring
     (answer key is server-only). Pass = 70% (21/30). Double submit is
     idempotent — the persisted result is returned, never duplicated.
+- Unified journey endpoints:
+  - `GET /api/journey/[reference]` — the server-derived recruitment journey
+    for one application: current stage, completed/locked stages, the ONE
+    next action and the append-only event history. The stage is decided by
+    the server from persisted state (`CandidateStatus` + stage records) —
+    clients never select it. Rendered by `/application/[reference]`.
+  - `POST /api/recruitment/recover-reference`
+    `{ fullName, email, phone }` — reference recovery. ALL three details
+    must match the application; only the reference is revealed. Every
+    mismatch returns the same neutral 404 (no application enumeration).
+    Verification policy: docs/CONTENT-QUESTIONS.md §11.
 - Unexpected failures: logged server-side (`[api] Unhandled error:`),
   returned as a safe generic message (500). Stack traces, SQL and driver
   details never reach the client.

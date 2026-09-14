@@ -139,6 +139,74 @@ confirmed as official FinFam policy.
   option or insight. If confirmed later, it must be added consistently
   across all three surfaces.
 
+## 11. Reference recovery verification — INTERIM BEHAVIOUR
+
+The unified journey includes a "Forgot your application reference?" flow
+(`/continue/recover`). The source material does not specify how a candidate
+should prove their identity when recovering a lost reference.
+
+- **Decision needed:** what verification is required before a reference is
+  revealed (e.g. email/OTP code, phone verification, support contact with
+  manual identity checks)? Is revealing the reference at all acceptable,
+  or should recovery always route through a human support channel?
+- **Interim behaviour (implemented):** the candidate must supply the FULL
+  name, email AND phone exactly as entered on the application; only the
+  reference number is revealed — never application details, NIN/BVN/bank
+  details or documents. Every mismatch (unknown email, wrong name, wrong
+  phone) returns the SAME neutral "no matching application" message, so
+  responses cannot be used to enumerate applications. No email/SMS
+  verification infrastructure exists in the portal.
+- **Known limitation:** anyone who knows all three application details can
+  retrieve the reference. The reference is a lookup key (see §13), not an
+  authentication token, but the business should confirm this trade-off.
+- **Status:** ⛔ Verification policy unresolved; ⚠️ enumeration-safe interim
+  behaviour in place (`src/server/services/journey.ts` →
+  `recoverApplicationReference`).
+
+## 12. Completed-stage history — READ-ONLY RECORDS ONLY
+
+Once a stage is completed it cannot be re-entered as an active workflow
+(one-way progression). Whether candidates should eventually get richer
+read-only history pages (e.g. re-reading orientation sections after
+completion) has not been specified.
+
+- **Decision needed:** should completed stages be viewable as read-only
+  records (orientation content, answered questions)? Which stages, and with
+  what detail?
+- **Interim behaviour (implemented):** the unified journey shows completed
+  stages as non-clickable ✓ entries. The ONLY record view available is the
+  submitted assessment result (`/assessment/[reference]` renders the
+  persisted score read-only — no answers, no insights, no retake from a
+  passed state). Orientation content is not re-openable once completed.
+- **Status:** ⛔ Unresolved; current behaviour is deliberately conservative.
+
+## 13. Candidate identity model — REFERENCE AS LOOKUP KEY
+
+The portal has no login/accounts. The application reference (FF-XXXXXX) is
+a lookup key the candidate holds — it identifies the journey but does not
+authenticate its holder. This matches the supplied material (no account
+system was specified), but it is worth an explicit business decision.
+
+- **Decision needed:** is reference-only access acceptable for the whole
+  journey? If later stages expose more sensitive actions (agreement
+  acceptance, appointment letters, staff activation), does the business
+  want an additional verification step (e.g. OTP at those stages) or a
+  full account system?
+- **Interim behaviour (implemented):** reference-only access everywhere;
+  all candidate-facing data is limited to what the candidate already knows;
+  stage mutations are guarded by server-side state, not by client trust.
+- **Status:** ⛔ Unresolved; revisit before Stage 3 (agreement) ships.
+
+## 14. Reference expiration — NONE IMPLEMENTED
+
+References do not expire and applications do not lapse. Whether stale
+applications (e.g. abandoned at orientation for months) should be expired,
+archived or re-activated has not been specified.
+
+- **Decision needed:** do application references expire? What happens to
+  candidates who never complete orientation/assessment?
+- **Status:** ⛔ Unresolved; no expiration logic exists.
+
 ---
 
 **Rule going forward:** when new source material contains contradictory

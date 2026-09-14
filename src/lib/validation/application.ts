@@ -19,6 +19,9 @@ const PHONE_PATTERN = /^\+?[0-9][0-9 ()-]{6,19}$/;
 // Letters (any language), spaces, apostrophes, hyphens and periods.
 const NAME_PATTERN = /^[\p{L}][\p{L}' .-]*$/u;
 
+/** Shared field patterns — reused by the reference-recovery schema. */
+export { EMAIL_PATTERN, PHONE_PATTERN, NAME_PATTERN };
+
 export const applicationFormSchema = z.object({
   fullName: z
     .string()

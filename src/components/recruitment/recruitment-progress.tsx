@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 
 import {
   RECRUITMENT_STAGES,
@@ -39,20 +39,30 @@ const stateStyles: Record<StageState, { circle: string; label: string }> = {
     circle: "border-border bg-background text-muted-foreground",
     label: "text-muted-foreground",
   },
+  locked: {
+    circle: "border-border bg-surface text-muted-foreground",
+    label: "text-muted-foreground",
+  },
 };
 
 const stateReaderText: Record<StageState, string> = {
   completed: "Completed",
   current: "Current stage",
   upcoming: "Upcoming",
+  locked: "Locked — complete the current stage first",
 };
 
 /**
  * Vertical recruitment journey stepper.
  *
- * Clearly communicates completed / current / upcoming stages without visual
- * noise. Rendered as an ordered list so screen readers read the journey in
- * order; the current stage is marked with aria-current="step".
+ * Clearly communicates completed / current / upcoming (and, on the unified
+ * journey, locked) stages without visual noise. Rendered as an ordered list
+ * so screen readers read the journey in order; the current stage is marked
+ * with aria-current="step".
+ *
+ * This is a PROGRESS INDICATOR, not navigation: stages are never rendered
+ * as links, so candidates cannot jump backward into completed stages or
+ * forward into locked ones.
  */
 export function RecruitmentProgress({
   currentStage,
@@ -103,7 +113,13 @@ export function RecruitmentProgress({
                 styles.circle,
               )}
             >
-              {state === "completed" ? <Check className="size-4" /> : index + 1}
+              {state === "completed" ? (
+                <Check className="size-4" />
+              ) : state === "locked" ? (
+                <Lock className="size-3.5" />
+              ) : (
+                index + 1
+              )}
             </span>
 
             <div className="min-w-0 pt-1">

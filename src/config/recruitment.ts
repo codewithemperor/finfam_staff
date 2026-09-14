@@ -92,7 +92,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "Your application has been received. We will contact you with orientation details once your application is reviewed.",
+      "Your application has been received. Your orientation is ready — start the Staff Orientation Workshop online whenever you like. Your progress is saved as you go.",
   },
   ORIENTATION_PENDING: {
     id: "ORIENTATION_PENDING",
@@ -102,7 +102,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "Your orientation is ready. Start the Staff Orientation Workshop online — it covers how FinFam works, your role, and the standards expected from every team member. Your progress is saved as you go.",
+      "Your orientation covers how FinFam works, your role, and the standards expected from every team member. Work through the sections in order — your progress is saved as you go.",
   },
   ORIENTATION_COMPLETED: {
     id: "ORIENTATION_COMPLETED",
@@ -112,7 +112,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "You have completed orientation. Your assessment is ready — open the Assessment page to start it.",
+      "You have completed orientation. Your assessment is ready when you are — it has 30 multiple-choice questions and a 70% pass mark, and your answers are saved as you go.",
   },
   ASSESSMENT_PENDING: {
     id: "ASSESSMENT_PENDING",
@@ -132,7 +132,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "Congratulations — you passed the assessment. Your offer is being prepared.",
+      "Congratulations — you passed the assessment and your result has been recorded. The next stage of your application is being prepared; we'll contact you when it opens.",
   },
   ASSESSMENT_FAILED: {
     id: "ASSESSMENT_FAILED",
@@ -144,7 +144,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "You did not meet the pass mark this time. You can retake the assessment from the Assessment page. The final retake policy is being finalised.",
+      "You did not meet the pass mark this time. You can retake the assessment when you are ready. The final retake policy is being finalised.",
   },
   OFFER_PENDING: {
     id: "OFFER_PENDING",

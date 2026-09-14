@@ -78,7 +78,8 @@ export function ApplyForm() {
       );
       setResult(data);
       toast("Application submitted", {
-        description: "Save your reference number — you'll need it to check your status.",
+        description:
+          "Save your reference number — you'll use it to continue your application.",
         variant: "success",
       });
     } catch (error) {
@@ -219,8 +220,9 @@ function SubmissionConfirmation({ result }: { result: ApplicationSubmissionResul
         </h2>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
           Thank you — your application for the Staff Member role has been
-          submitted. Keep your reference number safe; you&apos;ll use it to
-          check your application status.
+          submitted. Save your reference number somewhere safe; it identifies
+          your whole application journey and you&apos;ll use it every time you
+          return.
         </p>
       </div>
 
@@ -241,19 +243,22 @@ function SubmissionConfirmation({ result }: { result: ApplicationSubmissionResul
         <Alert.Content>
           <Alert.Title>What happens next</Alert.Title>
           <Alert.Description>
-            We review applications in the order they arrive. When your
-            application is accepted, we&apos;ll contact you with orientation
-            details and your journey continues from there.
+            Your orientation is ready now. It covers how FinFam works, your
+            role, and the standards expected from every team member. You can
+            start it straight away — your progress is saved as you go.
           </Alert.Description>
         </Alert.Content>
       </Alert>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <ButtonLink href={`/status?ref=${result.referenceNumber}`}>
-          Check your application status
+        <ButtonLink href={`/orientation/${result.referenceNumber}`}>
+          Continue to orientation
         </ButtonLink>
-        <ButtonLink href="/" variant="outline">
-          Back to home
+        <ButtonLink
+          href={`/application/${result.referenceNumber}`}
+          variant="outline"
+        >
+          View your application journey
         </ButtonLink>
       </div>
     </div>

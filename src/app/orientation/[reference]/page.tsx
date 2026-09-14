@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { OrientationNotFoundPanel } from "@/components/orientation/orientation-not-found";
 import { OrientationProgressCard } from "@/components/orientation/orientation-progress-card";
 import { OrientationSectionList } from "@/components/orientation/orientation-section-list";
 import { PageShell } from "@/components/layout/page-shell";
 import { StatusBadge } from "@/components/recruitment/status-badge";
-import { CANDIDATE_STATUS_DETAILS } from "@/config/recruitment";
 import { AppError } from "@/lib/errors";
 import {
   getOrientationProgress,
@@ -26,6 +26,11 @@ export const metadata: Metadata = {
  * Recomposed responsively: on desktop the section list and the progress
  * rail sit side by side (content + context); on mobile the rail — current
  * stage, saved progress and the one next action — comes first.
+ *
+ * Stage access is decided by the server: once orientation is completed the
+ * stage is CLOSED (progression is one-way), so direct visits and browser
+ * back-navigation land on the unified journey instead of re-opening the
+ * workflow. Active candidates reach the overview as normal.
  */
 export default async function OrientationOverviewPage({
   params,
@@ -48,9 +53,14 @@ export default async function OrientationOverviewPage({
     throw error;
   }
 
+  // One-way progression: past orientation, this page is a record at most —
+  // the journey page is the single resume point.
+  if (view.status !== "APPLICANT" && view.status !== "ORIENTATION_PENDING") {
+    redirect(`/application/${view.referenceNumber}`);
+  }
+
   const sections = getOrientationSectionViews(view);
   const progress = getOrientationProgress(view);
-  const statusDefinition = CANDIDATE_STATUS_DETAILS[view.status];
 
   return (
     <PageShell size="wide">

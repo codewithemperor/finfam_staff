@@ -14,9 +14,11 @@ export function AssessmentNotFoundPanel({ message }: { message: string }) {
         {message}
       </p>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <ButtonLink href="/assessment">Back to the assessment</ButtonLink>
-        <ButtonLink href="/status" variant="outline">
-          Check application status
+        <ButtonLink href="/continue" variant="outline">
+          Continue your application
+        </ButtonLink>
+        <ButtonLink href="/continue/recover" variant="outline">
+          Forgot your reference?
         </ButtonLink>
       </div>
     </div>

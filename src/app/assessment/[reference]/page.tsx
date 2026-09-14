@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { AssessmentNotFoundPanel } from "@/components/assessment/assessment-not-found";
 import { AssessmentResultCard } from "@/components/assessment/assessment-result-card";
@@ -23,9 +24,14 @@ export const metadata: Metadata = {
 
 /**
  * Assessment hub — the home of stage 2. One server-rendered page covering
- * every phase: the eligibility gate, the introduction, resuming an active
- * attempt, and the recorded result. Desktop recomposes into content plus a
- * context rail; on mobile the primary content and its action come first.
+ * every phase: the introduction, resuming an active attempt, and the
+ * recorded result. Desktop recomposes into content plus a context rail; on
+ * mobile the primary content and its action come first.
+ *
+ * Stage access is decided by the server: candidates whose orientation is
+ * not complete are redirected to their current stage (the unified journey)
+ * — a direct URL never renders the assessment. A submitted result stays
+ * available here as a read-only record; the stage itself is closed.
  */
 export default async function AssessmentHubPage({
   params,
@@ -48,8 +54,15 @@ export default async function AssessmentHubPage({
     throw error;
   }
 
-  const statusDefinition = CANDIDATE_STATUS_DETAILS[view.status];
+  // Server-enforced eligibility (mirrors the service rule): the assessment
+  // opens only after orientation is completed. Direct visits and stale
+  // links are pointed at the candidate's real current stage.
+  if (!view.orientationCompleted) {
+    redirect(`/application/${view.referenceNumber}`);
+  }
+
   const answeredCount = view.attempt?.answers.length ?? 0;
+  const statusDefinition = CANDIDATE_STATUS_DETAILS[view.status];
 
   return (
     <PageShell size="wide">
@@ -72,31 +85,7 @@ export default async function AssessmentHubPage({
         </p>
       </div>
 
-      {!view.orientationCompleted ? (
-        // ------------------------------------------------------------
-        // Ineligible: orientation not completed. Mirrors the server rule
-        // for candidates and explains the path forward.
-        // ------------------------------------------------------------
-        <div className="mt-10 max-w-xl rounded-lg border border-border bg-surface p-6">
-          <h2 className="text-base font-semibold text-foreground">
-            Your orientation comes first
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            The assessment is based on the Staff Orientation Workshop, so it
-            opens once every section has been read and the workshop has been
-            completed. Your answers cannot be accepted before then.
-          </p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href={`/orientation/${view.referenceNumber}`}>
-              Go to your orientation
-            </ButtonLink>
-            <ButtonLink href={`/status?ref=${view.referenceNumber}`} variant="outline">
-              Check application status
-            </ButtonLink>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-10 grid gap-10 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12 xl:gap-14">
+      <div className="mt-10 grid gap-10 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12 xl:gap-14">
           {/* ------------------------------------------------------- */}
           {/* Primary content by phase */}
           {/* ------------------------------------------------------- */}
@@ -234,8 +223,7 @@ export default async function AssessmentHubPage({
               </div>
             </div>
           </aside>
-        </div>
-      )}
+      </div>
     </PageShell>
   );
 }

@@ -14,8 +14,8 @@ export default function NotFound() {
       </p>
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <ButtonLink href="/">Go to homepage</ButtonLink>
-        <ButtonLink href="/status" variant="outline">
-          Check application status
+        <ButtonLink href="/continue" variant="outline">
+          Continue your application
         </ButtonLink>
       </div>
     </div>
