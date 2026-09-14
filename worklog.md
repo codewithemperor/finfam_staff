@@ -167,3 +167,20 @@ Stage Summary:
 - Delivered /home/z/my-project/report.docx (primary, modern format) and /home/z/my-project/report.doc (legacy copy, verified identical rendering).
 - Report covers: foundation, Stage 1 FSOW, Stage 2 Assessment, journey unification, Stage 3 agreement (accept-only), QA coverage, system inventory (4 migrations / 14 endpoints / 9 tables), open business items (CQ register), ops lessons, next-week plan (Stage 4 awaiting instruction).
 - No product code touched.
+
+---
+Task ID: weekly-report-v2
+Agent: Z.ai Code (main)
+Task: Rewrite the weekly report in the user's supplied straight markdown-style format (no cover page, no TOC - content flows directly).
+
+Work Log:
+- Verified two template facts against the code before writing: (1) the MVP application form collects fullName/email/phone/city/role/consent only - the template's longer list (passport, NIN, BVN, CV, next of kin) was corrected to the actual collected fields with a note that the shared-schema architecture supports extension; (2) Stage 3 status - the template said "ready to start" but implementation is complete and verified, so header status, sections 14-15 (tense), 16 (decline = accept-only shipped), 17 (Stage 3 implementation now Complete), 19 (next milestone = Stage 4 planning on instruction) and 20 (added agreement bullet) were all updated to current reality. Sections 1-13, 18 kept verbatim where accurate.
+- Wrote report.md (primary deliverable, exact user format: #/##/### structure, bullets, blockquotes, status table with emoji).
+- Wrote .zscripts/gen-report-straight.js mirroring the md 1:1 as a single-section Word document: straight title block + meta + rules, HEADING_1/H2 styles, Courier New for code/state-chain runs, green-bar blockquotes, 18-row status table (tableHeader/cantSplit, emoji preserved), footer page numbers. No cover, no TOC per "just straight".
+- postcheck.py 9/9, 0 errors 0 warnings (switched Consolas -> Courier New to clear the font-fallback note). 18 pages.
+- Visual verification via LibreOffice render: title page, quote/code pages, emoji status table, clean ending; legacy .doc conversion verified identical.
+
+Stage Summary:
+- Delivered report.md (straight markdown), report.docx and report.doc (straight Word format, overwrote the earlier covered version per the user's format change).
+- Content now reflects the true current state: Stages 1-3 complete (Stage 3 accept-only), Stage 4 not started and awaiting separate planning instruction.
+- No product code touched.
