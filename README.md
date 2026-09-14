@@ -194,6 +194,20 @@ Every route handler returns the same envelope:
     (idempotent); completed orientation → 409.
   - `POST /api/orientation/[reference]/complete` `{ acknowledgement: true }`
     — completes the workshop. Missing sections or acknowledgement → 422.
+- Assessment endpoints:
+  - `GET /api/assessment/[reference]` — assessment state: eligibility,
+    phase, active attempt (safe question data + saved answers) or result.
+    Never includes correct answers or insights.
+  - `POST /api/assessment/[reference]/start` `{}` — start or resume.
+    Ineligible (orientation incomplete), already passed, or past the
+    attempt policy → 409; active attempt → 200 (resume, no duplicate).
+  - `POST /api/assessment/[reference]/answers`
+    `{ questionId, selectedOption }` — autosave one answer on the active
+    attempt (idempotent upsert). Question must belong to the attempt's
+    persisted set; submitted attempt → 409.
+  - `POST /api/assessment/[reference]/submit` `{}` — server-side scoring
+    (answer key is server-only). Pass = 70% (21/30). Double submit is
+    idempotent — the persisted result is returned, never duplicated.
 - Unexpected failures: logged server-side (`[api] Unhandled error:`),
   returned as a safe generic message (500). Stack traces, SQL and driver
   details never reach the client.

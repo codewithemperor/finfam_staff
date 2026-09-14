@@ -6,15 +6,16 @@ import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
 /**
- * Global site header. Intentionally minimal: brand, two navigation links,
- * and the primary call to action. Navigation grows → introduce a mobile
- * drawer (HeroUI Drawer) only when links no longer fit on small screens.
+ * Global site header. Intentionally minimal: brand, navigation links, and
+ * the primary call to action. On the smallest screens the nav wraps to a
+ * second row rather than hiding destinations; if navigation grows further,
+ * introduce a mobile drawer (HeroUI Drawer).
  */
 export function SiteHeader({ className }: { className?: string }) {
   return (
     <header className={cn("border-b border-border bg-background", className)}>
       <PageContainer>
-        <div className="flex h-16 items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 sm:h-16 sm:flex-nowrap sm:gap-4 sm:py-0">
           <Link
             href="/"
             className="flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -36,7 +37,7 @@ export function SiteHeader({ className }: { className?: string }) {
 
           <div className="flex items-center gap-2 sm:gap-5">
             <nav aria-label="Main navigation">
-              <ul className="flex items-center gap-3 sm:gap-5">
+              <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-5">
                 {siteConfig.nav.map((item) => (
                   <li key={item.href}>
                     <Link
