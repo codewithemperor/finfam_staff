@@ -44,3 +44,21 @@ Stage Summary:
 - Stage 1 (FSOW) implemented end-to-end and browser-verified; recruitment status APPLICANT → ORIENTATION_PENDING → ORIENTATION_COMPLETED with append-only StageEvents; no fake data, no client-trusted progress; rewards/conflicting thresholds remain unpublished (docs/CONTENT-QUESTIONS.md items 1, 2, plus new item 5: official vision/mission wording).
 - Lint clean; dev.log clean; responsive recomposition rule applied (overview 2-col from md, section content+rail from lg; mobile priority order respected).
 - NOT implemented (per brief §25): assessment, offer, appointment, staff activation, onboarding, admin tooling. STOPPING here — next stage must be planned separately before implementation.
+
+---
+Task ID: 3
+Agent: Z.ai Code (main orchestrator)
+Task: Session restart — restore runtime after sandbox reset and re-verify Stage 1 (FSOW) end-to-end
+
+Work Log:
+- Found the sandbox had restarted since the last session: /home/sync/repo.tar was restored, which clobbered .env back to the sandbox default DATABASE_URL=file:.../custom.db and dropped git-ignored runtime state (db/pg-data, dev server, dev.log). All committed Stage 1 code and both Prisma migrations were intact.
+- Restored .env to postgresql://postgres@127.0.0.1:5432/finfam; re-initialised PostgreSQL via scripts/postgres.sh; re-applied migrations with `prisma.sh migrate deploy` (init + 20260913203601_orientation_stage).
+- Root-caused why the dev server kept dying: (a) the sandbox boot pipeline (.zscripts/dev.sh) had aborted at `db:push` because of the clobbered .env, so no managed server ever started; (b) servers launched with plain setsid from tool calls were reaped between calls. Stable fix: launch via start-stop-daemon (true double-fork daemonisation, same mechanism that keeps PostgreSQL alive) with pidfile .zscripts/dev-local.pid, logging to dev.log. Cleared a corrupted .next cache after earlier SIGKILLs. Server now survives across tool calls.
+- Re-verified the entire FSOW stage: API contract via curl on fresh candidate FF-UEPKGX (200/404/422 sequential gating, idempotent section repeats, early-complete 422, no-ack 422, complete → ORIENTATION_COMPLETED, sections-after-completion 409; repeat /complete returns 200 idempotently BY DESIGN per service comment; StageEvents ENTERED + COMPLETED recorded).
+- Browser E2E (agent-browser) on UI candidate FF-E9KUVN: apply form → reference → orientation entry → overview (locked sections + progress rail) → 8 sections walked via "Mark as read & continue" → reward section publishes no figures ("being finalised" alert incl. threshold) → fraud section renders persistent calm warning Alert (HeroUI v3 `alert alert--warning`, no role=alert) → complete modal validation error without acknowledgement → complete with acknowledgement → overview completed state (8/8) → status page (Orientation completed badge, stepper, honest "assessment will be available shortly", 3 timeline events).
+- Responsive: no horizontal overflow at 375/768/1024/1440; overview and section pages recompose (single column 375 → true 2-col at 768+; verified geometry, screenshots saved); mobile header nav one line (24px); sticky footer exact at viewport bottom on short pages, pushed naturally on long ones; keyboard focus 2px outline.
+- Small fix: added data-scroll-behavior="smooth" to <html> (layout.tsx) to settle the Next.js dev advisory about smooth scrolling during route transitions. Lint exit 0; dev.log clean (all 200s, no errors).
+
+Stage Summary:
+- Stage 1 (FSOW) confirmed intact and fully working after the sandbox reset; runtime restore procedure documented here for future sessions (fix .env → postgres.sh start → prisma migrate deploy → start-stop-daemon relaunch).
+- No product code changes beyond the one-line layout.tsx advisory fix; no new stages started. Assessment and later stages remain untouched, awaiting separate planning.

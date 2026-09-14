@@ -31,7 +31,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="light" data-theme="light" suppressHydrationWarning>
+    <html
+      lang="en"
+      className="light"
+      data-theme="light"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <body
         className={`${manrope.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
       >
