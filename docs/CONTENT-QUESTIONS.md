@@ -60,6 +60,14 @@ Candidates who already accepted v1.0 keep v1.0 on their record.
 | §14 | Reference expiration |
 | §16 | Decline policy (portal remains accept-only by decision; the underlying reversal/deadline policy is still open) |
 | §17 | Re-acceptance policy for future agreement versions |
+| §21 | Canonical role-title presentation on the appointment letter (added during Stage 4 planning) |
+| §22 | Appointment reference numbering format & sequence policy (added during Stage 4 planning) |
+| §23 | Appointment effective-date semantics (added during Stage 4 planning) |
+| §24 | Appointment signatory format (added during Stage 4 planning) |
+| §25 | Signature/logo assets for generated letters (added during Stage 4 planning) |
+| §26 | Appointment email delivery — Stage 4 MVP or later (added during Stage 4 planning) |
+| §27 | Separate appointment acknowledgement vs Stage 3 acceptance (added during Stage 4 planning) |
+| §28 | December 2026 confirmation requirements — future rule, NOT to be built (added during Stage 4 planning) |
 
 ---
 
@@ -427,6 +435,124 @@ items whose detailed rules are NOT yet supplied:
 
 - **Status:** ⚠️ Partially confirmed; details pending from the business
   before Q4.
+
+---
+
+## 21. Canonical role title on the appointment letter — UNRESOLVED (Stage 4 planning)
+
+The supplied material contains four designations. Where each appears today:
+
+- **"Remote Staff"** — the appointment designation used by the official
+  Provisional Letter of Appointment (Sep 1, 2026), including its subject
+  line ("Provisional Letter of Appointment – Remote Staff").
+- **"Marketing & Customer Care Executive" / "FinFam Growth Ambassador"** —
+  the functional role titles in the earlier recruitment material and in the
+  agreement (v1.0/v1.1 "Your role" section).
+- **"Staff Member"** — the generic title used by the application form and
+  journey copy.
+
+- **Planning proposal (NOT implemented):** the appointment letter uses
+  **"Remote Staff"** as its appointment designation — that is what the
+  authoritative Stage 4 document itself says — optionally with one sentence
+  connecting it to the functional role the candidate was recruited for. No
+  portal-wide renaming happens in Stage 4.
+- **Decision needed:** the exact canonical presentation on the letter
+  (Remote Staff only / both titles / another approved formulation), and
+  eventually one canonical title portal-wide (§4).
+- **Status:** ⛔ Unresolved; planning-stage question.
+
+## 22. Appointment reference numbering — UNRESOLVED (Stage 4 planning)
+
+The official sample letter carries reference **FFL/HR/PLA/012**. The
+recruitment reference (FF-XXXXXX) and the appointment reference are
+different concepts and must never be conflated.
+
+- **Planning proposal (NOT implemented):** server-generated sequential
+  appointment references in the official format `FFL/HR/PLA/{NNN}`
+  (zero-padded, growing beyond 3 digits naturally), allocated from a
+  transactional singleton counter so concurrent issuances can never
+  collide. Candidates never supply it.
+- **Decision needed:** is `FFL/HR/PLA/` the permanent prefix? Should the
+  portal sequence continue after the sample's 012, start at 001, or use a
+  different scheme (e.g. a year component)? Is the numbering per-letter-type
+  or global?
+- **Status:** ⛔ Unresolved; planning-stage question.
+
+## 23. Appointment effective date — UNRESOLVED (Stage 4 planning)
+
+The sample letter is dated September 1, 2026 (a source-document date, not a
+rule for future letters).
+
+- **Planning proposal (NOT implemented):** one server-set `issuedAt` field
+  (the portal issuance moment), printed as the letter date. No
+  `effectiveDate` column until its meaning is confirmed — the two must not
+  be silently conflated.
+- **Decision needed:** should the appointment take effect at the issue date,
+  at the agreement acceptance date, at a fixed resumption/commencement date
+  set by HR, or another defined date?
+- **Status:** ⛔ Unresolved; planning-stage question.
+
+## 24. Appointment signatory — UNRESOLVED (Stage 4 planning)
+
+The earlier recruitment material names **Tosin Eboh — President, FinFam**
+and **Mosunmola Esther Afolami — Global Executive Secretary, FinFam**. The
+supplied appointment letter closes with **"Management, FinFam"**.
+
+- **Decision needed:** the official Stage 4 signatory format for generated
+  appointment letters (named officers / "Management, FinFam" / another
+  approved formulation).
+- **Status:** ⛔ Unresolved; planning-stage question. Nothing is silently
+  chosen; the plan defaults to the supplied letter's "Management, FinFam"
+  pending confirmation.
+
+## 25. Signature / logo assets for generated letters — UNRESOLVED (Stage 4 planning)
+
+- **Decision needed:** do generated appointment letters require real
+  signature images or the FinFam Multipurpose Cooperative Society Limited
+  logo? No such assets have been supplied, so none are invented; the letter
+  ships text-only until assets exist.
+- **Status:** ⛔ Unresolved; planning-stage question.
+
+## 26. Appointment email delivery — Stage 4 MVP or later? (Stage 4 planning)
+
+The original recruitment brief says appointment letters should eventually
+reach the candidate's registered email. No email infrastructure exists in
+the portal (the support inbox itself is still a placeholder, §3).
+
+- **Planning recommendation (NOT implemented):** defer automatic email to a
+  later integration phase; the Stage 4 view/download experience must not
+  depend on email delivery.
+- **Decision needed:** ship email in the Stage 4 MVP or later? Which
+  provider/sender identity?
+- **Status:** ⛔ Unresolved; planning-stage question.
+
+## 27. Separate appointment acknowledgement? (Stage 4 planning)
+
+Earlier recruitment material mentions an "Accept and Download" step for the
+appointment letter. The candidate has already explicitly accepted the
+Responsibility & Reward Agreement (stage 3) — the harder, auditable
+decision.
+
+- **Planning recommendation (NOT implemented):** no second acceptance.
+  Issuing and viewing the letter is sufficient for the MVP; adding another
+  accept step would duplicate the stage 3 decision without new information.
+- **Decision needed:** does the business require a separate appointment
+  acknowledgement (e.g. an "Accept and Download" click recorded on the
+  appointment)?
+- **Status:** ⛔ Unresolved; planning-stage question.
+
+## 28. December 2026 confirmation requirements — FUTURE RULE ONLY (Stage 4 planning)
+
+Extends §20: the appointment is provisional and subject to performance
+review, with confirmation expected in December 2026 upon meeting the stated
+requirements. The requirements are NOT supplied.
+
+- **Explicitly out of scope for Stage 4:** no confirmation workflow, no
+  scheduled December action, no automated confirmation, and no conflation
+  of *provisional appointment* with *staff activation* or *final
+  confirmation* — three distinct concepts.
+- **Status:** ⚠️ Partially confirmed (existence + timing); requirements
+  pending from the business before anything is built.
 
 ---
 

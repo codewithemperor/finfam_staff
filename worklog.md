@@ -202,3 +202,19 @@ Stage Summary:
 - Stage 3 content is now accurate to the confirmed compensation policy (Agreement v1.1); accepted v1.0 records remain a valid, auditable historical record; accept-only behavior, state machine, schema and journey behavior are untouched.
 - Open business items: canonical role title (Remote Staff vs Executive/Ambassador vs Staff Member), annual-recognition criteria (pre-Q4), December 2026 confirmation requirements (future rule, not built), final wording sign-off (§18), plus the pre-existing CQ register.
 - Stage 4 — Provisional Appointment has NOT been implemented (no routes, UI, APIs, models, migrations, services, generation/download, or tests). Stopping here per instruction.
+
+---
+Task ID: stage-4-planning
+Agent: Z.ai Code (main)
+Task: STAGE 4 — Provisional Appointment PLANNING ONLY. Inspect the existing architecture and produce the complete implementation plan. No implementation, no migration, no routes, no Activation/Onboarding.
+
+Work Log:
+- Inspected: prisma/schema.prisma (CandidateStatus/RecruitmentStage enums already contain APPOINTMENT_ISSUED/APPOINTMENT — no enum migration needed), Candidate/Application/Agreement/StageEvent models, getRecruitmentJourney (deriveStageStates/deriveNextAction/upcomingNote/agreementRecord), CANDIDATE_STATUS_DETAILS (APPOINTMENT_ISSUED exists with stageCompleted:false pending implementation), unified journey page (CTA via nextAction, read-only record rows), /agreement/[reference] page architecture (server component, 404 panel, !eligible redirect, document+sticky rail grid), agreement service lazy-entry/idempotent-accept transaction pattern, GET+accept API routes (handleApiRequest envelope), PageShell/ButtonLink/StatusBadge/RecruitmentProgress/JourneyNotFoundPanel, lib/api/response + AppError conventions, reference-as-lookup-key model, design tokens (--accent #0c7a43, Manrope), package.json (NO PDF library installed; docx present for internal reporting only).
+- Key planning decisions: hybrid snapshot strategy (issued letter = pinned columns printedName/roleTitle/referenceNumber/issuedAt/version + immutable versioned content registry in code); lazy server-side idempotent issuance on first eligible GET (mirrors agreement lazy-entry; CTA reads "View Provisional Appointment"); single new API GET /api/appointment/[reference]; download/print via print stylesheet (zero new deps, one content source feeding screen + print); single COMPLETED StageEvent "Provisional appointment FFL/HR/PLA/XXX issued."; APPOINTMENT_ISSUED.stageCompleted → true so the stepper shows Agreement ✓ Appointment ✓ Activation ● with an honest Activation coming-next note; Activation/Onboarding/December-confirmation explicitly NOT built.
+- Recorded 8 new planning-stage business questions in docs/CONTENT-QUESTIONS.md §21–§28 (canonical role title on the letter, reference numbering, effective date, signatory, signature assets, email delivery, separate acknowledgement, December 2026 requirements).
+- Produced the full plan (21 deliverables + Ready/Requires-confirmation/Implementation-order gates) in the task response.
+
+Stage Summary:
+- Stage 4 plan is complete and documented; NOTHING was implemented (no models, no migration, no routes, no pages, no config changes to product code; only docs/CONTENT-QUESTIONS.md gained planning questions and this worklog entry).
+- Recommended implementation sequence (10 steps) and open business questions are ready for the approval decision.
+- STOPPING per brief — awaiting instruction.
