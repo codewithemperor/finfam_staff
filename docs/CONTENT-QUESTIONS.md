@@ -196,6 +196,7 @@ system was specified), but it is worth an explicit business decision.
   all candidate-facing data is limited to what the candidate already knows;
   stage mutations are guarded by server-side state, not by client trust.
 - **Status:** ⛔ Unresolved; revisit before Stage 3 (agreement) ships.
+  Revisited during Stage 3 planning — see §19.
 
 ## 14. Reference expiration — NONE IMPLEMENTED
 
@@ -206,6 +207,98 @@ archived or re-activated has not been specified.
 - **Decision needed:** do application references expire? What happens to
   candidates who never complete orientation/assessment?
 - **Status:** ⛔ Unresolved; no expiration logic exists.
+
+## 15. Agreement reward figures vs. §2 — STAGE 3 BRIEF LISTS ₦650
+
+The Stage 3 planning brief describes the agreement's Reward Structure
+section as "Established Members × ₦650" plus an "Applicable Target Bonus".
+Section 2 above currently blocks publishing any reward figures because the
+supplied material never arrived as one consistent set, and §1 blocks the
+Established Member *savings threshold* (₦2,000 vs ₦5,000 conflict).
+
+- **Decision needed:** is "₦650 per Established Member + applicable target
+  bonus" now the confirmed, authoritative reward structure (superseding
+  §2)? If yes, the threshold conflict in §1 must also be resolved before
+  the phrase "Established Member" can carry a number. If not confirmed,
+  the agreement's reward section will ship with the same
+  "figures being finalised" treatment used on the landing page and in
+  orientation section 5 — the structure is named, the figures are not.
+- **Status:** ⛔ Unresolved. No figure has been encoded in
+  `src/config/agreement.ts`; the config carries a pending/confirmed switch
+  so confirmed figures are a content change plus a version bump.
+
+## 16. Agreement decline & reversal policy — NOT SPECIFIED
+
+The shipped state machine already reserves `OFFER_DECLINED` with
+candidate-facing copy ("If this was a mistake, please contact the
+recruitment team"), which implies the portal can record a decline. But the
+decline policy itself was never supplied.
+
+- **Decision needed:** (a) may a candidate decline the agreement through
+  the portal at all, or must declines go through a human channel?
+  (b) Is a recorded decline reversible — by whom, and how (support action,
+  re-issuing the agreement, fresh application)? (c) Is there a deadline
+  for responding to the agreement?
+- **Interim proposal (planned, pending confirmation):** the portal offers
+  an explicit decline action; the decision is recorded (status
+  `OFFER_DECLINED`, append-only StageEvent, timestamp); a decline is NOT
+  reversible through the portal — the candidate contacts the recruitment
+  team, matching the existing copy. A decline can never advance the
+  journey: the agreement stage stays current with no action available.
+- **Status:** ⛔ Unresolved; interim proposal documented here. If the
+  business rules out self-service decline, the decline endpoint and button
+  are dropped and declinedAt is removed from the schema before migration.
+
+## 17. Agreement versioning & re-acceptance — NOT SPECIFIED
+
+Agreement acceptance records the exact content version accepted (auditable).
+What happens when the agreement content changes AFTER candidates have
+accepted an older version has not been specified.
+
+- **Decision needed:** if FinFam issues agreement v1.1 or v2.0, must
+  candidates who accepted v1.0 re-accept? Does an already-accepted journey
+  pause until re-acceptance, or do new versions apply only to candidates
+  who have not yet accepted?
+- **Interim proposal (planned, pending confirmation):** new versions apply
+  only to candidates who have not yet accepted; existing acceptances of
+  older versions remain valid and auditable; no re-acceptance flow exists
+  until the business asks for one.
+- **Status:** ⛔ Unresolved; interim proposal documented here.
+
+## 18. Agreement wording approval — LEGAL/BUSINESS SENSITIVE
+
+The acceptance acknowledgement sentence and the agreement's section wording
+are business- (and possibly legally-) sensitive statements the candidate
+formally accepts. No employment-contract or legal language may be invented
+by implementation.
+
+- **Decision needed:** who approves the final wording of the agreement and
+  the acknowledgement sentence? Are there conditions the business wants in
+  the "Important Conditions" section (none are confirmed today, so that
+  section is omitted from v1.0 rather than filled with invented terms)?
+- **Status:** ⛔ Unresolved. v1.0 contains only content supportable from
+  the supplied FinFam material; the acknowledgement sentence follows the
+  Stage 3 brief's suggested wording and is flagged for approval.
+
+## 19. Identity model for consequential actions — REFERENCE-ONLY (§13 revisited)
+
+Stage 3 introduces the first consequential, hard-to-reverse action of the
+journey (agreement acceptance) behind the same reference-as-lookup-key
+access model documented in §13. The portal does not authenticate its users.
+
+- **Decision needed:** is reference-only access acceptable for agreement
+  acceptance/decline, or should this stage require an additional
+  verification step (e.g. OTP to the application email/phone) first? The
+  same question applies to every later stage (appointment letters,
+  activation).
+- **Interim proposal (planned, pending confirmation):** keep the existing
+  reference-only access model consistently (no new verification
+  infrastructure in Stage 3); the weakness is documented, not worsened —
+  the agreement API exposes no new personal data. The version echo in the
+  accept payload protects against stale-version submissions, not against
+  reference holders (that would require authentication).
+- **Status:** ⛔ Unresolved; flagged for explicit business sign-off before
+  Stage 3 ships.
 
 ---
 

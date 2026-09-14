@@ -105,3 +105,19 @@ Stage Summary:
 - The portal is now ONE journey: one reference (FF-XXXXXX) identifies Application → Orientation → Assessment → (locked) Offer → Appointment → Activation; "Continue Application" is the single entry; the server always decides the current stage; completed stages are records, never re-enterable; future stages are honest and locked; FSOW and Assessment logic untouched (integration-only edits + copy freshness).
 - Recovery is enumeration-safe but verification strength is an OPEN business question (CONTENT-QUESTIONS §11), alongside §12–§14 new items.
 - NOT implemented (per brief §33/§37): agreement, appointment, activation, onboarding, admin tooling. STOPPING here — awaiting separate Stage 3 planning instruction.
+
+---
+Task ID: stage-3-planning
+Agent: Z.ai Code (main)
+Task: Stage 3 (Responsibility & Reward Agreement) — PLANNING ONLY. Inspect existing architecture, produce the full implementation plan + test matrix, document unresolved business questions. No implementation, no migrations, no DB changes.
+
+Work Log:
+- Verified runtime health: Postgres up, dev server up, .env correct; DB intact with 10 candidates across every reachable status incl. 3x ASSESSMENT_PASSED (FF-E9KUVN, FF-QEY98E, FF-WVA24D), 2x FAILED, PENDING, APPLICANT, ORIENTATION_PENDING — ready-made fixtures for Stage 3 testing.
+- Read worklog; inspected schema (Candidate/Application/CandidateStatus/StageEvent/Orientation*/Assessment*), all three services (journey/orientation/assessment), lib (errors, api response/client, reference, validation), API routes, journey page, assessment hub (guard/redirect pattern), status bridge, continue flow, apply flow, RecruitmentProgress/StatusBadge/ButtonLink/PageShell/PageHeader, providers (Toast.Provider), HeroUI Modal pattern (assessment runner, orientation acknowledgement Checkbox), configs (recruitment/content/orientation/assessment/site), DESIGN-SYSTEM.md, CONTENT-QUESTIONS.md.
+- Key findings: existing enum already reserves OFFER stage + OFFER_PENDING/OFFER_ACCEPTED/OFFER_DECLINED -> Agreement maps onto OFFER with label-only changes (no enum migration); OFFER_DECLINED currently has stageCompleted:true which would wrongly advance the journey to APPOINTMENT (defect to fix in config); journey deriveNextAction/deriveUpcomingNote have ASSESSMENT_PASSED special cases to replace with a real "Review Agreement" CTA; assessment hub is the structural template for the agreement page; orientation §5 explicitly promises "the confirmed structure arrives in writing at the offer stage" — tension with unresolved reward figures documented.
+- Updated docs/CONTENT-QUESTIONS.md: added §15 (₦650/target bonus vs §2 block), §16 (decline & reversal policy), §17 (versioning & re-acceptance), §18 (wording approval), §19 (identity model for consequential actions, §13 revisited); §13 status now points to §19.
+- Produced the Stage 3 planning document (18 deliverables + final gate) in the chat response. NO code, NO migration, NO DB change.
+
+Stage Summary:
+- Plan: reuse OFFER stage/statuses with candidate-facing relabel to "Agreement"; new smallest Prisma model Agreement (candidateId unique, version, acceptedAt?, declinedAt?); lazy idempotent entry (ASSESSMENT_PASSED -> OFFER_PENDING + ENTERED) on first agreement view; accept = explicit checkbox + confirm modal + server-validated version echo + transactional conditional status update -> OFFER_ACCEPTED + COMPLETED event; decline gated on business confirmation (§16); /agreement/[reference] page mirrors assessment hub (guard redirects to journey), GET + accept(+decline) APIs in existing envelope/Zod/AppError conventions; src/config/agreement.ts client-safe versioned content with pending-figures treatment; journey shows honest coming-next after acceptance; no Stage 4 work.
+- STOPPING per brief §33 — awaiting plan review/approval before implementation.
