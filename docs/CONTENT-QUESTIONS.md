@@ -61,6 +61,21 @@ Candidates who already accepted v1.0 keep v1.0 on their record.
 | Email delivery | **Out of scope** — the portal alone provides access to the appointment; no provider/queue/template built | Provider, sender identity, timing of the integration stage | §26 |
 | Acceptance step | **No second acceptance** — stage 3 already records the explicit, auditable agreement acceptance; the appointment is an issued record, not a decision form | Whether the business ever wants a recorded acknowledgement | §27 |
 
+### 🏷️ STAGE 5 MVP DECISIONS (approved and implemented; see §29–§32)
+
+| Item | MVP decision IMPLEMENTED in Stage 5 | Where recorded |
+| --- | --- | --- |
+| Activation rule | **Option E — explicit in-portal self-activation** (no manual admin approval; zero-manual-intervention goal preserved). Opening the stage only records entry; activation requires the explicit checkbox + confirm action | §29 |
+| Status flow | `APPOINTMENT_ISSUED → ACTIVATION_PENDING` (lazy entry on open) `→ APPROVED_STAFF` (explicit action); direct API activation from `APPOINTMENT_ISSUED` preserves the ENTERED event | §29 |
+| Staff ID format | **`FF-STF-NNNN`** — approved for MVP. Server-generated, unique, sequential, zero-padded ≥4, immutable, never client-supplied, never `count(*)` | §30 |
+| Sequence | `StaffIdSequence` singleton `STAFF_ID`, seeded at 0 → first ID `FF-STF-0001`; atomic `UPDATE…RETURNING` inside the activation transaction | §30 |
+| Staff entity | One `Staff` model (also the activation record — no separate StaffActivation); `candidateId @unique`; snapshots: staffId, version, roleTitle (from Appointment), appointmentReference, activatedAt; no personal data duplicated | §6/§7 of the Stage 5 brief |
+| Access model | **Reference-only access retained** for the MVP — an explicitly accepted limitation; activation is the most consequential reference-only action; OTP/auth is a recommended future hardening phase | §31 |
+| Reversibility | **Activation is one-way.** No deactivate/revoke/reassign workflow (future administrative/business process) | §32 |
+| Role snapshot | Designation snapshotted FROM the issued Appointment at activation ("Remote Staff" for the current version) | §8 of the Stage 5 brief |
+| APPROVED_STAFF meaning | Recruitment complete + staff activated; onboarding (Stage 6) still follows; December 2026 confirmation NOT implied | §17 of the Stage 5 brief |
+| WhatsApp / ID card / revocation / email | All deferred — Stage 6 or later | §19/§20 of the Stage 5 brief |
+
 ### ⛔ STILL UNRESOLVED
 
 | # | Item |
@@ -86,10 +101,10 @@ Candidates who already accepted v1.0 keep v1.0 on their record.
 | §25 | Signature/logo assets for generated letters (letters ship text-only — see Stage 4 decisions) |
 | §26 | Appointment email delivery — deferred from Stage 4; provider/sender identity still open |
 | §28 | December 2026 confirmation requirements — future rule, NOT to be built |
-| §29 | Staff activation trigger — is candidate self-activation the confirmed rule? (Stage 5 planning recommendation; NOT yet built) |
-| §30 | **Staff ID format** — none supplied; `FF-STF-NNNN` proposed as the Stage 5 MVP default, needs business confirmation BEFORE activations begin (immutable once assigned) |
-| §31 | Identity verification for activation (OTP/email) — none in MVP; reference-only access escalates in consequence |
-| §32 | Activation reversibility & appointment revocation — no workflow exists or planned for the MVP |
+| §29 | Staff activation trigger — ✅ RESOLVED by Stage 5 approval: Option E (explicit in-portal self-activation) implemented |
+| §30 | Staff ID format — ✅ RESOLVED by Stage 5 approval: `FF-STF-NNNN` from 0001 implemented (future format changes never modify assigned IDs) |
+| §31 | Identity verification for activation — 🏷️ Stage 5 MVP decision: reference-only access retained, explicitly accepted; OTP remains a recommended future hardening phase |
+| §32 | Activation reversibility & appointment revocation — 🏷️ Stage 5 MVP decision: one-way activation; no revocation workflow (future business process) |
 
 ---
 
@@ -596,11 +611,11 @@ requirements. The requirements are NOT supplied.
 
 ---
 
-**Stage 5 note.** Staff Activation (stage 5) is in PLANNING. The sections
-below record the questions the planning brief requires the business to
-settle; nothing has been implemented and no default has been encoded.
+**Stage 5 note.** Staff Activation (stage 5) is IMPLEMENTED with the approved
+MVP decisions below; the sections record what was settled and what stays
+open.
 
-## 29. Staff activation trigger — PLANNING (Stage 5)
+## 29. Staff activation trigger — RESOLVED (Stage 5 approval: Option E)
 
 The recruitment brief says the end state is "Applicant → Approved FinFam
 Staff" but does not say WHAT precisely flips a provisionally appointed
@@ -615,10 +630,16 @@ WhatsApp/onboarding contact belonging to stage 6.
 - **Stage 5 planning recommendation:** Option E — explicit in-portal
   activation (`APPOINTMENT_ISSUED → ACTIVATION_PENDING → APPROVED_STAFF`),
   one COMPLETED StageEvent, Staff ID assigned in the same transaction.
-- **Decision needed:** confirm Option E as the business rule.
-- **Status:** ⛔ Planning recommendation only; awaiting approval.
+- **Resolution:** APPROVED and IMPLEMENTED (Stage 5). Opening the
+  activation page records `ACTIVATION_PENDING` + one ENTERED event only;
+  the explicit checkbox + confirmation action (server-validated literal
+  acknowledgement + version echo) transitions to `APPROVED_STAFF`. A
+  direct API activation from `APPOINTMENT_ISSUED` records the ENTERED
+  event first so the trail stays ordered. No manual administrator
+  approval exists.
+- **Status:** ✅ Resolved by approval; implemented as approved.
 
-## 30. Staff ID format — PLANNING (Stage 5)
+## 30. Staff ID format — RESOLVED (Stage 5 approval: `FF-STF-NNNN`)
 
 The original brief says approved staff receive a Staff ID; no format was
 supplied anywhere in the material.
@@ -628,44 +649,44 @@ supplied anywhere in the material.
   transactional singleton sequence, never client-supplied, never from
   `count(*)`, immutable once assigned. Alternatives: `FINFAM/STAFF/0001`
   or a scheme the business already uses offline.
-- **Why it must be settled BEFORE implementation goes live:** the Staff ID
-  is an immutable identity — changing the format after activations begin
-  would orphan issued IDs. The prefix should live in config so a
-  pre-activation change is cheap.
-- **Decision needed:** confirm format (or supply the official one).
-- **Status:** ⛔ Unresolved; proposed default flagged for confirmation.
+- **Resolution:** APPROVED and IMPLEMENTED (Stage 5). Format
+  `FF-STF-NNNN`; `StaffIdSequence` singleton (`STAFF_ID`) seeded at 0 so
+  the first portal-issued ID is `FF-STF-0001`; atomic `UPDATE…RETURNING`
+  allocation inside the activation transaction; unique-constraint
+  backstop. Already-assigned IDs are immutable forever — a future format
+  change may not modify them.
+- **Status:** ✅ Resolved by approval; implemented as approved.
 
-## 31. Identity verification for activation — PLANNING (Stage 5)
+## 31. Identity verification for activation — MVP DECISION (reference-only retained)
 
 Extends §13/§19. Activation is the most consequential reference-only action
 yet: it creates the staff identity, assigns the Staff ID and completes the
 recruitment state machine. The portal has no authentication, and no OTP/SMS
 infrastructure exists.
 
-- **Stage 5 planning treatment:** keep the reference-only access model for
-  the MVP (consistent with every earlier stage), expose no new personal
-  data, and document the escalated risk explicitly instead of silently
-  adding authentication. An actor holding a candidate's FF- reference could
-  activate their profile prematurely — impact is process-level, not
-  financial (no payment data is exposed or alterable).
-- **Decision needed:** does activation require an additional verification
-  step (e.g. OTP to the application email/phone), or is reference-only
-  access accepted for activation as it is for the earlier stages?
-- **Status:** ⛔ Unresolved; explicitly flagged for business sign-off.
+- **IMPLEMENTED (Stage 5 MVP decision):** the reference-only access model is
+  retained — an explicitly accepted limitation, not an accidental omission.
+  No OTP, email verification, passwords, sessions, accounts or magic links
+  were built. No new personal data is exposed (identity facts only). The
+  consequence of the limitation is process-level, not financial.
+- **Still open (recommended for a future security hardening phase):**
+  stronger verification (e.g. OTP to the application email/phone) for
+  consequential stages.
+- **Status:** 🏷️ Accepted MVP limitation by decision; hardening
+  recommended later.
 
-## 32. Activation reversibility & appointment revocation — PLANNING (Stage 5)
+## 32. Activation reversibility & appointment revocation — MVP DECISION (one-way)
 
 No supplied material describes how to deactivate a staff member or revoke a
 provisional appointment, and the portal has no revocation workflow for any
 stage.
 
-- **Stage 5 planning treatment:** activation is one-way in the MVP (no
-  deactivate API, no status rollback). A revoked appointment would leave an
-  already-activated staff record inconsistent — there is no business
-  process defined for this case.
-- **Decision needed:** is a revocation/deactivation workflow required, or is
-  out-of-portal handling acceptable for now?
-- **Status:** ⛔ Unresolved; recorded as an open business rule.
+- **IMPLEMENTED (Stage 5 MVP decision):** activation is one-way in the
+  candidate portal — no deactivate, revoke-Staff-ID, withdraw, revert,
+  revoke-appointment, reassign or delete workflow exists. Any future
+  revocation/termination/deactivation process is an administrative/business
+  workflow outside this recruitment MVP.
+- **Status:** 🏷️ Resolved for the MVP by decision; future business process.
 
 ---
 

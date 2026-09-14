@@ -162,11 +162,45 @@ handler and is validated server-side — the client never decides progress.
   as the OFFER stage) — one row per candidate, created only by an explicit
   server-validated acceptance: `version` (pins the accepted content from
   `src/config/agreement.ts`) + `acceptedAt`. Viewing never creates a row.
+- **Appointment** (Stage 4) — the issued letter snapshot: unique
+  `appointmentReference` (FFL/HR/PLA/NNN), pinned content `version`,
+  `printedName`, `roleTitle`, `issuedAt` — immutable after issuance;
+  letter TEXT resolves from the versioned registry in
+  `src/config/appointment.ts`.
+- **Staff** (Stage 5) — the permanent staff identity and activation record:
+  unique `staffId` (FF-STF-NNNN), `version`, designation/appointment-
+  reference snapshots from the issued Appointment, `activatedAt` — all
+  immutable. No personal data is duplicated (the Candidate relation
+  carries identity).
+- **StaffIdSequence / AppointmentSequence** — server-controlled singleton
+  sequences behind FF-STF-NNNN and FFL/HR/PLA/NNN allocation (atomic
+  `UPDATE … RETURNING` inside the stage transaction).
 
-Section *content* lives in `src/config/orientation.ts` and
-`src/config/agreement.ts`; the database stores only candidate progress and
-decisions. Future models (Appointment, Activation, Onboarding…) are added
-when their stage is planned, not before.
+Section *content* lives in `src/config/orientation.ts`,
+`src/config/agreement.ts`, `src/config/appointment.ts` and
+`src/config/activation.ts`; the database stores only candidate progress,
+decisions and issued/activated records. Future models (Onboarding…) are
+added when their stage is planned, not before.
+
+### Staff Activation stage rules (server-enforced)
+
+- Opening the activation page (or `GET` API) lazily and idempotently moves
+  the candidate `APPOINTMENT_ISSUED → ACTIVATION_PENDING` and records a
+  StageEvent (`ENTERED`) exactly once — viewing NEVER activates anything
+  and never creates a Staff row.
+- Activation is explicit: the request must carry the literal
+  acknowledgement and the activation version; the server re-validates
+  everything and writes the `APPROVED_STAFF` transition, the `Staff` row
+  (with the sequence-allocated Staff ID and appointment-derived
+  snapshots) and ONE StageEvent (`COMPLETED`) in ONE transaction — no
+  partial activation. Repeated or concurrent requests are idempotent.
+- One-way: after activation the stage is closed — the page redirects to
+  the unified journey, which shows the read-only staff record (Staff ID,
+  activation date, designation). There is no deactivate/revoke workflow
+  (docs/CONTENT-QUESTIONS.md §32).
+- `APPROVED_STAFF` means: recruitment complete + staff activated. It does
+  NOT mean onboarding is complete or that December 2026 confirmation has
+  occurred.
 
 ### Agreement stage rules (server-enforced)
 
@@ -252,6 +286,27 @@ Every route handler returns the same envelope:
     404. There is deliberately NO issue API and NO PDF download API
     (printing uses the browser); email delivery is out of scope
     (docs/CONTENT-QUESTIONS.md §26). Rendered by `/appointment/[reference]`.
+- Activation endpoints (Staff Activation — stage 5):
+  - `GET /api/activation/[reference]` — what activation means, the
+    candidate's appointment context and eligibility. Reading records the
+    stage entry (`APPOINTMENT_ISSUED → ACTIVATION_PENDING`, one ENTERED
+    StageEvent, idempotent) — viewing never activates anything and never
+    creates a Staff row. After activation the same GET returns the
+    read-only staff record; ineligible candidates get an honest
+    `eligible: false` view; unknown references get the neutral 404.
+  - `POST /api/activation/[reference]/activate`
+    `{ acknowledgement: true, version }` — the explicit end of the
+    recruitment journey: `APPOINTMENT_ISSUED`/`ACTIVATION_PENDING` →
+    `APPROVED_STAFF`, one `Staff` row with the server-allocated
+    `FF-STF-NNNN` Staff ID (transactional singleton sequence, seeded at 0
+    → first ID `FF-STF-0001`), appointment-derived snapshots (designation,
+    appointment reference) and exactly one COMPLETED StageEvent — all in
+    ONE transaction. Missing/false acknowledgement or stale version → 422;
+    wrong stage → 409; repeated or concurrent requests return the same
+    persisted record (idempotent — one row, one ID, one timestamp, one
+    event). Staff ID and status are never accepted from the browser.
+    Activation is one-way (no deactivate/revoke workflow,
+    docs/CONTENT-QUESTIONS.md §32). Rendered by `/activation/[reference]`.
 - Unified journey endpoints:
   - `GET /api/journey/[reference]` — the server-derived recruitment journey
     for one application: current stage, completed/locked stages, the ONE

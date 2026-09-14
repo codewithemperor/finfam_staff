@@ -41,7 +41,11 @@ import type {
  *   (lazily, server-side). After issuance the appointment stage is a
  *   completed record, the letter stays reachable as a read-only document
  *   (the one-way-lock exception), and Activation is shown as the current
- *   stage with an honest note and NO CTA — Activation is not implemented.
+ *   stage with ONE action: "Continue to Staff Activation" — the explicit
+ *   in-portal activation (stage 5). Once activated, the journey is
+ *   complete: the staff record (Staff ID, activation date, designation)
+ *   is shown read-only, and Onboarding — the next stage — is honestly
+ *   announced without a CTA (it is not implemented yet).
  * - StageEvent history is read for display only; CandidateStatus and the
  *   stage records remain the authoritative current state.
  */
@@ -148,9 +152,20 @@ function deriveNextAction(
         label: "View Provisional Appointment",
         href: `/appointment/${referenceNumber}`,
       };
+    case "APPOINTMENT_ISSUED":
+    case "ACTIVATION_PENDING":
+      // The activation stage is current: ONE action — the explicit
+      // in-portal activation. Opening the page records the stage entry
+      // (APPOINTMENT_ISSUED → ACTIVATION_PENDING); the activation itself
+      // is the explicit, server-validated action on that page. The URL is
+      // the same before and after entry.
+      return {
+        label: "Continue to Staff Activation",
+        href: `/activation/${referenceNumber}`,
+      };
     default:
-      // APPOINTMENT_ISSUED and every later status: the next stage
-      // (activation) is not implemented yet — no action, honest note
+      // APPROVED_STAFF: the recruitment journey is complete. Onboarding is
+      // the next stage but is not implemented yet — no action, honest note
       // instead. A declined agreement never advances the journey.
       return null;
   }
@@ -197,6 +212,12 @@ type JourneyCandidate = {
     appointmentReference: string;
     version: string;
     issuedAt: Date;
+  } | null;
+  staff: {
+    staffId: string;
+    version: string;
+    roleTitle: string;
+    activatedAt: Date;
   } | null;
   events: {
     id: string;
@@ -256,6 +277,14 @@ async function loadJourneyCandidate(
           appointmentReference: true,
           version: true,
           issuedAt: true,
+        },
+      },
+      staff: {
+        select: {
+          staffId: true,
+          version: true,
+          roleTitle: true,
+          activatedAt: true,
         },
       },
       events: {
@@ -357,6 +386,13 @@ export async function getRecruitmentJourney(
           appointmentReference: candidate.appointment.appointmentReference,
           version: candidate.appointment.version,
           issuedAt: candidate.appointment.issuedAt.toISOString(),
+        }
+      : null,
+    staffRecord: candidate.staff
+      ? {
+          staffId: candidate.staff.staffId,
+          roleTitle: candidate.staff.roleTitle,
+          activatedAt: candidate.staff.activatedAt.toISOString(),
         }
       : null,
     events,

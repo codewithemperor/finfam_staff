@@ -51,10 +51,17 @@ export default async function ApplicationJourneyPage({
   }
 
   const statusDefinition = CANDIDATE_STATUS_DETAILS[journey.status];
+  // Current-stage label: for a status sitting INSIDE the activation stage
+  // (ACTIVATION_PENDING) the journey says so explicitly; a finished journey
+  // (currentStage null — only APPROVED_STAFF) shows the status label
+  // ("Approved staff") instead of a generic "Complete".
   const currentStageLabel = journey.currentStage
-    ? (journey.stages.find((stage) => stage.id === journey.currentStage)?.label ??
-      journey.currentStage)
-    : null;
+    ? journey.status === "ACTIVATION_PENDING" &&
+      journey.currentStage === "ACTIVATION"
+      ? "Activation — In progress"
+      : (journey.stages.find((stage) => stage.id === journey.currentStage)?.label ??
+        journey.currentStage)
+    : statusDefinition.label;
   const stageStates = Object.fromEntries(
     journey.stages.map((stage) => [stage.id, stage.state]),
   );
@@ -191,6 +198,42 @@ export default async function ApplicationJourneyPage({
               >
                 View letter
               </ButtonLink>
+            </div>
+          )}
+
+          {/* The staff record — read-only identity facts, no link back into
+              the completed activation flow (one-way progression). */}
+          {journey.staffRecord && (
+            <div className="mt-6 max-w-xl border-t border-divider pt-5">
+              <p className="text-sm font-semibold text-foreground">
+                FinFam staff record
+              </p>
+              <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Staff ID
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm font-semibold tracking-wider text-foreground">
+                    {journey.staffRecord.staffId}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Activated
+                  </dt>
+                  <dd className="mt-0.5 text-sm font-semibold text-foreground">
+                    {format(new Date(journey.staffRecord.activatedAt), "d MMMM yyyy")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Designation
+                  </dt>
+                  <dd className="mt-0.5 text-sm font-semibold text-foreground">
+                    {journey.staffRecord.roleTitle}
+                  </dd>
+                </div>
+              </dl>
             </div>
           )}
         </section>

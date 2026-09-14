@@ -194,7 +194,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "Congratulations — your Provisional Letter of Appointment has been issued and stays available on this page. The next stage, Staff Activation, is not open yet: your staff ID and onboarding details follow once activation begins, and we'll contact you when it does.",
+      "Congratulations — your Provisional Letter of Appointment has been issued and stays available on this page. One final step remains: Staff Activation. Continue to review what activation means and activate your FinFam staff profile to receive your Staff ID.",
   },
   ACTIVATION_PENDING: {
     id: "ACTIVATION_PENDING",
@@ -204,7 +204,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: false,
     journeyComplete: false,
     nextStep:
-      "Your staff ID is being created. You will be contacted once your account is activated.",
+      "Staff activation is in progress. Review what activation means, then confirm you are ready — activating completes your recruitment, creates your FinFam staff profile and assigns your permanent Staff ID.",
   },
   APPROVED_STAFF: {
     id: "APPROVED_STAFF",
@@ -214,7 +214,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: true,
     nextStep:
-      "You are fully activated. Your onboarding instructions and support contacts are available below.",
+      "Your staff profile is active and your recruitment is complete. Onboarding is the next step, where you will receive your official communication channel and your first work instructions.",
   },
 };
 

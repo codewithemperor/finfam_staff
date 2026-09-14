@@ -273,6 +273,82 @@ export interface JourneyAppointmentSummary {
   issuedAt: string;
 }
 
+/** Staff record summary (read-only) on the unified journey once activated. */
+export interface JourneyStaffSummary {
+  staffId: string;
+  roleTitle: string;
+  activatedAt: string;
+}
+
+/* -------------------------------------------------------------------------
+ * Staff Activation — stage 5 (after the appointment)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One content block of the activation screen — the same plain-document
+ * philosophy as the agreement blocks: readable typography, not cards.
+ * Content lives in src/config/activation.ts; nothing here is secret.
+ */
+export type ActivationBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "alert"; tone: "accent" | "warning"; title: string; text: string };
+
+export interface ActivationSection {
+  /** Stable section id — used as the anchor target on the page. */
+  id: string;
+  title: string;
+  blocks: ActivationBlock[];
+}
+
+/**
+ * The activation screen content the candidate reviews (safe to serve).
+ * `version` is pinned on the Staff row at activation so the confirmed
+ * acknowledgement wording stays auditable (lightweight versioning —
+ * src/config/activation.ts).
+ */
+export interface ActivationContent {
+  version: string;
+  intro: string;
+  acknowledgementLabel: string;
+  sections: ActivationSection[];
+}
+
+/** Appointment context shown on the activation screen (read-only). */
+export interface ActivationAppointmentSummary {
+  appointmentReference: string;
+  roleTitle: string;
+  issuedAt: string;
+}
+
+/**
+ * The persisted staff identity as the client may see it — only identity
+ * facts, never personal data (no contact details are duplicated on the
+ * Staff record).
+ */
+export interface StaffRecordView {
+  staffId: string;
+  version: string;
+  roleTitle: string;
+  activatedAt: string;
+}
+
+/**
+ * Activation-stage view returned by GET /api/activation/[reference] and
+ * POST /api/activation/[reference]/activate. `eligible` is true only while
+ * activation is actionable (APPOINTMENT_ISSUED or ACTIVATION_PENDING);
+ * `staff` is present only after an explicit, server-validated activation.
+ */
+export interface ActivationView {
+  referenceNumber: string;
+  fullName: string;
+  status: CandidateStatusId;
+  eligible: boolean;
+  appointment: ActivationAppointmentSummary | null;
+  staff: StaffRecordView | null;
+  content: ActivationContent;
+}
+
 /* -------------------------------------------------------------------------
  * Unified recruitment journey — one application, one reference, one journey
  * ---------------------------------------------------------------------- */
@@ -337,6 +413,8 @@ export interface RecruitmentJourneyView {
   agreementRecord: JourneyAgreementSummary | null;
   /** Present once a provisional appointment has been issued (record view). */
   appointmentRecord: JourneyAppointmentSummary | null;
+  /** Present once the staff profile has been activated (record view). */
+  staffRecord: JourneyStaffSummary | null;
   events: CandidateStageEvent[];
 }
 

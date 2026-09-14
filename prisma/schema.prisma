@@ -5,13 +5,15 @@
 // Automated Interview Assessment (stage 2), Responsibility & Reward
 // Agreement (stage 3 — persisted as the OFFER stage/statuses; the
 // candidate-facing label is "Agreement", see src/config/recruitment.ts),
-// and the Provisional Appointment (stage 4 — lazy issuance, one letter per
-// candidate, see src/server/services/appointment.ts).
+// the Provisional Appointment (stage 4 — lazy issuance, one letter per
+// candidate, see src/server/services/appointment.ts), and Staff Activation
+// (stage 5 — explicit in-portal activation, one Staff identity per
+// candidate, see src/server/services/activation.ts).
 // See docs/CONTENT-QUESTIONS.md before extending: stage rules are
 // finalized stage-by-stage in the product planning phase.
 //
 // Future evolution (do NOT implement until planned):
-//   Activation, Onboarding.
+//   Onboarding (stage 6).
 // ---------------------------------------------------------------------------
 
 generator client {
@@ -86,6 +88,7 @@ model Candidate {
   attempts     AssessmentAttempt[]
   agreement    Agreement?
   appointment  Appointment?
+  staff        Staff?
 
   @@index([status])
   @@map("candidates")
@@ -320,4 +323,66 @@ model AppointmentSequence {
   value Int
 
   @@map("appointment_sequences")
+}
+
+/// The candidate's permanent FinFam staff identity — stage 5 of the journey.
+/// Created exactly once, server-side, when an eligible (APPOINTMENT_ISSUED
+/// or ACTIVATION_PENDING) candidate explicitly activates their staff profile
+/// (src/server/services/activation.ts); this row IS the activation record —
+/// there is deliberately no separate StaffActivation model. Opening the
+/// activation stage NEVER creates this row; only the explicit, server-
+/// validated activation action does.
+///
+/// Only identity facts that must remain stable are snapshotted here
+/// (staffId, version, roleTitle, appointmentReference, activatedAt) — all
+/// immutable after activation. Personal data is deliberately NOT duplicated:
+/// name, contact details and application data stay on the Candidate/
+/// Application records and are reached by relation.
+model Staff {
+  id          String    @id @default(cuid())
+  candidateId String    @unique
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  /// Official staff identifier (Stage 5 MVP format FF-STF-NNNN, approved in
+  /// docs/CONTENT-QUESTIONS.md §30). Allocated server-side from the
+  /// StaffIdSequence inside the activation transaction — never derived from
+  /// client input, never from count(*). The unique constraint is the final
+  /// backstop. Immutable once assigned; future format changes never modify
+  /// already-assigned IDs.
+  staffId     String    @unique
+  /// Activation-content version pinned at activation (e.g. "1.0",
+  /// src/config/activation.ts). Immutable.
+  version     String
+  /// Official designation, snapshotted FROM the issued Appointment row at
+  /// activation ("Remote Staff" for the current appointment version). The
+  /// appointment remains the authoritative source for the designation under
+  /// which the person was activated. Immutable.
+  roleTitle   String
+  /// Appointment reference, snapshotted at activation so the staff identity
+  /// is self-contained. Immutable.
+  appointmentReference String
+  /// Server activation timestamp. Immutable.
+  activatedAt DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("staff")
+}
+
+/// Server-controlled sequence behind the FF-STF-NNNN Staff IDs. A single
+/// row per sequence: `value` holds the LAST allocated number; allocation is
+/// an atomic `UPDATE ... SET value = value + 1 RETURNING value` inside the
+/// activation transaction, so concurrent activations can never receive the
+/// same ID (the unique constraint on staff.staffId stays the final
+/// backstop).
+///
+/// Initialisation: seeded to 0 by migration (approved Stage 5 MVP
+/// convention), so the first system-issued Staff ID is FF-STF-0001.
+model StaffIdSequence {
+  id    String @id @default(cuid())
+  /// Singleton sequence name (one row: "STAFF_ID").
+  name  String @unique
+  /// Last allocated sequence number (initialised to 0 by migration).
+  value Int
+
+  @@map("staff_id_sequences")
 }
