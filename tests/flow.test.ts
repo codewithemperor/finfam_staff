@@ -362,7 +362,7 @@ describe("Stage 3 — Responsibility & Reward Agreement", () => {
       "accept agreement",
     );
     expect(data.status).toBe("OFFER_ACCEPTED");
-    expect(data.decision?.acceptedAt).not.toBeNull();
+    expect(data.decision?.decidedAt).not.toBeNull();
   });
 
   it("re-accepting is idempotent (200, final)", async () => {

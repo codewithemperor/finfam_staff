@@ -39,8 +39,8 @@ afterAll(async () => {
   }
 });
 
-function submit(overrides: Record<string, unknown>) {
-  return apiRequest("POST", "/api/applications", {
+function submit<T = unknown>(overrides: Record<string, unknown>) {
+  return apiRequest<T>("POST", "/api/applications", {
     fullName,
     email,
     phone,
