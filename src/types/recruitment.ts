@@ -331,6 +331,8 @@ export interface StaffRecordView {
   version: string;
   roleTitle: string;
   activatedAt: string;
+  /** Appointment reference snapshotted at activation (Stage 6 addition — the onboarding identity summary shows it). */
+  appointmentReference: string;
 }
 
 /**
@@ -347,6 +349,93 @@ export interface ActivationView {
   appointment: ActivationAppointmentSummary | null;
   staff: StaffRecordView | null;
   content: ActivationContent;
+}
+
+/* -------------------------------------------------------------------------
+ * Staff Onboarding — stage 6 (STAFF-SIDE, after APPROVED_STAFF)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One content block of an onboarding step — the same plain-document
+ * philosophy as the activation blocks: readable typography, not cards.
+ * Content lives in src/config/onboarding.ts; nothing here is secret.
+ */
+export type OnboardingBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "alert"; tone: "accent" | "warning"; title: string; text: string };
+
+export interface OnboardingStep {
+  /** Stable step id — persisted in staff_onboarding_steps; never reorder casually. */
+  id: string;
+  title: string;
+  /** One-line summary shown in the progress rail. */
+  summary: string;
+  blocks: OnboardingBlock[];
+}
+
+/**
+ * The onboarding content the staff member reviews (safe to serve).
+ * `version` is pinned on the StaffOnboarding row at entry (and re-pinned at
+ * completion) so the confirmed acknowledgement wording stays auditable
+ * (lightweight versioning — src/config/onboarding.ts).
+ * `whatsappNumber` is null until the business supplies the official contact:
+ * the UI then shows honest pending copy and NEVER a fabricated link.
+ */
+export interface OnboardingContent {
+  version: string;
+  acknowledgementLabel: string;
+  whatsappNumber: string | null;
+  whatsappMessage: string;
+  steps: OnboardingStep[];
+}
+
+/** Derived staff-side onboarding state — NOT a CandidateStatus value. */
+export type OnboardingStateId = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+
+/** Server-persisted state of one completed onboarding step. */
+export interface OnboardingCompletedStep {
+  id: string;
+  completedAt: string; // ISO string — dates are serialized across the API
+}
+
+/**
+ * The persisted onboarding record as the client may see it. `onboarding` is
+ * null only for ineligible viewers (before the lazy first entry creates it).
+ */
+export interface OnboardingRecordView {
+  state: OnboardingStateId;
+  version: string;
+  /** Resume point — the first not-yet-completed step (server-derived). */
+  currentStepId: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  steps: OnboardingCompletedStep[];
+}
+
+/**
+ * Onboarding-stage view returned by GET /api/onboarding/[reference],
+ * POST .../steps and POST .../complete. `eligible` is true only for an
+ * APPROVED_STAFF candidate whose Staff record exists; `staff` and
+ * `onboarding` are null otherwise.
+ */
+export interface OnboardingView {
+  referenceNumber: string;
+  fullName: string;
+  status: CandidateStatusId;
+  eligible: boolean;
+  staff: StaffRecordView | null;
+  onboarding: OnboardingRecordView | null;
+  content: OnboardingContent;
+}
+
+/** Staff onboarding summary (read-only) on the unified journey. */
+export interface JourneyOnboardingSummary {
+  state: OnboardingStateId;
+  completedSteps: number;
+  totalSteps: number;
+  startedAt: string | null;
+  completedAt: string | null;
 }
 
 /* -------------------------------------------------------------------------
@@ -415,6 +504,12 @@ export interface RecruitmentJourneyView {
   appointmentRecord: JourneyAppointmentSummary | null;
   /** Present once the staff profile has been activated (record view). */
   staffRecord: JourneyStaffSummary | null;
+  /**
+   * Staff-side onboarding (stage 6) — present once the staff profile is
+   * active. Deliberately NOT a recruitment stage: the six-stage stepper is
+   * untouched; the unified journey renders this as a separate section.
+   */
+  onboarding: JourneyOnboardingSummary | null;
   events: CandidateStageEvent[];
 }
 

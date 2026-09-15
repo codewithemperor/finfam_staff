@@ -6,14 +6,16 @@
 // Agreement (stage 3 — persisted as the OFFER stage/statuses; the
 // candidate-facing label is "Agreement", see src/config/recruitment.ts),
 // the Provisional Appointment (stage 4 — lazy issuance, one letter per
-// candidate, see src/server/services/appointment.ts), and Staff Activation
+// candidate, see src/server/services/appointment.ts), Staff Activation
 // (stage 5 — explicit in-portal activation, one Staff identity per
-// candidate, see src/server/services/activation.ts).
+// candidate, see src/server/services/activation.ts), and Staff Onboarding
+// (stage 6 — STAFF-SIDE operational briefing after recruitment completes:
+// StaffOnboarding + StaffOnboardingStep, see src/server/services/
+// onboarding.ts). Onboarding deliberately adds NO CandidateStatus value
+// and NO RecruitmentStage value — APPROVED_STAFF remains the terminal
+// recruitment status, and StageEvent stays recruitment-only.
 // See docs/CONTENT-QUESTIONS.md before extending: stage rules are
 // finalized stage-by-stage in the product planning phase.
-//
-// Future evolution (do NOT implement until planned):
-//   Onboarding (stage 6).
 // ---------------------------------------------------------------------------
 
 generator client {
@@ -365,6 +367,10 @@ model Staff {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  /// Staff-side operational onboarding (stage 6) — created lazily on the
+  /// first valid onboarding visit; one journey per Staff record.
+  onboarding StaffOnboarding?
+
   @@map("staff")
 }
 
@@ -385,4 +391,65 @@ model StaffIdSequence {
   value Int
 
   @@map("staff_id_sequences")
+}
+
+/// Staff-side operational onboarding (stage 6) — the FINAL stage of the
+/// FinFam recruitment/onboarding MVP. One record per Staff member, created
+/// lazily when an eligible (APPROVED_STAFF with a Staff row) staff member
+/// first opens the onboarding stage (src/server/services/onboarding.ts).
+///
+/// Onboarding is deliberately NOT part of the recruitment state machine:
+/// it adds no CandidateStatus value, no RecruitmentStage value and no
+/// StageEvent — the six-stage recruitment stepper and the append-only
+/// StageEvent timeline stay recruitment-only. Auditability comes from this
+/// record itself: startedAt, the per-step StaffOnboardingStep completion
+/// rows, the final completedAt and the pinned content version.
+///
+/// Opening onboarding NEVER completes a step and never completes onboarding;
+/// step completion and the final acknowledgement are explicit, server-
+/// validated actions. `currentStepId` is the resume point (the first
+/// not-yet-completed step id from src/config/onboarding.ts), derived on
+/// write so "continue where you stopped" survives content reordering.
+model StaffOnboarding {
+  id          String @id @default(cuid())
+  /// One onboarding journey per Staff record.
+  staffId     String @unique
+  staff       Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  /// Onboarding-content version pinned at entry ("1.0",
+  /// src/config/onboarding.ts); re-pinned at completion so the row records
+  /// which set of instructions the staff member completed.
+  version     String
+  /// Resume point: first not-yet-completed step (stable config id, e.g.
+  /// "welcome"). Derived on write — never trusted from the client.
+  currentStepId String?
+  /// When the staff member first opened onboarding (lazy entry).
+  startedAt   DateTime
+  /// When the staff member explicitly completed onboarding. Null until the
+  /// completion action is accepted by the server; the exactly-once latch
+  /// for completion is `completedAt = null` → set.
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps StaffOnboardingStep[]
+
+  @@map("staff_onboarding")
+}
+
+/// Completion record for one onboarding step. Append-only: one row per
+/// completed step per onboarding journey (enforced by the unique
+/// constraint); rows are never edited or deleted. Steps are sequential —
+/// order is enforced server-side against src/config/onboarding.ts, never
+/// trusted from the client.
+model StaffOnboardingStep {
+  id           String          @id @default(cuid())
+  onboardingId String
+  onboarding   StaffOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  /// Stable step id from src/config/onboarding.ts (e.g. "welcome").
+  stepId       String
+  completedAt  DateTime        @default(now())
+
+  @@unique([onboardingId, stepId])
+  @@index([onboardingId])
+  @@map("staff_onboarding_steps")
 }

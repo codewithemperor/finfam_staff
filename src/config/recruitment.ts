@@ -214,7 +214,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: true,
     nextStep:
-      "Your staff profile is active and your recruitment is complete. Onboarding is the next step, where you will receive your official communication channel and your first work instructions.",
+      "Your staff profile is active and your recruitment is complete. Your Staff Onboarding is ready in the section below — complete it to review your communication instructions, staff resources, reporting expectations and first-work guidance.",
   },
 };
 

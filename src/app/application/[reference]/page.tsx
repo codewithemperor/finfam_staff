@@ -6,6 +6,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import {
   RecruitmentProgress,
 } from "@/components/recruitment/recruitment-progress";
+import { OnboardingJourneyCard } from "@/components/onboarding/onboarding-journey-card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { CANDIDATE_STATUS_DETAILS } from "@/config/recruitment";
 import { AppError } from "@/lib/errors";
@@ -235,6 +236,17 @@ export default async function ApplicationJourneyPage({
                 </div>
               </dl>
             </div>
+          )}
+
+          {/* Staff Onboarding — a SEPARATE staff-side process beneath the
+              completed recruitment, never a seventh recruitment stage. The
+              CTA belongs to this card, not to the recruitment next-action
+              frame (deriveNextAction stays null for APPROVED_STAFF). */}
+          {journey.onboarding && (
+            <OnboardingJourneyCard
+              reference={journey.referenceNumber}
+              onboarding={journey.onboarding}
+            />
           )}
         </section>
 

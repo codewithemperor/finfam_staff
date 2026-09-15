@@ -3,11 +3,13 @@
 A focused recruitment portal that moves a candidate from application to
 activation with minimal manual intervention.
 
-**Implemented stages:** application (scaffold) and **Stage 1 — FinFam Staff
-Orientation Workshop (FSOW)** (`/orientation`). The later stages
-(assessment, offer, appointment, activation, onboarding) are intentionally
-**not implemented yet** — each is planned stage-by-stage before it is built
-(see [Next phase](#next-phase)).
+**Implemented stages (all six, verified):** Application (scaffold), Stage 1 —
+FinFam Staff Orientation Workshop (FSOW) (`/orientation`), Stage 2 —
+Automated Interview Assessment (`/assessment`), Stage 3 — Responsibility &
+Reward Agreement (`/agreement`), Stage 4 — Provisional Appointment
+(`/appointment`), Stage 5 — Staff Activation (`/activation`), plus the
+staff-side Stage 6 — Staff Onboarding (`/onboarding`). The recruitment +
+onboarding MVP is complete — see [Next phase](#next-phase).
 
 ---
 
@@ -172,15 +174,59 @@ handler and is validated server-side — the client never decides progress.
   reference snapshots from the issued Appointment, `activatedAt` — all
   immutable. No personal data is duplicated (the Candidate relation
   carries identity).
+- **StaffOnboarding** (Stage 6) — STAFF-SIDE operational onboarding, one
+  record per Staff member (created lazily on the first valid onboarding
+  visit): pinned content `version`, `currentStepId` resume pointer,
+  `startedAt`, `completedAt` (set only by the explicit server-validated
+  completion). Deliberately NO CandidateStatus/RecruitmentStage/StageEvent
+  involvement — `APPROVED_STAFF` stays the terminal recruitment status.
+- **StaffOnboardingStep** — append-only completion rows, one per reviewed
+  step (unique per onboarding + step); the final `ready` step is recorded
+  by the acknowledgement itself inside the completion transaction.
 - **StaffIdSequence / AppointmentSequence** — server-controlled singleton
   sequences behind FF-STF-NNNN and FFL/HR/PLA/NNN allocation (atomic
   `UPDATE … RETURNING` inside the stage transaction).
 
 Section *content* lives in `src/config/orientation.ts`,
-`src/config/agreement.ts`, `src/config/appointment.ts` and
-`src/config/activation.ts`; the database stores only candidate progress,
-decisions and issued/activated records. Future models (Onboarding…) are
-added when their stage is planned, not before.
+`src/config/agreement.ts`, `src/config/appointment.ts`,
+`src/config/activation.ts` and `src/config/onboarding.ts`; the database
+stores only candidate progress, decisions and issued/activated records.
+Future models (Staff Platform…) are added when their roadmap is planned,
+not before.
+
+### Staff Onboarding stage rules (server-enforced)
+
+- Onboarding is STAFF-SIDE operational state (stage 6, the FINAL stage):
+  it writes NO CandidateStatus value, NO RecruitmentStage value and NO
+  StageEvent. Eligibility = `APPROVED_STAFF` + an existing Staff record,
+  enforced server-side on every route; every non-approved status gets an
+  honest `eligible: false` view and 409 on writes; unknown references get
+  the neutral 404.
+- Opening the onboarding page (or `GET` API) lazily and idempotently
+  creates the one `StaffOnboarding` row (startedAt, pinned version,
+  resume step) — race-safe via the unique constraint. Opening NEVER
+  completes a step and NEVER completes onboarding.
+- The seven steps (`welcome → communication → resources → engagement →
+  reporting → standards → ready`) are sequential and server-enforced:
+  skip-ahead/unknown steps → 422 (naming the required step); re-completing
+  a step is idempotent; completed steps may be re-read read-only
+  (`?step=<id>`); future steps are never rendered.
+- Completion is explicit and exactly once: all six review steps + the
+  literal acknowledgement + the current version. The final `ready` step is
+  recorded by the acknowledgement itself in the same transaction as the
+  conditional `completedAt` latch — repeated or concurrent completions
+  produce ONE timestamp and return the persisted record. No CandidateStatus
+  change, no StageEvent.
+- One-way: completed onboarding is closed — `/onboarding/[reference]`
+  redirects to the unified journey, which shows the terminal staff state
+  ("Onboarding completed — You are ready to begin your FinFam
+  assignment."). No read-only archive page in this MVP.
+- The official WhatsApp onboarding number has NOT been supplied — the
+  communication step shows honest pending copy and no fabricated link
+  (docs/CONTENT-QUESTIONS.md §33). WhatsApp contact is NOT a completion
+  gate and there is no human verification gate (§34); resources are
+  list-only (§35); the ID card and daily-report submission are out of
+  scope (§35/§36).
 
 ### Staff Activation stage rules (server-enforced)
 
@@ -307,6 +353,27 @@ Every route handler returns the same envelope:
     event). Staff ID and status are never accepted from the browser.
     Activation is one-way (no deactivate/revoke workflow,
     docs/CONTENT-QUESTIONS.md §32). Rendered by `/activation/[reference]`.
+- Onboarding endpoints (Staff Onboarding — stage 6, STAFF-SIDE):
+  - `GET /api/onboarding/[reference]` — staff identity context, onboarding
+    state (NOT_STARTED / IN_PROGRESS / COMPLETED), completed steps, resume
+    point and the step content (with its version). Reading is the entry
+    action for eligible staff: the first open lazily creates the one
+    onboarding record (idempotent, race-safe) — viewing never completes
+    anything. Ineligible candidates get an honest `eligible: false` view;
+    unknown references get the neutral 404.
+  - `POST /api/onboarding/[reference]/steps` `{ stepId }` — mark one step
+    as reviewed. Sequential order is server-enforced (skip-ahead/unknown →
+    422 naming the blocker; after completion → 409); duplicates are
+    idempotent; the resume point is derived on write, never accepted from
+    the client.
+  - `POST /api/onboarding/[reference]/complete`
+    `{ acknowledgement: true, version }` — the explicit end of onboarding:
+    requires all six review steps, records the final `ready` step and sets
+    `completedAt` exactly once (conditional latch in one transaction).
+    Missing/false acknowledgement or stale version → 422; incomplete steps
+    → 422; wrong stage → 409; repeated or concurrent requests return the
+    same persisted record. No CandidateStatus change, no StageEvent.
+    Rendered by `/onboarding/[reference]`.
 - Unified journey endpoints:
   - `GET /api/journey/[reference]` — the server-derived recruitment journey
     for one application: current stage, completed/locked stages, the ONE
@@ -357,11 +424,18 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
 
 ## Next phase
 
-Stage 1 (FSOW orientation) is complete and browser-verified. **Do not start
-implementing the next stage automatically.** The assessment stage (and each
-stage after it) is planned individually — user flow, pages, APIs, validation,
-business rules, and states — before any implementation.
+**The FinFam recruitment + onboarding MVP is complete.** All six recruitment
+stages (Application → Orientation → Assessment → Agreement → Appointment →
+Activation) plus the staff-side Onboarding stage are implemented, verified
+and integrated on the unified journey. There is NO Stage 7 in this journey.
 
-Business decisions still outstanding (reward figures, Established Member
-threshold, official vision/mission wording, support inbox) are tracked in
+Any further product work — Staff Portal, staff dashboard, daily-report
+submission, payroll/commissions, member tracking, ID-card generator, admin
+console — belongs to a separate **FinFam Staff Platform / Operations
+roadmap** and must go through its own planning phase before implementation.
+**Do not start building any of it automatically.**
+
+Business decisions still outstanding (official onboarding WhatsApp number,
+canonical role title portal-wide, identity-verification hardening, resource
+assets) are tracked in
 [docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md).

@@ -82,6 +82,7 @@ type StaffRelation = {
   staffId: string;
   version: string;
   roleTitle: string;
+  appointmentReference: string;
   activatedAt: Date;
 };
 
@@ -111,6 +112,7 @@ const CANDIDATE_SELECT = {
       staffId: true,
       version: true,
       roleTitle: true,
+      appointmentReference: true,
       activatedAt: true,
     },
   },
@@ -155,6 +157,7 @@ function toView(candidate: CandidateWithActivation): ActivationView {
           staffId: candidate.staff.staffId,
           version: candidate.staff.version,
           roleTitle: candidate.staff.roleTitle,
+          appointmentReference: candidate.staff.appointmentReference,
           activatedAt: candidate.staff.activatedAt.toISOString(),
         }
       : null,

@@ -1,0 +1,1785 @@
+# STAGE 6 — STAFF ONBOARDING
+
+## IMPLEMENTATION APPROVAL
+
+The Stage 6 planning document has been reviewed and approved.
+
+Proceed with implementation of:
+
+# STAFF ONBOARDING
+
+This is the FINAL recruitment/onboarding stage of the FinFam Recruitment Portal MVP.
+
+Follow the approved Stage 6 implementation plan closely.
+
+Do NOT re-plan the architecture.
+
+Do NOT rebuild existing:
+
+* Application
+* Orientation
+* Assessment
+* Responsibility & Reward Agreement
+* Provisional Appointment
+* Staff Activation
+* Staff ID generation
+* Continue Application
+* Reference Recovery
+* RecruitmentProgress
+* StatusBadge
+* PageShell
+* ButtonLink
+* AppError
+* API envelope
+* reference utilities
+* design system
+
+Do NOT proceed into Staff Platform features after Stage 6.
+
+---
+
+# 1. APPROVED ARCHITECTURAL DECISION
+
+Onboarding will be:
+
+# STAFF-SIDE, NOT A NEW RECRUITMENT STATUS
+
+Keep:
+
+```text
+CandidateStatus = APPROVED_STAFF
+```
+
+as the terminal recruitment result.
+
+Do NOT add:
+
+```text
+ONBOARDING_PENDING
+ONBOARDING_COMPLETED
+```
+
+to `CandidateStatus`.
+
+Do NOT add:
+
+```text
+RecruitmentStage.ONBOARDING
+```
+
+Do NOT modify the existing six-stage recruitment stepper.
+
+Recruitment remains:
+
+```text
+Application    ✓
+Orientation    ✓
+Assessment     ✓
+Agreement      ✓
+Appointment    ✓
+Activation     ✓
+```
+
+After that, onboarding appears as a separate Staff process.
+
+Conceptually:
+
+```text
+Candidate
+   ↓
+Recruitment
+   ↓
+APPROVED_STAFF
+   ↓
+Staff
+   ↓
+Staff Onboarding
+```
+
+This architectural decision is approved.
+
+---
+
+# 2. APPROVED STAGE 6 BOUNDARY
+
+Stage 6 means:
+
+> An already activated FinFam staff member receives and completes the operational briefing needed to begin work.
+
+Stage 6 owns:
+
+* Staff onboarding entry
+* Persisted onboarding progress
+* Seven onboarding steps
+* Resume functionality
+* Staff communication instructions
+* Staff resources overview
+* Member-engagement instructions
+* Reporting expectations
+* Professional standards reminder
+* Final operational acknowledgement
+* Onboarding completion
+* Journey integration
+* Terminal onboarding-complete state
+
+Stage 6 does NOT own:
+
+* WhatsApp API integration
+* manual verification dashboard
+* staff administration
+* Staff ID generation
+* Staff ID card generation
+* daily report submission
+* member tracking
+* payroll/commission system
+* CRM
+* staff dashboard
+* performance management
+* December 2026 confirmation
+* revocation/deactivation
+* attendance
+* leave
+* analytics
+
+---
+
+# 3. APPROVED ONBOARDING DATA MODEL
+
+Implement the planned:
+
+```text
+StaffOnboarding
+StaffOnboardingStep
+```
+
+architecture.
+
+## `StaffOnboarding`
+
+One onboarding record per Staff member.
+
+Required responsibilities:
+
+* Staff relation
+* onboarding content version
+* current/resume step
+* started timestamp
+* completed timestamp
+* created/updated timestamps
+
+Use:
+
+```text
+staffId @unique
+```
+
+to guarantee one onboarding journey per Staff record.
+
+---
+
+## `StaffOnboardingStep`
+
+Persist explicit completion of individual onboarding steps.
+
+Required responsibilities:
+
+* parent onboarding relation
+* stable config `stepId`
+* completion timestamp
+
+Use a unique constraint equivalent to:
+
+```text
+@@unique([onboardingId, stepId])
+```
+
+This gives:
+
+* resume
+* auditability
+* exactly-once step completion
+* concurrency protection
+
+Do NOT store completed steps as an untyped JSON array.
+
+---
+
+# 4. MIGRATION
+
+Create one real migration:
+
+```text
+staff_onboarding
+```
+
+It should:
+
+* create `StaffOnboarding`
+* create `StaffOnboardingStep`
+* add `Staff.onboarding`
+* add required unique/index/FK constraints
+
+It must NOT:
+
+* change CandidateStatus
+* change RecruitmentStage
+* modify StageEvent enums
+* seed onboarding records
+* backfill onboarding
+* change Staff IDs
+* modify Candidate records
+* modify appointments
+* modify agreements
+* modify assessments
+* modify orientations
+* modify activation records
+
+Migration alone must create:
+
+```text
+0 StaffOnboarding rows
+0 StaffOnboardingStep rows
+```
+
+---
+
+# 5. APPROVED ONBOARDING VERSION
+
+Create:
+
+```text
+src/config/onboarding.ts
+```
+
+Use:
+
+```text
+ONBOARDING_META.version = "1.0"
+```
+
+Persist the version on the StaffOnboarding record.
+
+This is a lightweight operational-content version pin.
+
+Do NOT build a complex immutable document registry.
+
+If onboarding later becomes a legally/compliance-sensitive document, versioning architecture can be expanded separately.
+
+---
+
+# 6. APPROVED SEVEN ONBOARDING STEPS
+
+Use exactly seven sequential, config-driven steps.
+
+Stable IDs should be used because they are persisted.
+
+Approved sequence:
+
+```text
+1. welcome
+2. communication
+3. resources
+4. engagement
+5. reporting
+6. standards
+7. ready
+```
+
+Do not reorder them casually after launch.
+
+---
+
+# 7. STEP 1 — WELCOME & STAFF IDENTITY
+
+Purpose:
+
+Confirm that recruitment is complete and establish the staff member's operational identity.
+
+Show authoritative server data:
+
+* Staff name
+* Staff ID
+* Designation
+* Appointment Reference
+* Activation Date
+
+Explain:
+
+> Your recruitment process is complete. Onboarding prepares you to begin your FinFam assignment.
+
+Do NOT store these values again in onboarding configuration.
+
+Load them from existing persisted records.
+
+---
+
+# 8. STEP 2 — COMMUNICATION & SUPPORT
+
+Explain that official staff communication/onboarding is handled through the designated FinFam onboarding contact/channel.
+
+Use the supplied onboarding message:
+
+> Hello, I have received my FinFam Provisional Letter of Appointment and I am ready for onboarding.
+
+However:
+
+# NO OFFICIAL WHATSAPP NUMBER HAS BEEN SUPPLIED.
+
+Therefore the approved MVP behavior is:
+
+```text
+whatsappNumber: null
+```
+
+Do NOT invent:
+
+* phone number
+* WhatsApp account
+* `wa.me` URL
+* group link
+
+Use honest wording such as:
+
+> Your official staff onboarding contact will be provided here once confirmed.
+
+The absence of the number must NOT block portal onboarding completion.
+
+Once the real number is supplied later, enabling the link should be a configuration-only change where possible.
+
+---
+
+# 9. WHATSAPP VERIFICATION DECISION
+
+Approved MVP rule:
+
+# WhatsApp contact is NOT a completion gate.
+
+Do NOT require proof that the Staff member:
+
+* sent the message
+* joined a WhatsApp group
+* received a reply
+* was manually verified
+* was added to a communication channel
+
+before completing portal onboarding.
+
+This preserves the project's zero-manual-intervention objective.
+
+The communication action is an external operational follow-up.
+
+Do not pretend the portal can verify WhatsApp membership when it cannot.
+
+---
+
+# 10. HUMAN VERIFICATION DECISION
+
+For the Stage 6 MVP:
+
+# No human approval/verification gate.
+
+The portal already knows:
+
+* Candidate identity
+* appointment status
+* Staff ID
+* activation status
+
+through persisted records.
+
+Do NOT introduce:
+
+* admin approval
+* verification queue
+* onboarding officer dashboard
+* manual verification status
+* hidden approval endpoint
+
+Portal onboarding is an automated operational briefing.
+
+---
+
+# 11. STEP 3 — STAFF RESOURCES
+
+Explain that staff may receive:
+
+* FinFam Identity Card
+* branded shirt design
+* customisable marketing flyers
+* orientation/training materials
+* customer education materials
+* approved marketing guidelines
+* reporting instructions
+
+But the project currently has no actual resource assets available.
+
+Therefore:
+
+# LIST ONLY.
+
+Do NOT create:
+
+* fake downloadable PDFs
+* placeholder resource files
+* fake flyer downloads
+* fabricated shirt artwork
+* fake ID-card templates
+* dead links
+
+Use honest copy indicating these resources are provided through the appropriate onboarding/support channel.
+
+---
+
+# 12. IDENTITY CARD DECISION
+
+The FinFam Identity Card is:
+
+# OUT OF SCOPE FOR STAGE 6 IMPLEMENTATION.
+
+Do NOT build:
+
+* ID-card generator
+* staff photo card
+* downloadable ID
+* printable ID
+* QR card
+* card template
+* card PDF
+
+Stage 5 already assigned the Staff ID number.
+
+That number may later be used by a separate Staff Identity Card feature.
+
+Onboarding completion must NOT depend on having an ID card.
+
+---
+
+# 13. STEP 4 — CUSTOMER & MEMBER ENGAGEMENT
+
+Use a concise operational summary of first-work expectations.
+
+Cover:
+
+* building prospect lists
+* engaging individuals/groups
+* introducing FinFam appropriately
+* supporting membership registration
+* supporting first deposits
+* encouraging consistent savings
+* member support and engagement
+
+Do not duplicate the full FSOW.
+
+Do not create a second orientation course.
+
+---
+
+# 14. STEP 5 — DAILY REPORTING & ACCOUNTABILITY
+
+Explain expected daily reporting categories.
+
+## Community Building
+
+Examples:
+
+* prospects contacted
+* groups engaged
+* new members
+* Established Members
+
+## Savings Activation
+
+Examples:
+
+* first deposits
+* savings goals
+* support provided
+
+## Community Connections
+
+Examples:
+
+* referrals encouraged
+* member engagement
+* relationship-building activities
+
+This stage explains expectations only.
+
+# DO NOT BUILD DAILY REPORT SUBMISSION.
+
+Do NOT create:
+
+* reports table
+* reporting API
+* reporting form
+* report dashboard
+* report analytics
+* target tracking
+* supervisor review
+
+Those belong to a future Staff Platform.
+
+---
+
+# 15. STEP 6 — PROFESSIONAL STANDARDS
+
+Provide a concise reminder of previously accepted expectations:
+
+* professionalism
+* accurate reporting
+* privacy
+* no fake accounts
+* no misrepresentation
+* responsible handling of member information
+* never request members' account balances
+* never request login details
+
+Do not reproduce the complete Responsibility & Reward Agreement.
+
+Do not require another legal agreement acceptance.
+
+---
+
+# 16. STEP 7 — READY TO BEGIN
+
+Explain what onboarding completion means.
+
+Use one final operational acknowledgement.
+
+Approved acknowledgement:
+
+> I have reviewed the FinFam onboarding instructions and understand the communication, reporting, customer-support, and professional expectations for my role.
+
+Primary action:
+
+# Complete Onboarding
+
+This is NOT:
+
+* another employment agreement
+* another appointment acceptance
+* another Staff Activation action
+
+It is an operational onboarding acknowledgement.
+
+---
+
+# 17. ONBOARDING ENTRY
+
+First valid visit to:
+
+```text
+/onboarding/[reference]
+```
+
+may lazily create the `StaffOnboarding` record.
+
+Approved entry behavior:
+
+```text
+APPROVED_STAFF
++ Staff exists
++ no onboarding record
+        ↓
+create StaffOnboarding
+startedAt = server time
+version = current ONBOARDING_META.version
+currentStepId = "welcome"
+```
+
+Opening onboarding does NOT complete any step.
+
+Opening onboarding does NOT modify CandidateStatus.
+
+Opening onboarding does NOT create a StageEvent.
+
+---
+
+# 18. APPROVED ONBOARDING STATES
+
+Derive state from StaffOnboarding persistence:
+
+```text
+NOT_STARTED
+IN_PROGRESS
+COMPLETED
+```
+
+### NOT_STARTED
+
+No StaffOnboarding row.
+
+### IN_PROGRESS
+
+Record exists and:
+
+```text
+completedAt = null
+```
+
+### COMPLETED
+
+Record exists and:
+
+```text
+completedAt != null
+```
+
+Do not create new Candidate statuses for these.
+
+---
+
+# 19. STEP COMPLETION
+
+Steps are sequential.
+
+A Staff member must not skip ahead.
+
+Example:
+
+```text
+welcome
+↓
+communication
+↓
+resources
+↓
+engagement
+↓
+reporting
+↓
+standards
+↓
+ready
+```
+
+The server is authoritative.
+
+Do not trust the frontend's current step.
+
+Attempting to complete a future step must fail with an appropriate 422 response identifying the required preceding step.
+
+---
+
+# 20. STEP COMPLETION UI
+
+For Steps 1–6:
+
+Primary action:
+
+# Continue
+
+Do not require a checkbox for every step.
+
+The action means:
+
+> I have reviewed this onboarding section.
+
+After successful server persistence:
+
+* advance to next section
+* update resume position
+* update progress
+
+Duplicate submission should be idempotent.
+
+---
+
+# 21. FINAL COMPLETION REQUIREMENTS
+
+`Complete Onboarding` succeeds only when:
+
+1. Staff is eligible.
+2. StaffOnboarding exists.
+3. All seven steps are completed according to server persistence.
+4. acknowledgement is literally `true`.
+5. submitted version matches the current accepted onboarding version.
+
+Server remains authoritative.
+
+---
+
+# 22. COMPLETION TRANSACTION
+
+Completion should be exactly once.
+
+Use a conditional latch based on:
+
+```text
+completedAt = null
+```
+
+Then set:
+
+```text
+completedAt = server timestamp
+```
+
+Repeated completion requests must return the same completed onboarding record.
+
+Concurrent completion requests must result in one completion timestamp.
+
+No CandidateStatus change.
+
+No StageEvent.
+
+---
+
+# 23. STAGEEVENT DECISION
+
+Approved architecture:
+
+# Do NOT use StageEvent for Onboarding.
+
+Reason:
+
+`StageEvent` belongs to the six-stage recruitment state machine.
+
+Onboarding is Staff-side operational state.
+
+The following provide enough auditability:
+
+* `startedAt`
+* per-step `completedAt`
+* final `completedAt`
+* pinned version
+
+Do NOT extend `RecruitmentStage` merely to write onboarding events.
+
+Do NOT introduce `StaffEvent` during this MVP.
+
+---
+
+# 24. API
+
+Implement:
+
+```text
+GET /api/onboarding/[reference]
+```
+
+Purpose:
+
+* validate candidate/reference
+* validate `APPROVED_STAFF`
+* validate Staff record
+* lazily start onboarding
+* return Staff identity context
+* return onboarding state
+* return completed steps
+* return current/resume step
+* return content/version
+
+---
+
+Implement:
+
+```text
+POST /api/onboarding/[reference]/steps
+```
+
+Body:
+
+```text
+{
+  stepId: string
+}
+```
+
+Purpose:
+
+* validate eligibility
+* validate stable step ID
+* enforce sequential order
+* persist exactly-once completion
+* advance resume point
+* return updated onboarding state
+
+---
+
+Implement:
+
+```text
+POST /api/onboarding/[reference]/complete
+```
+
+Body:
+
+```text
+{
+  acknowledgement: true,
+  version: "1.0"
+}
+```
+
+Purpose:
+
+* validate all steps complete
+* validate acknowledgement
+* validate version
+* complete exactly once
+* return completed onboarding state
+
+Maintain:
+
+```text
+{ ok, data | error }
+```
+
+and existing AppError conventions.
+
+---
+
+# 25. IDEMPOTENCY
+
+All Stage 6 write actions must be idempotent.
+
+Repeated GET entry:
+
+* one StaffOnboarding record
+
+Repeated step completion:
+
+* one StaffOnboardingStep row for that step
+
+Concurrent step completion:
+
+* one row
+* no duplicate progression
+
+Repeated final completion:
+
+* one `completedAt`
+
+Concurrent completion:
+
+* one final timestamp
+
+Unique database constraints are the final backstop.
+
+---
+
+# 26. COMPLETED ONBOARDING BEHAVIOR
+
+Approved MVP behavior:
+
+# Completed onboarding is closed.
+
+If the user directly revisits:
+
+```text
+/onboarding/[reference]
+```
+
+after completion:
+
+Redirect to:
+
+```text
+/application/[reference]
+```
+
+Do NOT reopen the onboarding workflow.
+
+Do NOT make completed steps editable.
+
+Do NOT create a read-only onboarding archive page during Stage 6.
+
+The unified journey/status page is the terminal Staff state.
+
+This behavior is approved.
+
+---
+
+# 27. JOURNEY INTEGRATION
+
+Do NOT modify:
+
+```text
+deriveStageStates
+```
+
+Do NOT modify the six-stage recruitment stepper.
+
+Do NOT make onboarding the seventh recruitment stage.
+
+Instead, add a separate:
+
+# Staff Onboarding
+
+section beneath the completed recruitment/staff identity information.
+
+---
+
+# 28. JOURNEY — ONBOARDING NOT STARTED
+
+Show:
+
+## Staff Onboarding
+
+Supporting text:
+
+> Complete your onboarding to review your communication, staff resources, reporting expectations and first-work instructions.
+
+CTA:
+
+# Start Onboarding
+
+This CTA belongs to the onboarding card.
+
+Do NOT return it from the recruitment `deriveNextAction()` system.
+
+---
+
+# 29. JOURNEY — ONBOARDING IN PROGRESS
+
+Show:
+
+## Staff Onboarding
+
+Status:
+
+> In progress
+
+Progress:
+
+```text
+3 of 7 steps reviewed
+```
+
+CTA:
+
+# Continue Onboarding
+
+Route:
+
+```text
+/onboarding/[reference]
+```
+
+---
+
+# 30. JOURNEY — ONBOARDING COMPLETED
+
+Show:
+
+## Staff Onboarding
+
+Status:
+
+# Completed
+
+Show completion date.
+
+Final copy:
+
+> You are ready to begin your FinFam assignment.
+
+No CTA.
+
+No next stage.
+
+No fake Staff Portal link.
+
+---
+
+# 31. APPROVED STAFF NEXT-STEP COPY
+
+Update the stale `APPROVED_STAFF.nextStep` wording so it no longer says onboarding will arrive later.
+
+It should point the user toward the separate Staff Onboarding section on the page.
+
+Do not change:
+
+```text
+journeyComplete: true
+```
+
+Recruitment remains complete.
+
+---
+
+# 32. UI — ONBOARDING PAGE
+
+Implement:
+
+```text
+/onboarding/[reference]
+```
+
+No reference form.
+
+No stage picker.
+
+No new login.
+
+Use the established server-component page guards.
+
+Unknown reference:
+
+* neutral not-found experience
+
+Wrong stage:
+
+* redirect to unified journey
+
+Completed onboarding:
+
+* redirect to unified journey
+
+---
+
+# 33. MOBILE LAYOUT
+
+At mobile widths:
+
+1. Staff Onboarding heading
+2. progress: Step X of 7
+3. Staff identity summary
+4. current onboarding content
+5. action
+6. back to application
+
+Single column.
+
+No horizontal overflow.
+
+---
+
+# 34. TABLET / DESKTOP LAYOUT
+
+Recompose from medium widths.
+
+Use:
+
+### Main column
+
+Current onboarding content and action.
+
+### Secondary rail
+
+Useful context:
+
+* Staff ID
+* Designation
+* progress
+* seven onboarding steps
+* completed/current/future state
+* six-stage RecruitmentProgress
+* back to application
+
+Use approximately the same useful rail width/rhythm as Activation.
+
+Do not build an LMS sidebar.
+
+---
+
+# 35. ONBOARDING PROGRESS
+
+Use restrained progress.
+
+Examples:
+
+```text
+Step 3 of 7
+```
+
+and a simple ordered step list.
+
+States:
+
+* Completed
+* Current
+* Not yet started
+
+Do not use:
+
+* giant progress circles
+* XP
+* completion percentages in giant graphics
+* trophies
+* gamification
+
+---
+
+# 36. COMPLETED STEP REVIEW DURING ONBOARDING
+
+Before final completion, already completed onboarding steps may be viewable read-only.
+
+A query parameter such as:
+
+```text
+?step=communication
+```
+
+may be used if it fits the implementation.
+
+Rules:
+
+* completed steps may be re-read
+* current step may be read
+* future locked steps must not be rendered as accessible content
+* navigation does not change their persisted completion state
+
+Do not turn the progress rail into unrestricted stage navigation.
+
+---
+
+# 37. WHATSAPP UX
+
+Because no number exists:
+
+Do NOT render a disabled fake WhatsApp button.
+
+Do NOT render a `wa.me` link.
+
+Use clear text indicating the contact is pending.
+
+Keep the scripted onboarding message visible as an instruction.
+
+When the number is later supplied, the architecture should make adding a real link straightforward.
+
+---
+
+# 38. RESOURCE UX
+
+Do not render empty download buttons.
+
+Do not render placeholder resource cards.
+
+A simple list is sufficient.
+
+For example:
+
+```text
+Resources provided through onboarding may include:
+• FinFam Identity Card
+• Branded shirt design
+• Customisable marketing flyers
+• Training/orientation resources
+• Customer education materials
+• Reporting guidance
+```
+
+Keep it honest.
+
+---
+
+# 39. SECURITY
+
+Continue the approved MVP:
+
+# recruitment reference remains the access key.
+
+Do NOT add OTP/authentication during Stage 6.
+
+Document the limitation.
+
+Do not expose:
+
+* NIN
+* BVN
+* bank information
+* uploaded IDs
+* next-of-kin information
+* private internal links
+* group invite secrets
+* API tokens
+
+Routing should continue to use the random recruitment reference, not sequential Staff IDs.
+
+Do NOT use:
+
+```text
+/onboarding/FF-STF-0001
+```
+
+as the primary access route.
+
+Staff IDs are enumerable.
+
+---
+
+# 40. STAFF RESOURCE SECURITY
+
+No real private staff files currently exist.
+
+If future files are added, do not assume they can safely live under publicly accessible static paths.
+
+Document that actual staff-resource access control must be assessed when files are supplied.
+
+Do not invent a file security system now.
+
+---
+
+# 41. RESPONSIVE REQUIREMENTS
+
+Verify:
+
+```text
+375
+768
+1024
+1440
+```
+
+At 375:
+
+* one column
+* readable step content
+* CTA reachable
+* no overflow
+
+At 768:
+
+* genuine two-column recomposition where appropriate
+
+At 1024/1440:
+
+* main content + useful sticky rail
+* restrained reading measure
+* no stretched mobile layout
+* no huge empty canvas
+
+---
+
+# 42. ACCESSIBILITY
+
+Verify:
+
+* semantic heading structure
+* keyboard-only progression
+* visible focus
+* real buttons
+* final checkbox has real label
+* modal accessible
+* step progress screen-reader understandable
+* `aria-current="step"` for current onboarding step
+* completed/current/future state not communicated through color alone
+* Staff identity metadata uses semantic structure such as `dl`
+* alerts/errors accessible
+
+---
+
+# 43. ANTI-AI-SLOP REQUIREMENTS
+
+Do NOT add:
+
+* gradients
+* glassmorphism
+* confetti
+* success trophies
+* giant checkmarks
+* giant hero type
+* oversized cards
+* random icons
+* completion badges everywhere
+* course/LMS visuals
+* fake staff metrics
+* decorative illustrations
+
+Use:
+
+* white
+* Manrope
+* dark neutral text
+* restrained FinFam green
+* typography
+* whitespace
+* thin dividers
+* simple progress
+* one obvious action
+
+---
+
+# 44. REQUIRED TESTING — ELIGIBILITY
+
+Verify onboarding is unavailable to every non-approved status.
+
+At minimum:
+
+* APPLICANT
+* ORIENTATION_PENDING
+* ORIENTATION_COMPLETED
+* ASSESSMENT_PENDING
+* ASSESSMENT_FAILED
+* ASSESSMENT_PASSED
+* OFFER_PENDING
+* OFFER_ACCEPTED
+* OFFER_DECLINED
+* APPOINTMENT_ISSUED
+* ACTIVATION_PENDING
+
+All must be blocked.
+
+Only:
+
+```text
+APPROVED_STAFF
+```
+
+with an actual Staff record is eligible.
+
+---
+
+# 45. REQUIRED TESTING — ENTRY
+
+First valid GET:
+
+* creates one StaffOnboarding row
+* sets startedAt
+* pins version
+* sets first resume/current step
+
+Repeat GET:
+
+* same record
+* same startedAt
+* no duplicate
+
+Concurrent first GETs:
+
+* still one onboarding record
+
+---
+
+# 46. REQUIRED TESTING — STEPS
+
+Verify:
+
+* step 1 succeeds
+* duplicate step 1 is idempotent
+* skip from step 1 to step 3 → 422
+* unknown step → 422
+* sequential completion works
+* leave/return resumes correctly
+* completed step may be re-read
+* future step remains locked
+* concurrent completion of same step → one row
+* after final completion, step writes → 409
+
+---
+
+# 47. REQUIRED TESTING — COMPLETION
+
+Verify:
+
+* cannot complete before all seven steps
+* missing acknowledgement → 422
+* false acknowledgement → 422
+* stale version → 422
+* successful completion sets completedAt
+* duplicate completion is idempotent
+* concurrent completion creates exactly one completed timestamp
+* completed workflow cannot be reopened
+
+---
+
+# 48. REQUIRED TESTING — JOURNEY
+
+Verify three states.
+
+## Not started
+
+```text
+Staff Onboarding
+Start Onboarding
+```
+
+## In progress
+
+```text
+Staff Onboarding
+3 of 7 steps reviewed
+Continue Onboarding
+```
+
+## Completed
+
+```text
+Staff Onboarding
+Completed
+You are ready to begin your FinFam assignment.
+```
+
+Throughout all three states:
+
+* recruitment remains complete
+* all six recruitment stages remain ✓
+* CandidateStatus remains `APPROVED_STAFF`
+* Staff ID remains unchanged
+
+---
+
+# 49. REQUIRED TESTING — HISTORICAL INTEGRITY
+
+Verify Stage 6 writes do NOT modify:
+
+* CandidateStatus
+* StageEvents
+* Staff ID
+* Staff activatedAt
+* Appointment
+* Agreement
+* Assessment
+* Orientation
+* application data
+* appointment sequence
+* Staff ID sequence
+
+Only onboarding tables should change.
+
+---
+
+# 50. REQUIRED TESTING — SECURITY
+
+Verify:
+
+* malformed reference
+* unknown reference
+* wrong status
+* Approved Staff without Staff row defensive failure
+* hostile POST body fields ignored/rejected appropriately
+* client cannot submit completedAt
+* client cannot submit Staff ID
+* client cannot set currentStep arbitrarily
+* sensitive fields absent from API responses
+* no WhatsApp/private resource secret present
+
+---
+
+# 51. REQUIRED TESTING — RESPONSIVE / ACCESSIBILITY
+
+Run full browser verification at:
+
+* 375
+* 768
+* 1024
+* 1440
+
+Check:
+
+* no overflow
+* mobile one-column
+* medium/desktop recomposition
+* sticky rail
+* readable content width
+* keyboard-only full onboarding
+* checkbox
+* modal focus
+* focus visibility
+* screen-reader-friendly progress
+* console clean
+
+---
+
+# 52. QUALITY GATES
+
+Run:
+
+* lint
+* typecheck
+* dev log
+* browser console
+
+Do not introduce new TypeScript errors beyond the documented existing baseline.
+
+Do not change unrelated files merely to eliminate pre-existing errors.
+
+---
+
+# 53. DOCUMENTATION FOLLOW-UP FROM PLANNING TOOL OUTAGE
+
+The planning session reports that documentation writes for:
+
+```text
+docs/CONTENT-QUESTIONS.md
+worklog.md
+```
+
+could not be completed because the coding tool failed after architecture inspection.
+
+Therefore, BEFORE or during Stage 6 documentation work:
+
+Restore the planned documentation entries.
+
+Add the Stage 6 planning/business questions covering:
+
+* official WhatsApp onboarding number
+* automated/no-human-verification decision
+* staff resources availability
+* ID-card deferral
+* terminal post-onboarding behavior
+* future Staff Portal question
+
+Then append the planning worklog entry before adding the eventual implementation/completion entry.
+
+Do not lose the planning audit trail merely because the previous tool session failed.
+
+---
+
+# 54. APPROVED BUSINESS DEFAULTS
+
+The following decisions are now approved for Stage 6 MVP:
+
+### WhatsApp number
+
+Not supplied.
+
+Use `null` / honest pending copy.
+
+Do not block onboarding.
+
+### WhatsApp requirement
+
+Not mandatory for portal completion.
+
+### Human verification
+
+Not required in Stage 6 MVP.
+
+### Portal verification
+
+The portal relies on existing persisted recruitment/staff records; there is no separate verification ceremony.
+
+### Resources
+
+List-only until genuine files are supplied.
+
+### Resource downloads
+
+None now.
+
+### ID card
+
+Deferred.
+
+Not required for onboarding completion.
+
+### Assignment acknowledgement
+
+Covered by the single final onboarding acknowledgement.
+
+No separate acknowledgement.
+
+### Reporting
+
+Instructions only.
+
+No reporting product.
+
+### CandidateStatus
+
+No onboarding status additions.
+
+### RecruitmentStage
+
+No onboarding stage addition.
+
+### StatusBadge
+
+No new onboarding badge.
+
+### Post-onboarding destination
+
+Unified journey/status page.
+
+### Future Staff Portal
+
+Unconfirmed and out of scope.
+
+### Completed onboarding re-entry
+
+Redirect to unified journey.
+
+No read-only archive page in this MVP.
+
+---
+
+# 55. FILES EXPECTED TO CHANGE
+
+Expected new files include:
+
+```text
+src/config/onboarding.ts
+src/lib/validation/onboarding.ts
+src/server/services/onboarding.ts
+src/app/api/onboarding/[reference]/route.ts
+src/app/api/onboarding/[reference]/steps/route.ts
+src/app/api/onboarding/[reference]/complete/route.ts
+src/app/onboarding/[reference]/page.tsx
+src/components/onboarding/onboarding-decision.tsx
+src/components/onboarding/onboarding-continue.tsx
+src/components/onboarding/onboarding-progress.tsx
+src/components/onboarding/onboarding-journey-card.tsx
+```
+
+Prisma:
+
+```text
+StaffOnboarding
+StaffOnboardingStep
+```
+
+Migration:
+
+```text
+staff_onboarding
+```
+
+Verification tooling under `.zscripts/` is allowed.
+
+Likely modified:
+
+```text
+prisma/schema.prisma
+src/types/recruitment.ts
+src/server/services/journey.ts
+src/app/application/[reference]/page.tsx
+src/config/recruitment.ts
+docs/CONTENT-QUESTIONS.md
+README.md
+worklog.md
+```
+
+Do not expand beyond these without a direct implementation need.
+
+---
+
+# 56. FILES NOT TO REBUILD
+
+Do NOT rebuild:
+
+* application flow
+* orientation
+* assessment
+* agreement
+* appointment
+* activation
+* Staff model
+* Staff ID sequence
+* recruitment-reference generation
+* Continue Application
+* recovery
+* existing six-stage progress component
+* existing status badge
+* shared page shell
+* shared buttons
+* error architecture
+* API envelope
+* design tokens
+
+Extend, do not replace.
+
+---
+
+# 57. IMPLEMENTATION ORDER
+
+Proceed in this exact order:
+
+1. Restore the missing Stage 6 planning documentation entries if still absent.
+2. Add `StaffOnboarding` + `StaffOnboardingStep` + `Staff.onboarding`.
+3. Generate real `staff_onboarding` migration.
+4. Verify migration changes no existing data and creates no onboarding rows.
+5. Create `src/config/onboarding.ts` v1.0 with seven stable steps.
+6. Create onboarding validation schemas.
+7. Implement onboarding service:
+
+   * eligibility
+   * lazy entry
+   * sequential step completion
+   * resume
+   * final completion
+   * idempotency/concurrency
+8. Add onboarding types.
+9. Extend journey service with onboarding summary only.
+10. Update `APPROVED_STAFF.nextStep` copy.
+11. Build the separate Staff Onboarding journey card.
+12. Implement GET onboarding API.
+13. Implement step-completion API.
+14. Implement final-completion API.
+15. Build `/onboarding/[reference]`.
+16. Build onboarding progress/continue/final-decision components.
+17. Run full API/DB verification.
+18. Run concurrency/idempotency verification.
+19. Run full browser E2E.
+20. Run responsive verification 375/768/1024/1440.
+21. Run accessibility verification.
+22. Run historical-data integrity comparison.
+23. Update README, CONTENT-QUESTIONS and worklog.
+24. Produce Stage 6 completion report.
+25. STOP.
+
+---
+
+# 58. COMPLETION REPORT
+
+When Stage 6 is complete, report:
+
+1. Database changes
+2. Migration name
+3. Onboarding models
+4. Onboarding version
+5. Seven-step content
+6. Entry behavior
+7. Sequential progress behavior
+8. Completion behavior
+9. API routes
+10. UI
+11. Journey integration
+12. WhatsApp treatment
+13. Staff resources treatment
+14. ID-card boundary
+15. Reporting boundary
+16. CandidateStatus/RecruitmentStage integrity
+17. StageEvent integrity
+18. Idempotency/concurrency results
+19. Security verification
+20. Responsive verification
+21. Accessibility
+22. Historical-data integrity
+23. Business defaults used
+24. Remaining open questions
+25. Final product boundary
+
+Then state explicitly:
+
+> Recruitment + onboarding MVP is complete.
+
+Then STOP.
+
+---
+
+# 59. FINAL PRODUCT BOUNDARY
+
+After Stage 6:
+
+# THE FINFAM RECRUITMENT + ONBOARDING MVP IS COMPLETE.
+
+Do NOT continue directly into:
+
+* Staff Portal
+* staff dashboard
+* daily reporting application
+* payroll
+* commissions
+* performance analytics
+* member acquisition tracking
+* referral analytics
+* customer support CRM
+* ID-card generator
+* staff resource management
+* attendance
+* leave
+* December confirmation workflow
+* admin console
+
+Those require a new planning phase under a separate:
+
+# FINFAM STAFF PLATFORM / OPERATIONS ROADMAP
+
+Do not treat them as Stage 7.
+
+There is no Stage 7 in this recruitment journey.
+
+Proceed with Stage 6 implementation only, complete verification, update documentation, produce the completion report, and STOP.

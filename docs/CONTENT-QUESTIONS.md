@@ -105,6 +105,10 @@ Candidates who already accepted v1.0 keep v1.0 on their record.
 | §30 | Staff ID format — ✅ RESOLVED by Stage 5 approval: `FF-STF-NNNN` from 0001 implemented (future format changes never modify assigned IDs) |
 | §31 | Identity verification for activation — 🏷️ Stage 5 MVP decision: reference-only access retained, explicitly accepted; OTP remains a recommended future hardening phase |
 | §32 | Activation reversibility & appointment revocation — 🏷️ Stage 5 MVP decision: one-way activation; no revocation workflow (future business process) |
+| §33 | Official onboarding WhatsApp contact — number NOT supplied; honest pending copy used; wa.me link is a config-only change once supplied |
+| §34 | Verification & completion gating for onboarding — MVP decision: automated operational briefing, no human verification gate, WhatsApp contact NOT a completion gate |
+| §35 | Staff resources availability & identity card — no resource files or card template exist; list-only honest presentation; card deferred to a post-onboarding feature |
+| §36 | Post-onboarding portal state & future Staff Portal — MVP decision: honest terminal state ("ready to begin"); staff platform features out of scope |
 
 ---
 
@@ -687,6 +691,87 @@ stage.
   revocation/termination/deactivation process is an administrative/business
   workflow outside this recruitment MVP.
 - **Status:** 🏷️ Resolved for the MVP by decision; future business process.
+
+## 33. Official onboarding WhatsApp contact — UNRESOLVED (number not supplied)
+
+The supplied onboarding material instructs staff to contact the designated
+FinFam onboarding team via WhatsApp within 24 hours of receiving the
+appointment letter, using a scripted first message — but the actual
+onboarding WhatsApp number was never supplied in any material.
+
+- **Stage 6 planning recommendation:** onboarding content ships with
+  `whatsappNumber: null` and honest pending copy ("Your official staff
+  onboarding contact will be provided here once confirmed."). The scripted
+  message text from the material IS used verbatim as an instruction (what
+  to send), but no number, no wa.me link, no disabled fake button and no
+  invented contact is rendered until the business supplies the real one.
+  Once supplied, it is a config-only change that enables a "Contact
+  Onboarding Team" wa.me link with the pre-filled message — no WhatsApp
+  API integration is needed or planned.
+- **Impact:** portal onboarding remains completable without the number
+  (the WhatsApp contact is a real-world follow-up action — see §34). The
+  business should supply the number before real staff reach onboarding so
+  the handoff is actionable.
+- **Status:** ⛔ Unresolved — awaiting the official number.
+
+## 34. Verification & completion gating — MVP DECISION (automated briefing, no human gate)
+
+The onboarding material says the onboarding team "may confirm" identity,
+appointment status, assigned staff details and communication-channel
+access — which conflicts with the recruitment goal of zero manual
+intervention.
+
+- **IMPLEMENTED (Stage 6 MVP decision):** portal onboarding is an
+  automated operational briefing + resource handoff. Facts the portal can
+  verify from persisted records (identity created at activation, issued
+  appointment, assigned Staff ID) are shown from those records;
+  communication-channel access is presented as an external real-world
+  instruction and does NOT block portal completion. No "I have contacted
+  the onboarding team" self-confirmation is captured, and no admin
+  approval / verification queue / onboarding-officer dashboard exists.
+  Portal completion requires: all seven onboarding steps reviewed + the
+  single final operational acknowledgement. Daily reporting is explained
+  only — the reporting system itself is a future staff-platform product.
+- **Status:** 🏷️ Resolved for the MVP by approval.
+
+## 35. Staff resources & identity card — MVP DECISION (list-only; card deferred)
+
+The business material lists resources staff receive: FinFam Identity
+Card, branded shirt design, customisable marketing flyers, orientation
+and training materials, customer education materials, approved marketing
+guidelines and reporting instructions. No resource files exist in the
+project (public/ contains only the site logo), and no ID-card template
+or spec exists.
+
+- **IMPLEMENTED (Stage 6 MVP decision):** the resources step LISTS what
+  staff may receive with honest "provided through the onboarding/support
+  channel" copy; no downloadable files, placeholder cards or dead links
+  are fabricated. The FinFam Identity Card is NOT built in Stage 6 and is
+  NOT required before onboarding can complete — it remains a
+  post-onboarding staff feature (future generator/resource feature). If
+  real files are supplied later, their access control must be assessed
+  before exposure: the portal's reference-only access model (§31) means
+  private staff materials raise the consequence of reference leakage.
+- **Status:** 🏷️ Resolved for the MVP by approval; asset supply remains open.
+
+## 36. Post-onboarding portal state & future Staff Portal — MVP DECISION
+
+No supplied material describes what the portal shows after onboarding
+completes, or whether a staff portal will follow.
+
+- **IMPLEMENTED (Stage 6 MVP decision):** the completed portal shows the
+  honest terminal state on the unified journey — Approved Staff, Staff
+  ID, recruitment complete (all six stages ✓), onboarding completed with
+  its date, "You are ready to begin your FinFam assignment." No next
+  stage, no fake Staff Portal link. Completed onboarding is closed:
+  revisiting /onboarding/[reference] redirects to the unified journey; no
+  read-only archive page in this MVP. The daily reporting system, staff
+  dashboard, ID-card generator, commission/payroll and any other
+  staff-platform features are out of scope and belong to a separate
+  FinFam Staff Platform / Operations roadmap — there is no Stage 7 in
+  this recruitment journey.
+- **Status:** 🏷️ Resolved for the MVP by approval; Staff Portal question
+  remains open for the business to plan.
 
 ---
 

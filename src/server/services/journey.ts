@@ -1,4 +1,5 @@
 import { ORIENTATION_SECTIONS } from "@/config/orientation";
+import { ONBOARDING_STEPS } from "@/config/onboarding";
 import {
   CANDIDATE_STATUS_DETAILS,
   RECRUITMENT_STAGES,
@@ -45,7 +46,14 @@ import type {
  *   in-portal activation (stage 5). Once activated, the journey is
  *   complete: the staff record (Staff ID, activation date, designation)
  *   is shown read-only, and Onboarding — the next stage — is honestly
- *   announced without a CTA (it is not implemented yet).
+ *   announced without a fake recruitment CTA (it is NOT a seventh
+ *   recruitment stage). Once the staff profile exists, a separate
+ *   staff-side onboarding summary is attached to the view: the unified
+ *   journey renders it as its own "Staff Onboarding" section (Start /
+ *   Continue / Completed) beneath the staff record, with the CTA owned by
+ *   that section — never by deriveNextAction, which stays null for
+ *   APPROVED_STAFF. Onboarding writes no CandidateStatus, no
+ *   RecruitmentStage and no StageEvent (staff-side operational state).
  * - StageEvent history is read for display only; CandidateStatus and the
  *   stage records remain the authoritative current state.
  */
@@ -218,6 +226,12 @@ type JourneyCandidate = {
     version: string;
     roleTitle: string;
     activatedAt: Date;
+    onboarding: {
+      currentStepId: string | null;
+      startedAt: Date;
+      completedAt: Date | null;
+      steps: { stepId: string }[];
+    } | null;
   } | null;
   events: {
     id: string;
@@ -285,6 +299,14 @@ async function loadJourneyCandidate(
           version: true,
           roleTitle: true,
           activatedAt: true,
+          onboarding: {
+            select: {
+              currentStepId: true,
+              startedAt: true,
+              completedAt: true,
+              steps: { select: { stepId: true } },
+            },
+          },
         },
       },
       events: {
@@ -349,6 +371,8 @@ export async function getRecruitmentJourney(
     occurredAt: event.occurredAt.toISOString(),
   }));
 
+  const staffOnboarding = candidate.staff?.onboarding ?? null;
+
   return {
     referenceNumber: candidate.referenceNumber,
     fullName: candidate.fullName,
@@ -393,6 +417,20 @@ export async function getRecruitmentJourney(
           staffId: candidate.staff.staffId,
           roleTitle: candidate.staff.roleTitle,
           activatedAt: candidate.staff.activatedAt.toISOString(),
+        }
+      : null,
+    onboarding: candidate.staff
+      ? {
+          state:
+            staffOnboarding == null
+              ? ("NOT_STARTED" as const)
+              : staffOnboarding.completedAt != null
+                ? ("COMPLETED" as const)
+                : ("IN_PROGRESS" as const),
+          completedSteps: staffOnboarding?.steps.length ?? 0,
+          totalSteps: ONBOARDING_STEPS.length,
+          startedAt: staffOnboarding?.startedAt.toISOString() ?? null,
+          completedAt: staffOnboarding?.completedAt?.toISOString() ?? null,
         }
       : null,
     events,
