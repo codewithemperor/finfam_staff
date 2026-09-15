@@ -1,0 +1,10 @@
+import { PrismaClient } from "@prisma/client";
+const db = new PrismaClient();
+const byStatus = await db.candidate.groupBy({ by: ["status"], _count: true });
+console.log("STATUS COUNTS:", JSON.stringify(byStatus.map((s) => ({ status: s.status, n: s._count }))));
+const staff = await db.staff.findMany({ select: { staffId: true, roleTitle: true, appointmentReference: true }, orderBy: { staffId: "asc" } });
+console.log("STAFF ROWS:", JSON.stringify(staff));
+console.log("STAFF SEQ:", JSON.stringify(await db.staffIdSequence.findMany()));
+const events = await db.stageEvent.groupBy({ by: ["stage", "type"], _count: true });
+console.log("EVENTS:", JSON.stringify(events.map((e) => ({ stage: e.stage, type: e.type, n: e._count }))));
+await db.$disconnect();
