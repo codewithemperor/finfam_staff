@@ -1,0 +1,1948 @@
+     1→# FINFAM PLATFORM
+     2→
+     3→# MAILJET NOTIFICATION SERVICE IMPLEMENTATION
+     4→
+     5→# THEN STAGE 7 — STAFF PORTAL FOUNDATION PLANNING
+     6→
+     7→We are extending the FinFam Recruitment Portal beyond its core workflow.
+     8→
+     9→There are TWO separate tasks in this instruction.
+    10→
+    11→## PART A — IMPLEMENT
+    12→
+    13→Build a reusable transactional **Email Notification Service using Mailjet** and integrate it with the existing recruitment/onboarding lifecycle.
+    14→
+    15→## PART B — PLAN ONLY
+    16→
+    17→After Part A is fully implemented and verified, produce the implementation plan for:
+    18→
+    19→# STAGE 7 — STAFF PORTAL FOUNDATION & SECURE ACCOUNT ACCESS
+    20→
+    21→Do NOT implement Stage 7.
+    22→
+    23→Complete Part A first.
+    24→
+    25→Then plan Stage 7.
+    26→
+    27→Then STOP.
+    28→
+    29→---
+    30→
+    31→# PART A
+    32→
+    33→# MAILJET TRANSACTIONAL NOTIFICATION SERVICE
+    34→
+    35→The recruitment journey already includes:
+    36→
+    37→```text
+    38→Application
+    39→→ Orientation
+    40→→ Assessment
+    41→→ Agreement
+    42→→ Provisional Appointment
+    43→→ Staff Activation
+    44→→ Onboarding
+    45→```
+    46→
+    47→Email is NOT another recruitment stage.
+    48→
+    49→It is a:
+    50→
+    51→# CROSS-CUTTING PLATFORM SERVICE
+    52→
+    53→The notification system should keep applicants/staff informed whenever an important lifecycle event occurs.
+    54→
+    55→Do NOT add email logic directly inside UI components.
+    56→
+    57→Do NOT scatter raw Mailjet API calls across recruitment services.
+    58→
+    59→Build one reusable notification architecture.
+    60→
+    61→---
+    62→
+    63→# 1. PRIMARY OBJECTIVE
+    64→
+    65→Implement reliable transactional email for important lifecycle events.
+    66→
+    67→Examples:
+    68→
+    69→```text
+    70→Application submitted
+    71→→ application/reference email
+    72→
+    73→Orientation completed
+    74→→ assessment-next email
+    75→
+    76→Assessment result
+    77→→ passed/failed email
+    78→
+    79→Agreement accepted
+    80→→ agreement confirmation / appointment-next email
+    81→
+    82→Appointment issued
+    83→→ appointment issued email
+    84→
+    85→Staff activated
+    86→→ Staff ID email
+    87→
+    88→Onboarding started
+    89→→ onboarding progress email
+    90→
+    91→Onboarding completed
+    92→→ onboarding completion email
+    93→
+    94→Future Staff Account created
+    95→→ account-created email
+    96→```
+    97→
+    98→The system should make adding future notifications straightforward.
+    99→
+   100→---
+   101→
+   102→# 2. IMPORTANT ACCOUNT-CREATION DISTINCTION
+   103→
+   104→The current recruitment MVP does NOT yet have a true authenticated user account model.
+   105→
+   106→It has:
+   107→
+   108→* Candidate
+   109→* recruitment reference
+   110→* Staff
+   111→* Staff ID
+   112→
+   113→Therefore do NOT falsely send:
+   114→
+   115→> Your account has been created.
+   116→
+   117→during candidate application.
+   118→
+   119→For the current system use:
+   120→
+   121→# Application Received
+   122→
+   123→or:
+   124→
+   125→# Recruitment Application Created
+   126→
+   127→The actual:
+   128→
+   129→```text
+   130→STAFF_ACCOUNT_CREATED
+   131→```
+   132→
+   133→notification should be supported architecturally but NOT triggered until Stage 7 introduces a real Staff Account.
+   134→
+   135→---
+   136→
+   137→# 3. MAILJET PROVIDER
+   138→
+   139→Use:
+   140→
+   141→# Mailjet
+   142→
+   143→for transactional delivery.
+   144→
+   145→Use the current Mailjet transactional Send API.
+   146→
+   147→Prefer:
+   148→
+   149→```text
+   150→POST https://api.mailjet.com/v3.1/send
+   151→```
+   152→
+   153→with server-side authentication.
+   154→
+   155→Native server-side `fetch` is acceptable and is preferred if it avoids adding an unnecessary dependency.
+   156→
+   157→If the official Mailjet Node SDK already fits the existing application cleanly, it may be used, but do not add a dependency simply for convenience.
+   158→
+   159→No Mailjet code must reach the browser bundle.
+   160→
+   161→---
+   162→
+   163→# 4. ENVIRONMENT VARIABLES
+   164→
+   165→Use server-only environment variables.
+   166→
+   167→Conceptually:
+   168→
+   169→```text
+   170→MAILJET_API_KEY
+   171→MAILJET_SECRET_KEY
+   172→MAILJET_FROM_EMAIL
+   173→MAILJET_FROM_NAME
+   174→APP_BASE_URL
+   175→```
+   176→
+   177→Example sender name:
+   178→
+   179→```text
+   180→FinFam Recruitment
+   181→```
+   182→
+   183→Do NOT hard-code credentials.
+   184→
+   185→Do NOT commit:
+   186→
+   187→* Mailjet API key
+   188→* Mailjet secret
+   189→* SMTP credentials
+   190→* private tokens
+   191→
+   192→Update:
+   193→
+   194→```text
+   195→.env.example
+   196→```
+   197→
+   198→or the project's equivalent environment documentation.
+   199→
+   200→---
+   201→
+   202→# 5. MAILJET SENDER
+   203→
+   204→The configured sender must be a Mailjet-authorized/validated sender.
+   205→
+   206→Do not invent a production sender email.
+   207→
+   208→If no confirmed FinFam sender address exists, use configuration only and document:
+   209→
+   210→```text
+   211→MAILJET_FROM_EMAIL
+   212→```
+   213→
+   214→as a deployment requirement.
+   215→
+   216→Do not hard-code the existing placeholder support email unless it has explicitly been confirmed as the transactional sender.
+   217→
+   218→---
+   219→
+   220→# 6. NOTIFICATION ARCHITECTURE
+   221→
+   222→Use a provider-neutral internal architecture.
+   223→
+   224→Conceptually:
+   225→
+   226→```text
+   227→Recruitment / Staff Service
+   228→          ↓
+   229→Notification Service
+   230→          ↓
+   231→Email Provider Adapter
+   232→          ↓
+   233→Mailjet
+   234→```
+   235→
+   236→Suggested structure:
+   237→
+   238→```text
+   239→src/server/notifications/
+   240→  notification-service.ts
+   241→  notification-types.ts
+   242→  notification-templates.ts
+   243→  providers/
+   244→    mailjet.ts
+   245→```
+   246→
+   247→Exact file organization may follow existing project conventions.
+   248→
+   249→The important rule:
+   250→
+   251→# Domain services know about notification events, not Mailjet payload structure.
+   252→
+   253→---
+   254→
+   255→# 7. NOTIFICATION TYPES
+   256→
+   257→Define stable lifecycle notification keys.
+   258→
+   259→At minimum:
+   260→
+   261→```text
+   262→APPLICATION_RECEIVED
+   263→
+   264→ORIENTATION_COMPLETED
+   265→
+   266→ASSESSMENT_PASSED
+   267→ASSESSMENT_FAILED
+   268→
+   269→AGREEMENT_ACCEPTED
+   270→
+   271→APPOINTMENT_ISSUED
+   272→
+   273→STAFF_ACTIVATED
+   274→
+   275→ONBOARDING_STARTED
+   276→ONBOARDING_COMPLETED
+   277→
+   278→STAFF_ACCOUNT_CREATED
+   279→```
+   280→
+   281→`STAFF_ACCOUNT_CREATED` is reserved for Stage 7 and must NOT fire yet.
+   282→
+   283→Do not create emails for every page view.
+   284→
+   285→Do not email on every small step completion.
+   286→
+   287→Avoid notification spam.
+   288→
+   289→---
+   290→
+   291→# 8. EVENT STRATEGY
+   292→
+   293→Notifications should correspond to meaningful state changes.
+   294→
+   295→Do NOT send merely because someone loaded a page.
+   296→
+   297→Recommended lifecycle mapping:
+   298→
+   299→## Application
+   300→
+   301→After successful creation:
+   302→
+   303→```text
+   304→APPLICATION_RECEIVED
+   305→```
+   306→
+   307→Email should include:
+   308→
+   309→* candidate first/full name
+   310→* application reference
+   311→* safe Continue Application link
+   312→* what happens next
+   313→
+   314→---
+   315→
+   316→## Orientation
+   317→
+   318→When Orientation is fully completed:
+   319→
+   320→```text
+   321→ORIENTATION_COMPLETED
+   322→```
+   323→
+   324→Tell the candidate:
+   325→
+   326→* orientation completed
+   327→* assessment is next
+   328→* Continue Application link
+   329→
+   330→Do not email after each orientation section.
+   331→
+   332→---
+   333→
+   334→## Assessment Passed
+   335→
+   336→```text
+   337→ASSESSMENT_PASSED
+   338→```
+   339→
+   340→Tell the candidate:
+   341→
+   342→* assessment was successful
+   343→* Responsibility & Reward Agreement is next
+   344→* Continue Application link
+   345→
+   346→Do not expose correct answers.
+   347→
+   348→---
+   349→
+   350→## Assessment Failed
+   351→
+   352→```text
+   353→ASSESSMENT_FAILED
+   354→```
+   355→
+   356→Tell the candidate:
+   357→
+   358→* assessment result
+   359→* current application status
+   360→* retry information only if current business rules actually permit it
+   361→
+   362→Do not invent retry promises.
+   363→
+   364→Do not expose answer keys.
+   365→
+   366→---
+   367→
+   368→## Agreement Accepted
+   369→
+   370→```text
+   371→AGREEMENT_ACCEPTED
+   372→```
+   373→
+   374→Tell the candidate:
+   375→
+   376→* agreement acceptance was recorded
+   377→* provisional appointment is next
+   378→* Continue Application link
+   379→
+   380→---
+   381→
+   382→## Appointment Issued
+   383→
+   384→```text
+   385→APPOINTMENT_ISSUED
+   386→```
+   387→
+   388→Include:
+   389→
+   390→* candidate name
+   391→* appointment reference
+   392→* designation
+   393→* issue date
+   394→* link to view the appointment
+   395→
+   396→Do NOT attach a PDF unless specifically implemented later.
+   397→
+   398→---
+   399→
+   400→## Staff Activated
+   401→
+   402→```text
+   403→STAFF_ACTIVATED
+   404→```
+   405→
+   406→Include:
+   407→
+   408→* Staff ID
+   409→* designation
+   410→* activation date
+   411→* onboarding-is-next message
+   412→* Continue Application / onboarding link when appropriate
+   413→
+   414→Do not expose sensitive personal information.
+   415→
+   416→---
+   417→
+   418→## Onboarding Started
+   419→
+   420→```text
+   421→ONBOARDING_STARTED
+   422→```
+   423→
+   424→This should be sent once only.
+   425→
+   426→Tell the staff member:
+   427→
+   428→* onboarding started
+   429→* they can return later
+   430→* safe Continue Onboarding link
+   431→
+   432→Do NOT send an email for every onboarding step.
+   433→
+   434→---
+   435→
+   436→## Onboarding Completed
+   437→
+   438→```text
+   439→ONBOARDING_COMPLETED
+   440→```
+   441→
+   442→Tell the staff member:
+   443→
+   444→* onboarding is complete
+   445→* Staff ID
+   446→* they are ready to begin their FinFam assignment
+   447→* no fake Staff Portal link unless Stage 7 exists
+   448→
+   449→---
+   450→
+   451→# 9. NOTIFICATION DELIVERY RECORD
+   452→
+   453→Do not make email sending invisible/untraceable.
+   454→
+   455→Introduce a small persistence model such as:
+   456→
+   457→```text
+   458→NotificationDelivery
+   459→```
+   460→
+   461→The exact schema should be the smallest robust design.
+   462→
+   463→It should support:
+   464→
+   465→* candidate relation where applicable
+   466→* notification type
+   467→* unique dedupe key
+   468→* recipient email snapshot
+   469→* template/content version
+   470→* provider
+   471→* provider message ID if returned
+   472→* status
+   473→* attempt count
+   474→* sent timestamp
+   475→* last attempt timestamp
+   476→* safe error code/message
+   477→* created/updated timestamps
+   478→
+   479→Do NOT store email API credentials.
+   480→
+   481→Avoid storing full rendered HTML unless there is a real auditing requirement.
+   482→
+   483→---
+   484→
+   485→# 10. DELIVERY STATUS
+   486→
+   487→Use a small status model.
+   488→
+   489→Conceptually:
+   490→
+   491→```text
+   492→PENDING
+   493→SENT
+   494→FAILED
+   495→```
+   496→
+   497→Do not claim:
+   498→
+   499→```text
+   500→DELIVERED
+   501→```
+   502→
+   503→simply because Mailjet accepted the API request.
+   504→
+   505→`SENT` in this MVP means:
+   506→
+   507→> Mailjet accepted the transactional send request.
+   508→
+   509→Actual inbox delivery/bounces require provider events/webhooks and are a separate concern.
+   510→
+   511→Document that distinction.
+   512→
+   513→---
+   514→
+   515→# 11. IDEMPOTENCY
+   516→
+   517→A lifecycle transition must never generate duplicate email because:
+   518→
+   519→* user double-clicked
+   520→* request retried
+   521→* route refreshed
+   522→* two concurrent requests occurred
+   523→* application server retried work
+   524→
+   525→Use a stable:
+   526→
+   527→```text
+   528→dedupeKey
+   529→```
+   530→
+   531→with a unique constraint.
+   532→
+   533→Examples:
+   534→
+   535→```text
+   536→APPLICATION_RECEIVED:<candidateId>
+   537→
+   538→ORIENTATION_COMPLETED:<candidateId>
+   539→
+   540→ASSESSMENT_PASSED:<attemptId>
+   541→
+   542→AGREEMENT_ACCEPTED:<agreementId>
+   543→
+   544→APPOINTMENT_ISSUED:<appointmentId>
+   545→
+   546→STAFF_ACTIVATED:<staffId>
+   547→
+   548→ONBOARDING_STARTED:<onboardingId>
+   549→
+   550→ONBOARDING_COMPLETED:<onboardingId>
+   551→```
+   552→
+   553→Use immutable database IDs internally.
+   554→
+   555→Do not rely on email address alone.
+   556→
+   557→---
+   558→
+   559→# 12. TRANSACTIONAL OUTBOX PRINCIPLE
+   560→
+   561→Do NOT make core recruitment progression depend directly on Mailjet being online.
+   562→
+   563→Example:
+   564→
+   565→A candidate accepts the agreement.
+   566→
+   567→This should NOT happen:
+   568→
+   569→```text
+   570→Call Mailjet
+   571→↓
+   572→Mailjet times out
+   573→↓
+   574→Rollback agreement acceptance
+   575→```
+   576→
+   577→Instead:
+   578→
+   579→```text
+   580→Business transaction succeeds
+   581→+
+   582→notification delivery/outbox row is created
+   583→↓
+   584→transaction commits
+   585→↓
+   586→attempt Mailjet delivery
+   587→```
+   588→
+   589→A temporary email outage must not corrupt recruitment state.
+   590→
+   591→---
+   592→
+   593→# 13. BUSINESS TRANSACTION INTEGRATION
+   594→
+   595→Where practical, create the notification delivery/outbox record in the SAME database transaction as the meaningful state transition.
+   596→
+   597→Examples:
+   598→
+   599→```text
+   600→Orientation completed
+   601→+
+   602→ORIENTATION_COMPLETED notification queued
+   603→```
+   604→
+   605→```text
+   606→Appointment issued
+   607→+
+   608→APPOINTMENT_ISSUED notification queued
+   609→```
+   610→
+   611→```text
+   612→Staff activated
+   613→+
+   614→STAFF_ACTIVATED notification queued
+   615→```
+   616→
+   617→This guarantees that a committed business event always has a corresponding notification intent.
+   618→
+   619→---
+   620→
+   621→# 14. DELIVERY FAILURE
+   622→
+   623→If Mailjet fails after the business transaction has committed:
+   624→
+   625→* recruitment/staff action remains successful
+   626→* mark notification appropriately
+   627→* log safe server-side diagnostic information
+   628→* never expose Mailjet secrets
+   629→* do not return a false recruitment failure to the candidate
+   630→
+   631→The user should not have to repeat Agreement acceptance or Staff Activation just because email failed.
+   632→
+   633→---
+   634→
+   635→# 15. RETRY DESIGN
+   636→
+   637→Implement a reusable retry-capable service.
+   638→
+   639→At minimum support:
+   640→
+   641→```text
+   642→sendNotification(deliveryId)
+   643→retryNotification(deliveryId)
+   644→retryPendingNotifications(...)
+   645→```
+   646→
+   647→Do not blindly retry forever.
+   648→
+   649→Use a reasonable bounded attempt policy/config.
+   650→
+   651→If there is no deployment scheduler yet:
+   652→
+   653→* implement the retry service
+   654→* document that recurring automatic retry scheduling requires deployment infrastructure
+   655→
+   656→Do not secretly invent a cron environment.
+   657→
+   658→A protected future scheduler/worker can call the service.
+   659→
+   660→---
+   661→
+   662→# 16. DO NOT SEND EMAIL INSIDE DATABASE TRANSACTIONS
+   663→
+   664→Mailjet network calls must NOT happen while a Prisma transaction is holding database locks.
+   665→
+   666→Correct sequence:
+   667→
+   668→```text
+   669→transaction:
+   670→  update domain state
+   671→  create NotificationDelivery
+   672→
+   673→commit
+   674→
+   675→then:
+   676→  attempt Mailjet send
+   677→```
+   678→
+   679→---
+   680→
+   681→# 17. EMAIL TEMPLATE OWNERSHIP
+   682→
+   683→For the MVP, prefer source-controlled transactional templates.
+   684→
+   685→Use a central renderer/config rather than scattered strings.
+   686→
+   687→Example:
+   688→
+   689→```text
+   690→src/server/notifications/templates/
+   691→```
+   692→
+   693→or equivalent.
+   694→
+   695→Each email should produce:
+   696→
+   697→* subject
+   698→* text version
+   699→* HTML version
+   700→
+   701→Keep the content simple and professional.
+   702→
+   703→---
+   704→
+   705→# 18. MAILJET-HOSTED TEMPLATES
+   706→
+   707→Mailjet supports hosted transactional templates, but do NOT create a hard external dependency on manually configured template IDs unless there is a business reason.
+   708→
+   709→For this MVP:
+   710→
+   711→# Prefer code-owned templates.
+   712→
+   713→Reasons:
+   714→
+   715→* version controlled
+   716→* testable
+   717→* reproducible
+   718→* local/dev-friendly
+   719→* no Mailjet dashboard drift
+   720→
+   721→The provider adapter still uses Mailjet for actual delivery.
+   722→
+   723→Hosted Mailjet templates can be adopted later.
+   724→
+   725→---
+   726→
+   727→# 19. EMAIL DESIGN
+   728→
+   729→Emails should match FinFam's existing visual direction.
+   730→
+   731→Use:
+   732→
+   733→* white
+   734→* dark neutral text
+   735→* restrained FinFam green
+   736→* clear heading
+   737→* readable typography
+   738→* simple CTA
+   739→* no decorative gradients
+   740→* no marketing-style hype
+   741→* no giant banners
+   742→* no fake metrics
+   743→
+   744→Transactional email, not promotional newsletter.
+   745→
+   746→---
+   747→
+   748→# 20. EMAIL CONTENT RULE
+   749→
+   750→Every email should answer:
+   751→
+   752→1. What happened?
+   753→2. What does it mean?
+   754→3. What should I do next?
+   755→4. Where do I safely continue?
+   756→
+   757→Do not overload emails with all stage content.
+   758→
+   759→The portal remains the authoritative source.
+   760→
+   761→---
+   762→
+   763→# 21. SAFE LINKS
+   764→
+   765→Generate portal links server-side using:
+   766→
+   767→```text
+   768→APP_BASE_URL
+   769→```
+   770→
+   771→and the correct recruitment reference.
+   772→
+   773→Examples:
+   774→
+   775→```text
+   776→/application/[reference]
+   777→/appointment/[reference]
+   778→/onboarding/[reference]
+   779→```
+   780→
+   781→Do not trust a client-provided base URL.
+   782→
+   783→Do not place:
+   784→
+   785→* NIN
+   786→* BVN
+   787→* bank information
+   788→* tokens unrelated to navigation
+   789→
+   790→in email URLs.
+   791→
+   792→---
+   793→
+   794→# 22. APPLICATION REFERENCE EMAIL
+   795→
+   796→The first lifecycle email is particularly important.
+   797→
+   798→After a successful application:
+   799→
+   800→Subject concept:
+   801→
+   802→```text
+   803→Your FinFam application has been received
+   804→```
+   805→
+   806→Include prominently:
+   807→
+   808→```text
+   809→Application Reference
+   810→FF-XXXXXX
+   811→```
+   812→
+   813→Explain:
+   814→
+   815→> Keep this reference safe. You can use it to continue your application.
+   816→
+   817→Provide:
+   818→
+   819→# Continue Application
+   820→
+   821→link.
+   822→
+   823→Do not call this a Staff Account yet.
+   824→
+   825→---
+   826→
+   827→# 23. STAFF ACTIVATION EMAIL
+   828→
+   829→After activation, email should include:
+   830→
+   831→```text
+   832→Staff ID
+   833→FF-STF-NNNN
+   834→```
+   835→
+   836→Explain clearly:
+   837→
+   838→* recruitment is complete
+   839→* the profile is active
+   840→* onboarding follows
+   841→
+   842→Do not imply onboarding is already complete.
+   843→
+   844→---
+   845→
+   846→# 24. ONBOARDING COMPLETION EMAIL
+   847→
+   848→When onboarding completes:
+   849→
+   850→Subject concept:
+   851→
+   852→```text
+   853→Your FinFam onboarding is complete
+   854→```
+   855→
+   856→Include:
+   857→
+   858→* Staff ID
+   859→* designation
+   860→* completion confirmation
+   861→
+   862→Final copy should be direct:
+   863→
+   864→> Your onboarding is complete. You are ready to begin your FinFam assignment.
+   865→
+   866→Do not advertise a Staff Portal that does not yet exist.
+   867→
+   868→---
+   869→
+   870→# 25. FUTURE ACCOUNT-CREATED EMAIL
+   871→
+   872→Prepare the notification architecture to support:
+   873→
+   874→```text
+   875→STAFF_ACCOUNT_CREATED
+   876→```
+   877→
+   878→but do NOT send it yet.
+   879→
+   880→Stage 7 will determine:
+   881→
+   882→* what a Staff Account actually is
+   883→* how accounts are created
+   884→* authentication model
+   885→* login URL
+   886→* activation/login credentials or magic-link model
+   887→
+   888→Do not invent these during Part A.
+   889→
+   890→---
+   891→
+   892→# 26. MAILJET DEVELOPMENT MODE
+   893→
+   894→Provide a safe development configuration.
+   895→
+   896→For example:
+   897→
+   898→```text
+   899→NOTIFICATIONS_ENABLED=false
+   900→```
+   901→
+   902→or equivalent.
+   903→
+   904→When disabled:
+   905→
+   906→* notification rows may still be generated if useful for testing
+   907→* no external Mailjet network request should occur
+   908→* logs clearly identify suppressed development sends
+   909→
+   910→Do not accidentally email real candidates while running fixtures/E2E tests.
+   911→
+   912→---
+   913→
+   914→# 27. TESTING MAILJET
+   915→
+   916→Do not require production Mailjet credentials for normal automated verification.
+   917→
+   918→Provider adapter should be testable/mocked.
+   919→
+   920→Test:
+   921→
+   922→* Mailjet request construction
+   923→* API credentials are server-only
+   924→* From/To values
+   925→* subjects
+   926→* HTML/Text generation
+   927→* provider accepted response mapping
+   928→* provider failure mapping
+   929→* timeout/network failure
+   930→* secrets never leak into client/error responses
+   931→
+   932→If real Mailjet integration is tested manually, use an explicitly configured safe test recipient.
+   933→
+   934→---
+   935→
+   936→# 28. NOTIFICATION VERIFICATION MATRIX
+   937→
+   938→Test:
+   939→
+   940→## Application
+   941→
+   942→* new application → one queued/sent email
+   943→* duplicate application rejection → no email
+   944→* repeated response/navigation → no duplicate
+   945→
+   946→## Orientation
+   947→
+   948→* incomplete → no completion email
+   949→* completed → one
+   950→* duplicate complete → still one
+   951→
+   952→## Assessment
+   953→
+   954→* pass → one passed email
+   955→* fail → one failed email
+   956→* duplicate submit → no duplicate
+   957→* retake behavior uses attempt/event-specific dedupe where appropriate
+   958→
+   959→## Agreement
+   960→
+   961→* acceptance → one
+   962→* idempotent acceptance → no duplicate
+   963→
+   964→## Appointment
+   965→
+   966→* issue → one
+   967→* repeat view → no duplicate
+   968→* concurrent issuance → one
+   969→
+   970→## Activation
+   971→
+   972→* activation → one
+   973→* concurrent activation → one
+   974→
+   975→## Onboarding
+   976→
+   977→* first start → one
+   978→* subsequent steps → no email
+   979→* completion → one
+   980→* duplicate completion → one
+   981→
+   982→---
+   983→
+   984→# 29. EMAIL FAILURE TESTING
+   985→
+   986→Simulate Mailjet failure.
+   987→
+   988→Verify:
+   989→
+   990→```text
+   991→Business state: SUCCESS
+   992→Notification: FAILED/PENDING
+   993→```
+   994→
+   995→not:
+   996→
+   997→```text
+   998→Business state: ROLLED BACK
+   999→```
+  1000→
+  1001→Then verify retry sends the existing delivery record rather than creating a duplicate.
+  1002→
+  1003→---
+  1004→
+  1005→# 30. PRIVACY
+  1006→
+  1007→Email content must never contain:
+  1008→
+  1009→* NIN
+  1010→* BVN
+  1011→* bank account information
+  1012→* ID-document numbers
+  1013→* next-of-kin details
+  1014→* passwords
+  1015→* secret tokens
+  1016→
+  1017→Use only necessary identity/context:
+  1018→
+  1019→* first/full name
+  1020→* recruitment reference
+  1021→* appointment reference
+  1022→* Staff ID
+  1023→* role/designation
+  1024→* stage/result
+  1025→* dates
+  1026→* safe portal links
+  1027→
+  1028→---
+  1029→
+  1030→# 31. OBSERVABILITY
+  1031→
+  1032→Log:
+  1033→
+  1034→* notification type
+  1035→* delivery ID
+  1036→* provider result status
+  1037→* safe provider message ID
+  1038→* attempt number
+  1039→
+  1040→Do NOT log:
+  1041→
+  1042→* Mailjet secret
+  1043→* complete credentials
+  1044→* unnecessary email body content
+  1045→* sensitive applicant data
+  1046→
+  1047→---
+  1048→
+  1049→# 32. EXPECTED NOTIFICATION FILES
+  1050→
+  1051→Likely new:
+  1052→
+  1053→```text
+  1054→src/server/notifications/notification-service.ts
+  1055→src/server/notifications/notification-types.ts
+  1056→src/server/notifications/notification-templates.ts
+  1057→src/server/notifications/providers/mailjet.ts
+  1058→```
+  1059→
+  1060→Potentially:
+  1061→
+  1062→```text
+  1063→src/server/notifications/templates/*
+  1064→```
+  1065→
+  1066→Prisma:
+  1067→
+  1068→```text
+  1069→NotificationDelivery
+  1070→```
+  1071→
+  1072→Migration:
+  1073→
+  1074→```text
+  1075→notification_service
+  1076→```
+  1077→
+  1078→Likely modified integration points:
+  1079→
+  1080→```text
+  1081→application service
+  1082→orientation completion service
+  1083→assessment submit service
+  1084→agreement acceptance service
+  1085→appointment issuance service
+  1086→staff activation service
+  1087→onboarding entry/completion service
+  1088→.env.example
+  1089→README.md
+  1090→docs/CONTENT-QUESTIONS.md
+  1091→worklog.md
+  1092→```
+  1093→
+  1094→Do NOT copy Mailjet logic into those services.
+  1095→
+  1096→They should call/enqueue the central notification service.
+  1097→
+  1098→---
+  1099→
+  1100→# 33. MAILJET IMPLEMENTATION BOUNDARY
+  1101→
+  1102→Do NOT implement:
+  1103→
+  1104→* marketing campaigns
+  1105→* newsletters
+  1106→* contact-list segmentation
+  1107→* promotional broadcasts
+  1108→* bulk marketing mail
+  1109→* SMS
+  1110→* push notifications
+  1111→* WhatsApp API
+  1112→* browser notifications
+  1113→
+  1114→This is:
+  1115→
+  1116→# transactional lifecycle email only.
+  1117→
+  1118→---
+  1119→
+  1120→# 34. PART A COMPLETION REPORT
+  1121→
+  1122→When Part A is complete, report:
+  1123→
+  1124→1. Database/model changes
+  1125→2. Migration
+  1126→3. Notification architecture
+  1127→4. Mailjet adapter
+  1128→5. Environment variables
+  1129→6. Notification types
+  1130→7. Lifecycle integration points
+  1131→8. Application/reference email
+  1132→9. Assessment result emails
+  1133→10. Agreement email
+  1134→11. Appointment email
+  1135→12. Staff Activation email
+  1136→13. Onboarding emails
+  1137→14. Reserved Staff Account event
+  1138→15. Idempotency/dedupe design
+  1139→16. Failure behavior
+  1140→17. Retry behavior
+  1141→18. Development/test mode
+  1142→19. Security/privacy
+  1143→20. Tests
+  1144→21. Existing-state regression results
+  1145→22. Remaining deployment requirements
+  1146→
+  1147→Then proceed to Part B.
+  1148→
+  1149→Do NOT stop after Part A unless implementation cannot safely continue.
+  1150→
+  1151→---
+  1152→
+  1153→# PART B
+  1154→
+  1155→# STAGE 7 — STAFF PORTAL FOUNDATION & SECURE ACCOUNT ACCESS
+  1156→
+  1157→## PLANNING ONLY
+  1158→
+  1159→After recruitment + onboarding, the next phase is NOT another recruitment stage.
+  1160→
+  1161→We will call it:
+  1162→
+  1163→# STAGE 7 — STAFF PORTAL FOUNDATION
+  1164→
+  1165→This is the first phase of the:
+  1166→
+  1167→# FINFAM STAFF PLATFORM
+  1168→
+  1169→It is post-recruitment.
+  1170→
+  1171→Stage 7 must be PLANNED ONLY.
+  1172→
+  1173→Do NOT implement it.
+  1174→
+  1175→---
+  1176→
+  1177→# 35. STAGE 7 GOAL
+  1178→
+  1179→The goal is to transition an onboarded FinFam Staff member from the recruitment/reference-based experience into a secure persistent Staff Portal.
+  1180→
+  1181→Conceptually:
+  1182→
+  1183→```text
+  1184→Recruitment
+  1185→✓
+  1186→
+  1187→Staff Activation
+  1188→✓
+  1189→
+  1190→Onboarding
+  1191→✓
+  1192→
+  1193→        ↓
+  1194→
+  1195→Staff Account
+  1196→        ↓
+  1197→
+  1198→Secure Staff Portal
+  1199→```
+  1200→
+  1201→Stage 7 should answer:
+  1202→
+  1203→> How does an onboarded staff member securely access their ongoing FinFam staff tools and information?
+  1204→
+  1205→---
+  1206→
+  1207→# 36. WHY STAGE 7 IS NEEDED
+  1208→
+  1209→The existing recruitment system intentionally uses:
+  1210→
+  1211→```text
+  1212→FF-XXXXXX recruitment reference
+  1213→```
+  1214→
+  1215→as an access key.
+  1216→
+  1217→This is acceptable as an MVP recruitment mechanism.
+  1218→
+  1219→It is NOT a strong long-term authentication architecture for a Staff Platform that may eventually contain:
+  1220→
+  1221→* staff resources
+  1222→* daily reports
+  1223→* member/activity data
+  1224→* earnings information
+  1225→* performance information
+  1226→* internal communications
+  1227→
+  1228→Therefore Stage 7 should explicitly move persistent staff access away from reference-only identity.
+  1229→
+  1230→---
+  1231→
+  1232→# 37. STAGE 7 CORE SCOPE
+  1233→
+  1234→Plan the foundation for:
+  1235→
+  1236→1. Staff Account creation
+  1237→2. Secure authentication
+  1238→3. Account ↔ Staff relationship
+  1239→4. Account creation email
+  1240→5. Login/logout
+  1241→6. Session management
+  1242→7. Staff Portal home
+  1243→8. Staff profile/identity summary
+  1244→9. Appointment access
+  1245→10. Onboarding status
+  1246→11. Staff resources entry point
+  1247→12. Security boundaries
+  1248→13. Future operations modules
+  1249→
+  1250→Do NOT turn Stage 7 into the entire Staff Platform.
+  1251→
+  1252→---
+  1253→
+  1254→# 38. ACCOUNT CREATION ELIGIBILITY
+  1255→
+  1256→Determine when the Staff Account should be provisioned.
+  1257→
+  1258→Evaluate:
+  1259→
+  1260→### Option A
+  1261→
+  1262→Immediately at Staff Activation.
+  1263→
+  1264→### Option B
+  1265→
+  1266→When Onboarding starts.
+  1267→
+  1268→### Option C
+  1269→
+  1270→When Onboarding completes.
+  1271→
+  1272→Recommended:
+  1273→
+  1274→# Option C — Onboarding completion.
+  1275→
+  1276→Reason:
+  1277→
+  1278→At that point:
+  1279→
+  1280→* recruitment is complete
+  1281→* Staff exists
+  1282→* Staff ID exists
+  1283→* operational onboarding is complete
+  1284→* candidate is ready to transition out of the recruitment portal
+  1285→
+  1286→Evaluate and confirm this in the plan.
+  1287→
+  1288→---
+  1289→
+  1290→# 39. STAFF ACCOUNT ENTITY
+  1291→
+  1292→Evaluate a model such as:
+  1293→
+  1294→```text
+  1295→StaffAccount
+  1296→```
+  1297→
+  1298→linked one-to-one to:
+  1299→
+  1300→```text
+  1301→Staff
+  1302→```
+  1303→
+  1304→Possible responsibilities:
+  1305→
+  1306→* account ID
+  1307→* staff relation
+  1308→* login email
+  1309→* email verification state
+  1310→* account created timestamp
+  1311→* account status
+  1312→* last login timestamp
+  1313→
+  1314→Do NOT duplicate the full Staff/Candidate profile.
+  1315→
+  1316→---
+  1317→
+  1318→# 40. AUTHENTICATION ARCHITECTURE
+  1319→
+  1320→Do not invent passwords automatically.
+  1321→
+  1322→Compare appropriate approaches for this Next.js application:
+  1323→
+  1324→### Option A
+  1325→
+  1326→Email OTP
+  1327→
+  1328→### Option B
+  1329→
+  1330→Magic link
+  1331→
+  1332→### Option C
+  1333→
+  1334→Password + email verification
+  1335→
+  1336→### Option D
+  1337→
+  1338→External authentication provider
+  1339→
+  1340→Recommend the smallest secure architecture for the MVP.
+  1341→
+  1342→Consider:
+  1343→
+  1344→* security
+  1345→* user experience
+  1346→* implementation complexity
+  1347→* account recovery
+  1348→* session management
+  1349→* future staff administration
+  1350→
+  1351→Stage 7 planning must make this recommendation explicit.
+  1352→
+  1353→---
+  1354→
+  1355→# 41. MAILJET ROLE IN STAGE 7
+  1356→
+  1357→The Part A notification system should be reused.
+  1358→
+  1359→Account provisioning should trigger:
+  1360→
+  1361→```text
+  1362→STAFF_ACCOUNT_CREATED
+  1363→```
+  1364→
+  1365→through the central notification service.
+  1366→
+  1367→Depending on the chosen auth architecture, Mailjet may also support transactional:
+  1368→
+  1369→```text
+  1370→LOGIN_OTP
+  1371→MAGIC_LINK
+  1372→EMAIL_VERIFICATION
+  1373→ACCOUNT_RECOVERY
+  1374→```
+  1375→
+  1376→notifications.
+  1377→
+  1378→Do not create a second email system.
+  1379→
+  1380→---
+  1381→
+  1382→# 42. LOGIN IDENTIFIER
+  1383→
+  1384→Evaluate whether Staff login should use:
+  1385→
+  1386→* registered email
+  1387→* Staff ID
+  1388→* email + Staff ID
+  1389→* another identifier
+  1390→
+  1391→Recommended starting point:
+  1392→
+  1393→# Registered email
+  1394→
+  1395→with Staff ID remaining a staff identity/reference, not a password substitute.
+  1396→
+  1397→Do not use sequential Staff ID alone as authentication.
+  1398→
+  1399→---
+  1400→
+  1401→# 43. ACCOUNT EMAIL
+  1402→
+  1403→Plan the Stage 7:
+  1404→
+  1405→```text
+  1406→STAFF_ACCOUNT_CREATED
+  1407→```
+  1408→
+  1409→email.
+  1410→
+  1411→It should include:
+  1412→
+  1413→* name
+  1414→* Staff ID
+  1415→* confirmation that Staff Portal access is available
+  1416→* secure login/setup action
+  1417→
+  1418→It must NOT send:
+  1419→
+  1420→* plaintext password
+  1421→* reusable secret credential
+  1422→* NIN/BVN/bank details
+  1423→
+  1424→---
+  1425→
+  1426→# 44. STAFF PORTAL ROUTING
+  1427→
+  1428→Evaluate routes such as:
+  1429→
+  1430→```text
+  1431→/staff
+  1432→/staff/login
+  1433→/staff/home
+  1434→/staff/profile
+  1435→```
+  1436→
+  1437→Avoid continuing to use:
+  1438→
+  1439→```text
+  1440→/application/[reference]
+  1441→```
+  1442→
+  1443→as the primary persistent staff experience.
+  1444→
+  1445→The recruitment portal can remain available for historical records where appropriate.
+  1446→
+  1447→---
+  1448→
+  1449→# 45. STAFF PORTAL HOME — MVP
+  1450→
+  1451→Plan a restrained operational home.
+  1452→
+  1453→Potential information:
+  1454→
+  1455→## Identity
+  1456→
+  1457→* Staff name
+  1458→* Staff ID
+  1459→* designation
+  1460→* activation date
+  1461→
+  1462→## Appointment
+  1463→
+  1464→* appointment reference
+  1465→* View Provisional Appointment
+  1466→
+  1467→## Onboarding
+  1468→
+  1469→* completed date
+  1470→
+  1471→## Staff Resources
+  1472→
+  1473→Entry point only.
+  1474→
+  1475→## Communications
+  1476→
+  1477→Future area / contact information where confirmed.
+  1478→
+  1479→Do not add fake operational metrics.
+  1480→
+  1481→---
+  1482→
+  1483→# 46. DO NOT BUILD DASHBOARD-SLOP
+  1484→
+  1485→Stage 7 must avoid generic SaaS dashboard design.
+  1486→
+  1487→Do not invent:
+  1488→
+  1489→* total members
+  1490→* earnings graph
+  1491→* conversion rate
+  1492→* ranking
+  1493→* performance score
+  1494→* unread messages
+  1495→* goals
+  1496→
+  1497→unless actual backend data exists.
+  1498→
+  1499→The initial Staff Portal should be useful because of:
+  1500→
+  1501→* secure access
+  1502→* identity
+  1503→* documents
+  1504→* resources
+  1505→* real actions
+  1506→
+  1507→not fake metrics.
+  1508→
+  1509→---
+  1510→
+  1511→# 47. FUTURE STAFF PLATFORM MODULES
+  1512→
+  1513→Stage 7 planning should identify but NOT implement future modules such as:
+  1514→
+  1515→```text
+  1516→Daily Reporting
+  1517→Member/Prospect Tracking
+  1518→Commission & Earnings
+  1519→Performance Monitoring
+  1520→Staff Resources
+  1521→Identity Card
+  1522→Internal Communication
+  1523→Support
+  1524→```
+  1525→
+  1526→Recommend sequencing after the foundation.
+  1527→
+  1528→Do NOT create them during Stage 7.
+  1529→
+  1530→---
+  1531→
+  1532→# 48. RECRUITMENT PORTAL RELATIONSHIP
+  1533→
+  1534→Plan what happens to the existing recruitment journey after a Staff Account exists.
+  1535→
+  1536→Possible approach:
+  1537→
+  1538→Recruitment portal remains a historical/read-only record.
+  1539→
+  1540→Staff Portal becomes the ongoing operational home.
+  1541→
+  1542→Determine:
+  1543→
+  1544→* whether logged-in Staff can access their appointment there
+  1545→* whether Continue Application remains available
+  1546→* whether reference-based access should eventually be disabled for completed Staff
+  1547→* migration/deprecation strategy
+  1548→
+  1549→Do not break existing links during Stage 7 without a deliberate migration plan.
+  1550→
+  1551→---
+  1552→
+  1553→# 49. EXISTING STAFF ACCOUNTS / BACKFILL
+  1554→
+  1555→By Stage 7 there may already be Staff records.
+  1556→
+  1557→Plan how existing Staff receive accounts.
+  1558→
+  1559→Do not assume all Staff were created after Stage 7.
+  1560→
+  1561→Consider:
+  1562→
+  1563→* one-time backfill/provisioning
+  1564→* account creation only for onboarding-completed Staff
+  1565→* dedupe/idempotency
+  1566→* account-created notifications
+  1567→
+  1568→Do not send duplicate welcome/account emails.
+  1569→
+  1570→---
+  1571→
+  1572→# 50. AUTHORIZATION
+  1573→
+  1574→Plan authorization separately from authentication.
+  1575→
+  1576→Authenticated Staff should only access:
+  1577→
+  1578→# their own Staff data.
+  1579→
+  1580→Do not rely on URL parameters alone.
+  1581→
+  1582→Server should derive Staff identity from the authenticated account/session.
+  1583→
+  1584→Future admin permissions are outside Stage 7 unless required.
+  1585→
+  1586→---
+  1587→
+  1588→# 51. SESSION SECURITY
+  1589→
+  1590→Plan:
+  1591→
+  1592→* secure HttpOnly cookies
+  1593→* Secure in production
+  1594→* SameSite policy
+  1595→* expiration
+  1596→* rotation where appropriate
+  1597→* logout/invalidation
+  1598→* CSRF considerations
+  1599→* rate limiting on login/OTP endpoints
+  1600→
+  1601→Do not store auth tokens in localStorage unless there is a compelling reason.
+  1602→
+  1603→---
+  1604→
+  1605→# 52. OTP / MAGIC-LINK SECURITY
+  1606→
+  1607→If OTP or magic-link is chosen:
+  1608→
+  1609→Plan:
+  1610→
+  1611→* cryptographically random values
+  1612→* hashed tokens/codes at rest where appropriate
+  1613→* short expiry
+  1614→* single use
+  1615→* attempt limits
+  1616→* resend limits
+  1617→* rate limiting
+  1618→* invalidation on successful use
+  1619→* no code/token in logs
+  1620→
+  1621→Mailjet only delivers the message.
+  1622→
+  1623→Mailjet should not become the authentication database.
+  1624→
+  1625→---
+  1626→
+  1627→# 53. ACCOUNT RECOVERY
+  1628→
+  1629→Stage 7 planning must include account recovery.
+  1630→
+  1631→For example:
+  1632→
+  1633→* resend login link
+  1634→* request new OTP
+  1635→* verified email recovery path
+  1636→
+  1637→Do NOT depend on the recruitment reference as the permanent recovery secret.
+  1638→
+  1639→---
+  1640→
+  1641→# 54. EMAIL CHANGE
+  1642→
+  1643→Determine whether changing the Staff login email is in Stage 7.
+  1644→
+  1645→Recommended:
+  1646→
+  1647→# No self-service email change in the first Staff Portal MVP.
+  1648→
+  1649→Reason:
+  1650→
+  1651→Candidate email currently anchors identity and notification delivery.
+  1652→
+  1653→Document a future verified-email-change/admin flow rather than implementing a weak shortcut.
+  1654→
+  1655→---
+  1656→
+  1657→# 55. STAFF ACCOUNT STATUS
+  1658→
+  1659→Evaluate simple account states.
+  1660→
+  1661→Possible:
+  1662→
+  1663→```text
+  1664→ACTIVE
+  1665→SUSPENDED
+  1666→```
+  1667→
+  1668→Do not create complex HR employment-status modeling in Stage 7.
+  1669→
+  1670→Account access state and employment/recruitment state are separate concerns.
+  1671→
+  1672→---
+  1673→
+  1674→# 56. DATABASE PLANNING
+  1675→
+  1676→Produce the smallest clean schema proposal.
+  1677→
+  1678→Potential entities:
+  1679→
+  1680→```text
+  1681→StaffAccount
+  1682→AuthChallenge / LoginToken
+  1683→Session
+  1684→```
+  1685→
+  1686→But first determine whether framework/provider-based session infrastructure makes some custom models unnecessary.
+  1687→
+  1688→Do not over-engineer.
+  1689→
+  1690→---
+  1691→
+  1692→# 57. MAILJET INTEGRATION IN STAGE 7
+  1693→
+  1694→Reuse Part A.
+  1695→
+  1696→Potential Stage 7 notification events:
+  1697→
+  1698→```text
+  1699→STAFF_ACCOUNT_CREATED
+  1700→STAFF_LOGIN_CODE
+  1701→STAFF_MAGIC_LINK
+  1702→ACCOUNT_RECOVERY
+  1703→```
+  1704→
+  1705→Only propose events required by the chosen authentication architecture.
+  1706→
+  1707→Do not add promotional email.
+  1708→
+  1709→---
+  1710→
+  1711→# 58. STAFF PORTAL DESIGN
+  1712→
+  1713→Use the established FinFam design system:
+  1714→
+  1715→* white
+  1716→* neutral zinc surfaces
+  1717→* Manrope
+  1718→* restrained FinFam green
+  1719→* professional financial-services feel
+  1720→* meaningful two-column desktop composition
+  1721→* no gradients
+  1722→* no glass
+  1723→* no decorative blobs
+  1724→* no fake data
+  1725→
+  1726→Mobile:
+  1727→
+  1728→single-column operational layout.
+  1729→
+  1730→Tablet/Desktop:
+  1731→
+  1732→consider navigation + useful content composition.
+  1733→
+  1734→---
+  1735→
+  1736→# 59. PORTAL NAVIGATION
+  1737→
+  1738→Plan only real destinations.
+  1739→
+  1740→Potential:
+  1741→
+  1742→```text
+  1743→Home
+  1744→My Appointment
+  1745→Resources
+  1746→Profile
+  1747→```
+  1748→
+  1749→Do not include modules that do not exist.
+  1750→
+  1751→Future modules should not appear as fake disabled navigation just to make the portal feel bigger.
+  1752→
+  1753→---
+  1754→
+  1755→# 60. SECURITY MIGRATION
+  1756→
+  1757→A major Stage 7 planning deliverable is:
+  1758→
+  1759→# How do we migrate from reference-based access to authenticated Staff access safely?
+  1760→
+  1761→The plan should address:
+  1762→
+  1763→* existing `/application/[reference]`
+  1764→* appointment routes
+  1765→* onboarding records
+  1766→* Staff identity
+  1767→* authenticated ownership checks
+  1768→* temporary backwards compatibility
+  1769→* eventual retirement/restriction of consequential reference-only actions
+  1770→
+  1771→This is one of the most important Stage 7 decisions.
+  1772→
+  1773→---
+  1774→
+  1775→# 61. STAGE 7 NOTIFICATION LINKING
+  1776→
+  1777→Once authenticated Staff Portal exists:
+  1778→
+  1779→New Staff emails should prefer links to:
+  1780→
+  1781→```text
+  1782→/staff/...
+  1783→```
+  1784→
+  1785→rather than recruitment-reference URLs where appropriate.
+  1786→
+  1787→Historical recruitment emails do not need rewriting.
+  1788→
+  1789→---
+  1790→
+  1791→# 62. STAGE 7 TEST MATRIX
+  1792→
+  1793→Plan:
+  1794→
+  1795→## Account provisioning
+  1796→
+  1797→* eligible onboarding-complete Staff
+  1798→* already provisioned
+  1799→* ineligible Staff
+  1800→* concurrent provisioning
+  1801→* exactly one account
+  1802→* one account-created notification
+  1803→
+  1804→## Authentication
+  1805→
+  1806→* valid
+  1807→* invalid
+  1808→* expired
+  1809→* reused token/code
+  1810→* brute-force/rate-limit cases
+  1811→* logout
+  1812→* session expiry
+  1813→
+  1814→## Authorization
+  1815→
+  1816→* Staff A cannot access Staff B
+  1817→* sequential Staff ID cannot expose another Staff record
+  1818→* manipulated URLs do not bypass server ownership
+  1819→
+  1820→## Notifications
+  1821→
+  1822→* account-created email exactly once
+  1823→* OTP/magic link email dedupe/rate limits
+  1824→* Mailjet failure does not corrupt account state
+  1825→
+  1826→## Responsive
+  1827→
+  1828→375 / 768 / 1024 / 1440
+  1829→
+  1830→## Accessibility
+  1831→
+  1832→keyboard
+  1833→focus
+  1834→forms
+  1835→errors
+  1836→navigation
+  1837→session-expiry state
+  1838→
+  1839→## Regression
+  1840→
+  1841→existing recruitment/onboarding records remain intact.
+  1842→
+  1843→---
+  1844→
+  1845→# 63. STAGE 7 BUSINESS QUESTIONS
+  1846→
+  1847→Explicitly identify:
+  1848→
+  1849→1. Exact Staff Account creation moment
+  1850→2. Authentication method
+  1851→3. Official Staff Portal domain/base URL
+  1852→4. Whether staff use registered email as login
+  1853→5. Whether account access requires onboarding completion
+  1854→6. Account suspension authority/workflow
+  1855→7. Recovery policy
+  1856→8. Whether completed Staff retain reference-based recruitment access
+  1857→9. Which resources exist for the portal
+  1858→10. Whether ID card becomes a Staff Portal feature
+  1859→11. Whether daily reporting is the next module
+  1860→12. Whether earnings/commission visibility is planned
+  1861→13. Who will administer Staff accounts
+  1862→14. Whether multiple staff roles/permissions exist
+  1863→15. Session duration/security requirements
+  1864→
+  1865→Do not invent unanswered policy.
+  1866→
+  1867→---
+  1868→
+  1869→# 64. STAGE 7 PLANNING DELIVERABLES
+  1870→
+  1871→Return:
+  1872→
+  1873→1. Existing architecture findings
+  1874→2. Recommended Staff Account creation point
+  1875→3. Recommended authentication method
+  1876→4. Account data model
+  1877→5. Authentication/session model
+  1878→6. Mailjet authentication-email integration
+  1879→7. Account provisioning flow
+  1880→8. Existing Staff backfill strategy
+  1881→9. Account-created email behavior
+  1882→10. Login/logout flow
+  1883→11. Account recovery
+  1884→12. Authorization model
+  1885→13. Reference-to-auth migration
+  1886→14. Staff Portal information architecture
+  1887→15. Staff home UI
+  1888→16. Existing recruitment record integration
+  1889→17. Staff resources boundary
+  1890→18. Future Staff Platform modules
+  1891→19. Security assessment
+  1892→20. Responsive behavior
+  1893→21. Accessibility
+  1894→22. Test matrix
+  1895→23. Business questions
+  1896→24. Expected files
+  1897→25. Files not to rebuild
+  1898→26. Risks
+  1899→27. Implementation order
+  1900→
+  1901→---
+  1902→
+  1903→# 65. STAGE 7 FINAL PLANNING GATE
+  1904→
+  1905→End the Stage 7 plan with exactly:
+  1906→
+  1907→## Ready for implementation
+  1908→
+  1909→List safe technical/product decisions.
+  1910→
+  1911→## Requires business confirmation
+  1912→
+  1913→List unresolved decisions.
+  1914→
+  1915→## Proposed implementation order
+  1916→
+  1917→Give the implementation sequence.
+  1918→
+  1919→Then STOP.
+  1920→
+  1921→---
+  1922→
+  1923→# 66. ABSOLUTE STOP BOUNDARY
+  1924→
+  1925→Do NOT implement Stage 7.
+  1926→
+  1927→Do NOT create:
+  1928→
+  1929→* StaffAccount model
+  1930→* authentication endpoints
+  1931→* login page
+  1932→* session system
+  1933→* Staff Portal
+  1934→* Staff dashboard
+  1935→* staff resource pages
+  1936→
+  1937→during the planning task.
+  1938→
+  1939→Part A Mailjet notification service is IMPLEMENTATION.
+  1940→
+  1941→Part B Stage 7 Staff Portal is PLANNING ONLY.
+  1942→
+  1943→Complete the Part A implementation report.
+  1944→
+  1945→Then provide the Stage 7 plan.
+  1946→
+  1947→Then STOP.
+  1948→

@@ -7,6 +7,8 @@ import {
   getAssessmentQuestion,
 } from "@/config/assessment";
 import { db } from "@/lib/db";
+import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
+import { buildDedupeKey } from "@/server/notifications/notification-types";
 import { conflictError, notFoundError, validationError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type { AssessmentAnswerInput } from "@/lib/validation/assessment";
@@ -64,6 +66,7 @@ type CandidateWithAssessment = {
   id: string;
   referenceNumber: string;
   fullName: string;
+  email: string;
   status: AssessmentView["status"];
   orientation: { completedAt: Date | null } | null;
   attempts: AttemptRelation[];
@@ -73,6 +76,7 @@ const CANDIDATE_SELECT = {
   id: true,
   referenceNumber: true,
   fullName: true,
+  email: true,
   status: true,
   orientation: { select: { completedAt: true } },
   attempts: {
@@ -414,6 +418,14 @@ export async function submitAssessment(
   const outcome = scoreAttempt(selections);
   const now = new Date();
 
+  // The pass/fail intent is queued in the SAME transaction as the result
+  // (outbox pattern — brief §13). The dedupe key is ATTEMPT-specific, so a
+  // failed attempt followed by a passed retake emails honestly for each
+  // outcome exactly once (§11/§28); the Mailjet send happens only after
+  // the commit, fire-and-forget (§12/§16).
+  const notificationType = outcome.passed ? "ASSESSMENT_PASSED" : "ASSESSMENT_FAILED";
+  let deliveryId: string | null = null;
+
   await db.$transaction(async (tx) => {
     await tx.assessmentAttempt.update({
       where: { id: activeAttempt.id },
@@ -444,7 +456,19 @@ export async function submitAssessment(
           : `Did not pass the Automated Interview Assessment (score ${outcome.marksAwarded}/${outcome.totalMarks})`,
       },
     });
+
+    const enqueued = await enqueueNotification(tx, {
+      type: notificationType,
+      dedupeKey: buildDedupeKey(notificationType, activeAttempt.id),
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    });
+    deliveryId = enqueued.deliveryId;
   });
+
+  if (deliveryId) {
+    dispatchNotification(deliveryId);
+  }
 
   return getAssessmentView(reference);
 }

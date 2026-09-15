@@ -1,5 +1,7 @@
 import { ORIENTATION_SECTIONS, getOrientationSection } from "@/config/orientation";
 import { db } from "@/lib/db";
+import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
+import { buildDedupeKey } from "@/server/notifications/notification-types";
 import { conflictError, notFoundError, validationError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type {
@@ -39,6 +41,7 @@ type CandidateWithOrientation = {
   id: string;
   referenceNumber: string;
   fullName: string;
+  email: string;
   status: OrientationView["status"];
   orientation: OrientationRelation | null;
 };
@@ -47,6 +50,7 @@ const CANDIDATE_SELECT = {
   id: true,
   referenceNumber: true,
   fullName: true,
+  email: true,
   status: true,
   orientation: {
     select: {
@@ -234,6 +238,10 @@ export async function completeOrientation(
 
   const now = new Date();
 
+  // The ORIENTATION_COMPLETED intent is queued in the SAME transaction as
+  // the completion itself (outbox pattern — brief §13); the Mailjet send
+  // happens only after the commit, fire-and-forget (§12/§16).
+  let deliveryId: string | null = null;
   await db.$transaction(async (tx) => {
     await tx.orientation.update({
       where: { candidateId: candidate.id },
@@ -266,7 +274,19 @@ export async function completeOrientation(
         description: "Completed the Staff Orientation Workshop",
       },
     });
+
+    const enqueued = await enqueueNotification(tx, {
+      type: "ORIENTATION_COMPLETED",
+      dedupeKey: buildDedupeKey("ORIENTATION_COMPLETED", candidate.id),
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    });
+    deliveryId = enqueued.deliveryId;
   });
+
+  if (deliveryId) {
+    dispatchNotification(deliveryId);
+  }
 
   return getOrientationView(reference);
 }

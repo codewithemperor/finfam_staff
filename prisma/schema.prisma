@@ -14,6 +14,12 @@
 // onboarding.ts). Onboarding deliberately adds NO CandidateStatus value
 // and NO RecruitmentStage value — APPROVED_STAFF remains the terminal
 // recruitment status, and StageEvent stays recruitment-only.
+//
+// Cross-cutting platform service: NotificationDelivery (brief
+// "notification_service") records transactional email intents for
+// lifecycle events via the central notification service
+// (src/server/notifications/) — outbox pattern, dedupe-key exactly-once,
+// Mailjet delivery AFTER the business transaction commits.
 // See docs/CONTENT-QUESTIONS.md before extending: stage rules are
 // finalized stage-by-stage in the product planning phase.
 // ---------------------------------------------------------------------------
@@ -70,6 +76,38 @@ enum ApplicationStatus {
   WITHDRAWN
 }
 
+/// Delivery status of a transactional notification.
+///
+/// SENT means the email provider ACCEPTED the transactional send request —
+/// it is deliberately NOT a claim of inbox delivery. Actual delivery, bounces
+/// and spam events require provider webhooks, which are out of MVP scope
+/// (docs/CONTENT-QUESTIONS.md). FAILED means the last send attempt was
+/// rejected or errored; PENDING means not yet (successfully) sent.
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Stable lifecycle notification keys (brief §7). One value per meaningful
+/// state change — there is deliberately no per-page-view or per-step key.
+/// STAFF_ACCOUNT_CREATED is RESERVED for Stage 7 (Staff Portal): the type and
+/// template exist so the architecture supports it, but nothing in the
+/// recruitment/onboarding flow may trigger it until a real Staff Account
+/// model exists.
+enum NotificationType {
+  APPLICATION_RECEIVED
+  ORIENTATION_COMPLETED
+  ASSESSMENT_PASSED
+  ASSESSMENT_FAILED
+  AGREEMENT_ACCEPTED
+  APPOINTMENT_ISSUED
+  STAFF_ACTIVATED
+  ONBOARDING_STARTED
+  ONBOARDING_COMPLETED
+  STAFF_ACCOUNT_CREATED
+}
+
 /// A person going through the FinFam recruitment journey.
 model Candidate {
   id              String          @id @default(cuid())
@@ -91,6 +129,7 @@ model Candidate {
   agreement    Agreement?
   appointment  Appointment?
   staff        Staff?
+  notifications NotificationDelivery[]
 
   @@index([status])
   @@map("candidates")
@@ -434,6 +473,68 @@ model StaffOnboarding {
   steps StaffOnboardingStep[]
 
   @@map("staff_onboarding")
+}
+
+/// Transactional email delivery record (outbox pattern, brief §9).
+///
+/// One row per lifecycle notification INTENT. Rows are created by the
+/// central notification service in the SAME database transaction as the
+/// meaningful state change they belong to (brief §13), so a committed
+/// business event always has a corresponding notification intent even if
+/// the email provider is down. The unique `dedupeKey` is the exactly-once
+/// latch: user double-clicks, request retries, concurrent requests and
+/// route refreshes can never queue a duplicate email (brief §11).
+///
+/// The actual Mailjet network call happens AFTER the business transaction
+/// commits — never while the transaction holds database locks (§16). A
+/// Mailjet outage therefore marks rows FAILED/PENDING but can never roll
+/// back or corrupt recruitment state (§12/§14).
+///
+/// No credentials are ever stored here; no rendered HTML is stored — the
+/// email body is re-derived from immutable snapshot data at send time so
+/// retries stay faithful (staff/appointment/agreement/attempt snapshot
+/// rows are immutable by schema design).
+model NotificationDelivery {
+  id        String             @id @default(cuid())
+  /// The candidate the notification belongs to, where applicable. Cascade
+  /// delete mirrors every other candidate-owned record.
+  candidateId String?
+  candidate Candidate?         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  /// Stable lifecycle key (NotificationType).
+  type      NotificationType
+  /// Stable idempotency key "<TYPE>:<immutable entity id>" (e.g.
+  /// "APPLICATION_RECEIVED:<candidateId>", "ASSESSMENT_PASSED:<attemptId>",
+  /// "STAFF_ACTIVATED:<staff row id>"). Unique — the exactly-once latch.
+  dedupeKey String             @unique
+  /// Recipient email snapshotted at enqueue time (never re-read at send).
+  recipientEmail String
+  /// Code-owned template registry version used to render the email
+  /// (src/server/notifications/notification-templates.ts).
+  templateVersion String
+  /// Email provider handling delivery (MVP: "mailjet").
+  provider  String
+  /// Provider message id, when the provider accepted a send.
+  providerMessageId String?
+  /// PENDING until the provider accepts a send; SENT once accepted
+  /// (NOT a claim of inbox delivery — see NotificationStatus).
+  status    NotificationStatus @default(PENDING)
+  /// Number of delivery attempts made (bounded by config).
+  attemptCount Int             @default(0)
+  /// When the provider accepted the send (status became SENT).
+  sentAt    DateTime?
+  /// Last delivery attempt, successful or not.
+  lastAttemptAt DateTime?
+  /// Safe error code from the last failed attempt (HTTP status class or
+  /// NETWORK_ERROR/TIMEOUT). Never contains credentials or bodies.
+  lastErrorCode String?
+  /// Safe error message from the last failed attempt.
+  lastErrorMessage String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([status])
+  @@index([candidateId])
+  @@map("notification_deliveries")
 }
 
 /// Completion record for one onboarding step. Append-only: one row per

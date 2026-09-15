@@ -11,6 +11,8 @@ import {
   getOnboardingStep,
 } from "@/config/onboarding";
 import { db } from "@/lib/db";
+import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
+import { buildDedupeKey } from "@/server/notifications/notification-types";
 import { AppError, conflictError, notFoundError, validationError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type {
@@ -100,6 +102,7 @@ type CandidateWithOnboarding = {
   id: string;
   referenceNumber: string;
   fullName: string;
+  email: string;
   status: string;
   staff: StaffRelation | null;
 };
@@ -108,6 +111,7 @@ const CANDIDATE_SELECT = {
   id: true,
   referenceNumber: true,
   fullName: true,
+  email: true,
   status: true,
   staff: {
     select: {
@@ -228,6 +232,7 @@ function toView(
  */
 async function ensureOnboardingRecord(
   staffId: string,
+  context: { candidateId: string; recipientEmail: string },
 ): Promise<OnboardingRelation> {
   const created = await db.staffOnboarding
     .create({
@@ -258,6 +263,20 @@ async function ensureOnboardingRecord(
     });
 
   if (created) {
+    // First open IS the onboarding start (brief §8) — queue the ONE
+    // ONBOARDING_STARTED intent here. The unique dedupeKey keeps it
+    // exactly-once even if a concurrent first-open raced past the P2002
+    // backstop; the Mailjet send is fire-and-forget and suppressed safely
+    // when notifications are disabled (§26).
+    const enqueued = await enqueueNotification(db, {
+      type: "ONBOARDING_STARTED",
+      dedupeKey: buildDedupeKey("ONBOARDING_STARTED", created.id),
+      candidateId: context.candidateId,
+      recipientEmail: context.recipientEmail,
+    });
+    if (enqueued.deliveryId) {
+      dispatchNotification(enqueued.deliveryId);
+    }
     return created as OnboardingRelation;
   }
 
@@ -319,7 +338,10 @@ export async function getOnboardingView(
   if (!staff.onboarding) {
     staff = {
       ...staff,
-      onboarding: await ensureOnboardingRecord(staff.id),
+      onboarding: await ensureOnboardingRecord(staff.id, {
+        candidateId: candidate.id,
+        recipientEmail: candidate.email,
+      }),
     };
   }
 
@@ -358,7 +380,10 @@ export async function completeOnboardingStep(
   // Lazily create the record on a direct step POST (the server never
   // depends on the client having opened the page first).
   let onboarding =
-    staff.onboarding ?? (await ensureOnboardingRecord(staff.id));
+    staff.onboarding ?? (await ensureOnboardingRecord(staff.id, {
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    }));
 
   if (onboarding.completedAt) {
     throw conflictError(
@@ -458,7 +483,10 @@ export async function completeOnboarding(
 
   // Lazily create the record on a direct completion POST, then re-check.
   const onboarding =
-    staff.onboarding ?? (await ensureOnboardingRecord(staff.id));
+    staff.onboarding ?? (await ensureOnboardingRecord(staff.id, {
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    }));
 
   // The review steps (1–6) must all be completed; the final "ready" step is
   // recorded by the acknowledgement itself (below), never by "Continue".
@@ -478,8 +506,13 @@ export async function completeOnboarding(
 
   // The conditional latch: exactly one transaction records the final step
   // (its review IS the acknowledgement) and sets completedAt. Everyone else
-  // must not write anything at all.
+  // must not write anything at all. The ONBOARDING_COMPLETED intent is
+  // queued in the SAME transaction, ONLY when this transaction wins the
+  // latch (count === 1) — a concurrent loser never queues a duplicate
+  // (§11/§28). The Mailjet send happens after the commit, fire-and-forget
+  // (§12/§16).
   const completedAt = new Date();
+  let deliveryId: string | null = null;
   const result = await db.$transaction(async (tx) => {
     if (!completedIds.has(ONBOARDING_FINAL_STEP_ID)) {
       try {
@@ -499,7 +532,7 @@ export async function completeOnboarding(
       }
     }
 
-    return tx.staffOnboarding.updateMany({
+    const updateResult = await tx.staffOnboarding.updateMany({
       where: { id: onboarding.id, completedAt: null },
       data: {
         completedAt,
@@ -509,11 +542,28 @@ export async function completeOnboarding(
         version: ONBOARDING_META.version,
       },
     });
+
+    if (updateResult.count === 1) {
+      const enqueued = await enqueueNotification(tx, {
+        type: "ONBOARDING_COMPLETED",
+        dedupeKey: buildDedupeKey("ONBOARDING_COMPLETED", onboarding.id),
+        candidateId: candidate.id,
+        recipientEmail: candidate.email,
+      });
+      deliveryId = enqueued.deliveryId;
+    }
+
+    return updateResult;
   });
 
   if (result.count === 0) {
     // A concurrent completion won the race — fall through to the
     // idempotent re-read below; never write a second completion.
+  }
+
+  // Post-commit: attempt the actual send without blocking the response.
+  if (deliveryId) {
+    dispatchNotification(deliveryId);
   }
 
   // Whether this request performed the completion or lost a benign race,

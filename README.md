@@ -186,6 +186,14 @@ handler and is validated server-side — the client never decides progress.
 - **StaffIdSequence / AppointmentSequence** — server-controlled singleton
   sequences behind FF-STF-NNNN and FFL/HR/PLA/NNN allocation (atomic
   `UPDATE … RETURNING` inside the stage transaction).
+- **NotificationDelivery** — cross-cutting transactional email record
+  (outbox pattern): one row per lifecycle notification intent, queued in
+  the SAME database transaction as the state change it belongs to. Unique
+  `dedupeKey` (`<TYPE>:<immutable entity id>`) makes queueing exactly-once
+  under double-clicks, retries and concurrent requests. Carries the
+  recipient email snapshot, template version, provider, provider message
+  id, bounded `attemptCount` and safe last-error fields. No credentials and
+  no rendered bodies are ever stored.
 
 Section *content* lives in `src/config/orientation.ts`,
 `src/config/agreement.ts`, `src/config/appointment.ts`,
@@ -389,11 +397,69 @@ Every route handler returns the same envelope:
   returned as a safe generic message (500). Stack traces, SQL and driver
   details never reach the client.
 
+## Transactional notifications (Mailjet)
+
+A cross-cutting platform service (NOT a recruitment stage) keeps
+applicants/staff informed at meaningful lifecycle events. Architecture:
+
+```text
+domain services (orientation, assessment, agreement, …)
+        ↓  enqueueNotification(tx, …)   ← inside the business transaction
+NotificationDelivery row (outbox)       ← commits WITH the state change
+        ↓  dispatchNotification(id)     ← AFTER the commit, fire-and-forget
+notification-service → providers/mailjet.ts
+        ↓  POST https://api.mailjet.com/v3.1/send (HTTP Basic, server-only)
+Mailjet
+```
+
+Files: `src/server/notifications/` — `notification-types.ts` (stable keys,
+typed payloads, dedupe keys, runtime config), `notification-templates.ts`
+(code-owned subject/text/HTML per type, FinFam design, HTML-escaped),
+`notification-service.ts` (outbox core: idempotent queueing, optimistic
+send claim, bounded retries, payload re-derivation from immutable
+snapshots), `providers/mailjet.ts` (the ONLY file that knows the Mailjet
+wire format; no SDK dependency).
+
+Lifecycle keys: `APPLICATION_RECEIVED`, `ORIENTATION_COMPLETED`,
+`ASSESSMENT_PASSED`, `ASSESSMENT_FAILED` (attempt-keyed),
+`AGREEMENT_ACCEPTED`, `APPOINTMENT_ISSUED`, `STAFF_ACTIVATED`,
+`ONBOARDING_STARTED` (once, at lazy entry), `ONBOARDING_COMPLETED`.
+`STAFF_ACCOUNT_CREATED` is RESERVED for Stage 7 — the type and template
+exist, nothing triggers it, and no Staff Portal is advertised in any email.
+No email is sent for page views, orientation sections or onboarding steps.
+
+Delivery semantics — `SENT` means **Mailjet accepted the send request**;
+actual inbox delivery/bounces require provider webhooks and are NOT claimed.
+`FAILED` rows carry a safe error code (HTTP class / `TIMEOUT` /
+`NETWORK_ERROR` — never credentials or provider bodies). An email outage can
+never roll back or fail a recruitment action, and a user never repeats a
+stage because email failed.
+
+Retries are bounded (`NOTIFICATIONS_MAX_ATTEMPTS`, default 3) via
+`retryNotification(id)` / `retryPendingNotifications({ limit })`. There is
+NO cron in this project — recurring scheduling is a deployment concern for
+a protected future worker.
+
+Development safety: with `NOTIFICATIONS_ENABLED=false` (the default) rows
+are still queued — so the full lifecycle is testable — but NO network
+request ever leaves the server and suppressed sends are logged
+(`[notifications] suppressed …`). Fixtures and E2E suites can never email a
+real candidate.
+
 ## Environment variables
 
-| Variable        | Required | Purpose                                   |
-| --------------- | -------- | ----------------------------------------- |
-| `DATABASE_URL`  | yes      | PostgreSQL connection string for Prisma   |
+| Variable                    | Required | Purpose                                        |
+| --------------------------- | -------- | ---------------------------------------------- |
+| `DATABASE_URL`              | yes      | PostgreSQL connection string for Prisma        |
+| `NOTIFICATIONS_ENABLED`     | no       | Master switch for transactional email (default `false` — rows queue, nothing sends) |
+| `MAILJET_API_KEY`           | for send | Mailjet transactional Send API key (server-only secret) |
+| `MAILJET_SECRET_KEY`        | for send | Mailjet Send API secret (server-only secret)   |
+| `MAILJET_FROM_EMAIL`        | for send | Mailjet-validated sender address               |
+| `MAILJET_FROM_NAME`         | no       | Sender display name (default `FinFam Recruitment`) |
+| `APP_BASE_URL`              | no       | Server-authoritative base URL for safe email links (default `http://127.0.0.1:3000`) |
+| `MAILJET_API_URL`           | no       | Override the Send API endpoint (test seam)     |
+| `NOTIFICATIONS_MAX_ATTEMPTS`| no       | Bounded retry budget (default `3`)             |
+| `NOTIFICATIONS_SEND_TIMEOUT_MS` | no   | Per-send timeout (default `10000`)             |
 
 Copy `.env.example` → `.env` and adjust. Rules:
 
@@ -427,7 +493,13 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
 **The FinFam recruitment + onboarding MVP is complete.** All six recruitment
 stages (Application → Orientation → Assessment → Agreement → Appointment →
 Activation) plus the staff-side Onboarding stage are implemented, verified
-and integrated on the unified journey. There is NO Stage 7 in this journey.
+and integrated on the unified journey. The Mailjet transactional
+notification service now runs as a cross-cutting platform service across
+all lifecycle events (see above). **Stage 7 — Staff Portal Foundation &
+Secure Account Access has been PLANNED (not implemented)** as the first
+phase of the FinFam Staff Platform; see the Stage 7 plan and
+[docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md) for its open
+business questions.
 
 Any further product work — Staff Portal, staff dashboard, daily-report
 submission, payroll/commissions, member tracking, ID-card generator, admin

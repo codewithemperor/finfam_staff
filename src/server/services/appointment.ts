@@ -8,6 +8,8 @@ import {
   getAppointmentContent,
 } from "@/config/appointment";
 import { db } from "@/lib/db";
+import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
+import { buildDedupeKey } from "@/server/notifications/notification-types";
 import { AppError, notFoundError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type {
@@ -73,6 +75,7 @@ type CandidateWithAppointment = {
   id: string;
   referenceNumber: string;
   fullName: string;
+  email: string;
   status: CandidateStatusId;
   appointment: AppointmentRelation | null;
 };
@@ -81,6 +84,7 @@ const CANDIDATE_SELECT = {
   id: true,
   referenceNumber: true,
   fullName: true,
+  email: true,
   status: true,
   appointment: {
     select: {
@@ -202,10 +206,16 @@ async function allocateAppointmentReference(tx: {
  */
 async function issueAppointment(
   candidate: CandidateWithAppointment,
-): Promise<boolean> {
+): Promise<{ issued: boolean; deliveryId: string | null }> {
   const issuedAt = new Date();
 
-  return db.$transaction(async (tx) => {
+  // The APPOINTMENT_ISSUED intent is queued in the SAME transaction as the
+  // issuance (outbox pattern — brief §13), and ONLY on the gate-winner path
+  // — a concurrent loser never queues a duplicate (§11/§28). The Mailjet
+  // send happens after the commit, fire-and-forget (§12/§16).
+  let deliveryId: string | null = null;
+
+  const issued = await db.$transaction(async (tx) => {
     // The gate: exactly one transaction can move the candidate out of
     // OFFER_ACCEPTED. Everyone else must not write anything at all.
     const transitioned = await tx.candidate.updateMany({
@@ -221,7 +231,7 @@ async function issueAppointment(
 
     // Candidate-specific snapshot — taken from persisted server data,
     // never from client input. Immutable after this insert.
-    await tx.appointment.create({
+    const appointmentRow = await tx.appointment.create({
       data: {
         candidateId: candidate.id,
         appointmentReference,
@@ -230,6 +240,7 @@ async function issueAppointment(
         roleTitle: APPOINTMENT_ROLE_TITLE,
         issuedAt,
       },
+      select: { id: true },
     });
 
     // Exactly ONE timeline event for the whole stage — issuance itself is
@@ -243,8 +254,18 @@ async function issueAppointment(
       },
     });
 
+    const enqueued = await enqueueNotification(tx, {
+      type: "APPOINTMENT_ISSUED",
+      dedupeKey: buildDedupeKey("APPOINTMENT_ISSUED", appointmentRow.id),
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    });
+    deliveryId = enqueued.deliveryId;
+
     return true;
   });
+
+  return { issued, deliveryId };
 }
 
 /**
@@ -273,8 +294,12 @@ export async function getAppointmentView(
       return toView(candidate);
     }
 
-    const issued = await issueAppointment(candidate);
+    const { issued, deliveryId } = await issueAppointment(candidate);
     if (issued) {
+      // Post-commit: attempt the actual send without blocking the response.
+      if (deliveryId) {
+        dispatchNotification(deliveryId);
+      }
       // Read back the persisted truth (idempotent canonical view).
       return toView(await loadCandidate(reference));
     }

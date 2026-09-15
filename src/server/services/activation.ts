@@ -10,6 +10,8 @@ import {
   STAFF_ID_SEQUENCE_NAME,
 } from "@/config/activation";
 import { db } from "@/lib/db";
+import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
+import { buildDedupeKey } from "@/server/notifications/notification-types";
 import { AppError, conflictError, notFoundError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type { ActivationInput } from "@/lib/validation/activation";
@@ -90,6 +92,7 @@ type CandidateWithActivation = {
   id: string;
   referenceNumber: string;
   fullName: string;
+  email: string;
   status: CandidateStatusId;
   appointment: AppointmentRelation | null;
   staff: StaffRelation | null;
@@ -99,6 +102,7 @@ const CANDIDATE_SELECT = {
   id: true,
   referenceNumber: true,
   fullName: true,
+  email: true,
   status: true,
   appointment: {
     select: {
@@ -287,6 +291,12 @@ export async function activateStaff(
   const wasEntered = candidate.status === "ACTIVATION_PENDING";
   const activatedAt = new Date();
 
+  // The STAFF_ACTIVATED intent is queued in the SAME transaction as the
+  // activation (outbox pattern — brief §13), and ONLY on the latch-winner
+  // path — a concurrent loser never queues a duplicate (§11/§28). The
+  // Mailjet send happens after the commit, fire-and-forget (§12/§16).
+  let deliveryId: string | null = null;
+
   const activated = await db.$transaction(async (tx) => {
     // The gate: exactly one transaction can move the candidate to
     // APPROVED_STAFF. Everyone else must not write anything at all.
@@ -322,7 +332,7 @@ export async function activateStaff(
     // Candidate-specific snapshots — taken from persisted server data (the
     // issued Appointment row), never from client input. Immutable after
     // this insert.
-    await tx.staff.create({
+    const staffRow = await tx.staff.create({
       data: {
         candidateId: candidate.id,
         staffId,
@@ -331,6 +341,7 @@ export async function activateStaff(
         appointmentReference: appointment.appointmentReference,
         activatedAt,
       },
+      select: { id: true },
     });
 
     // Exactly ONE completion event for the whole stage.
@@ -343,8 +354,20 @@ export async function activateStaff(
       },
     });
 
+    const enqueued = await enqueueNotification(tx, {
+      type: "STAFF_ACTIVATED",
+      dedupeKey: buildDedupeKey("STAFF_ACTIVATED", staffRow.id),
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    });
+    deliveryId = enqueued.deliveryId;
+
     return true;
   });
+
+  if (activated && deliveryId) {
+    dispatchNotification(deliveryId);
+  }
 
   // Whether this request performed the transition or lost a benign race,
   // the authoritative view is read back from persisted state (idempotent).

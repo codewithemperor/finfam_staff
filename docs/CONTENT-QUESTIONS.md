@@ -773,6 +773,68 @@ completes, or whether a staff portal will follow.
 - **Status:** 🏷️ Resolved for the MVP by approval; Staff Portal question
   remains open for the business to plan.
 
+## 37. Mailjet sender address — UNRESOLVED (deployment requirement)
+
+The Mailjet transactional notification service (cross-cutting platform
+service, implemented after Stage 6) sends from `MAILJET_FROM_EMAIL`.
+Mailjet only accepts sends from a **validated/authorized sender** (or
+domain) in the owning account, and no confirmed FinFam transactional
+sender address has been supplied.
+
+- **IMPLEMENTED (configuration only):** the service reads
+  `MAILJET_FROM_EMAIL` / `MAILJET_FROM_NAME` from the environment; nothing
+  is hard-coded. Until a validated sender exists, deployments keep
+  `NOTIFICATIONS_ENABLED=false` (the safe default): lifecycle emails queue
+  as `NotificationDelivery` rows but no network send is attempted.
+- **OPEN:** the business must supply the official sender address (and
+  validate it in Mailjet), then set `NOTIFICATIONS_ENABLED=true` plus the
+  credentials in the deployment environment.
+- **Status:** ⏳ Unresolved — deployment requirement, config-only change
+  when supplied.
+
+## 38. Inbox delivery events / bounce handling — DEFERRED (MVP semantics)
+
+The notification service records `SENT` when **Mailjet accepts the
+transactional send request** — it deliberately does NOT claim inbox
+delivery. Bounces, spam complaints, deliveries and opens require Mailjet
+event webhooks (plus a receiving endpoint and replay-safe processing).
+
+- **IMPLEMENTED (MVP):** honest status model `PENDING / SENT / FAILED`;
+  `FAILED` rows keep a safe error code and a bounded retry budget
+  (`NOTIFICATIONS_MAX_ATTEMPTS`, default 3) re-drivable via the notification
+  service by a protected future worker. No cron exists in this project —
+  recurring retry scheduling is a deployment concern.
+- **DEFERRED:** provider event webhooks, bounce/complaint handling and a
+  delivery-status dashboard are future work; they can be added without
+  schema changes (`providerMessageId` + status model already exist).
+- **Status:** 🏷️ Deferred by MVP decision; documented in README →
+  "Transactional notifications (Mailjet)".
+
+## 39. Stage 7 — Staff Portal Foundation: open business questions — PLANNING ONLY (no implementation)
+
+Stage 7 (Staff Portal Foundation & Secure Account Access) has been PLANNED,
+not implemented (see the Stage 7 planning deliverable in the task log,
+worklog.md Task 9). The plan explicitly defers these business decisions —
+implementation must not begin until they are confirmed:
+
+1. Exact Staff Account creation moment (plan recommends: onboarding completion).
+2. Authentication method (plan recommends: email OTP; magic link / password / external provider are the alternatives).
+3. Official Staff Portal domain/base URL for links and cookies.
+4. Confirm staff use their registered email as the login identifier (Staff ID stays an identity reference, never a credential).
+5. Confirm account access requires onboarding completion.
+6. Account suspension authority and workflow (who suspends, via what interface).
+7. Recovery policy beyond OTP resend (lost-email path is currently offline/admin).
+8. Whether completed Staff retain reference-based recruitment access long-term (plan: keep, do not break links; retire later only deliberately).
+9. Which resource assets exist for the portal (none supplied yet — §35).
+10. Whether the ID card becomes a Staff Portal feature (deferred in §35).
+11. Whether Daily Reporting is the next module after the foundation.
+12. Whether earnings/commission visibility is planned for staff.
+13. Who will administer Staff accounts (no admin portal exists).
+14. Whether multiple staff roles/permissions will exist.
+15. Session duration/security requirements (plan proposes 7-day sessions, rotation on login).
+
+- **Status:** ⏳ Unresolved — Stage 7 is PLANNING ONLY; nothing is implemented.
+
 ---
 
 **Rule going forward:** when new source material contains contradictory

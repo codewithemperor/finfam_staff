@@ -2,6 +2,8 @@ import "server-only";
 
 import { AGREEMENT_META, AGREEMENT_SECTIONS } from "@/config/agreement";
 import { db } from "@/lib/db";
+import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
+import { buildDedupeKey } from "@/server/notifications/notification-types";
 import { conflictError, notFoundError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type { AgreementAcceptInput } from "@/lib/validation/agreement";
@@ -52,6 +54,7 @@ type CandidateWithAgreement = {
   id: string;
   referenceNumber: string;
   fullName: string;
+  email: string;
   status: CandidateStatusId;
   applications: { roleTitle: string }[];
   agreement: AgreementRelation | null;
@@ -61,6 +64,7 @@ const CANDIDATE_SELECT = {
   id: true,
   referenceNumber: true,
   fullName: true,
+  email: true,
   status: true,
   applications: {
     orderBy: { submittedAt: "desc" as const },
@@ -200,6 +204,12 @@ export async function acceptAgreement(
   const wasEntered = candidate.status === "OFFER_PENDING";
   const now = new Date();
 
+  // The AGREEMENT_ACCEPTED intent is queued in the SAME transaction as the
+  // decision (outbox pattern — brief §13), and ONLY on the latch-winner
+  // path — a concurrent loser never queues a duplicate (§11/§28). The
+  // Mailjet send happens after the commit, fire-and-forget (§12/§16).
+  let deliveryId: string | null = null;
+
   const transitioned = await db.$transaction(async (tx) => {
     const result = await tx.candidate.updateMany({
       where: {
@@ -228,7 +238,7 @@ export async function acceptAgreement(
       });
     }
 
-    await tx.agreement.upsert({
+    const agreementRow = await tx.agreement.upsert({
       where: { candidateId: candidate.id },
       create: {
         candidateId: candidate.id,
@@ -247,8 +257,20 @@ export async function acceptAgreement(
       },
     });
 
+    const enqueued = await enqueueNotification(tx, {
+      type: "AGREEMENT_ACCEPTED",
+      dedupeKey: buildDedupeKey("AGREEMENT_ACCEPTED", agreementRow.id),
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    });
+    deliveryId = enqueued.deliveryId;
+
     return true;
   });
+
+  if (transitioned && deliveryId) {
+    dispatchNotification(deliveryId);
+  }
 
   // Whether this request performed the transition or lost a benign race,
   // the authoritative view is read back from persisted state (idempotent).
