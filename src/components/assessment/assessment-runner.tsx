@@ -214,7 +214,6 @@ export function AssessmentRunner({
                 >
                   <Radio value={String(optionIndex)} className="w-full">
                     <Radio.Content
-                      value={String(optionIndex)}
                       className={cn(
                         "w-full items-start gap-3 px-2 py-3.5 outline-none focus-visible:bg-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary",
                       )}
@@ -239,7 +238,7 @@ export function AssessmentRunner({
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-danger">
               {saveState.message}
               <Button
-                variant="link"
+                variant="ghost"
                 size="sm"
                 className="h-auto p-0"
                 onPress={() => {

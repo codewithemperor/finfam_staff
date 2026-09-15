@@ -367,3 +367,32 @@ Stage Summary:
 - Transactional lifecycle email is implemented as a provider-neutral outbox: business transactions queue exactly-once intents, Mailjet is only touched after commit, failures never touch recruitment state, retries are bounded, and the disabled-by-default dev mode makes fixtures/E2E incapable of emailing real people. STAFF_ACCOUNT_CREATED exists architecturally but cannot fire until Stage 7 wires real account provisioning.
 - Zero new dependencies (native fetch adapter); zero changes to enums/states of the six recruitment stages or onboarding; zero Mailjet code in any browser bundle (all modules import "server-only").
 - Open items for the business: validated Mailjet sender address + credentials to flip NOTIFICATIONS_ENABLED=true in deployment (§37); provider webhooks for delivery/bounce events deferred (§38).
+
+---
+Task ID: 9
+Agent: Z.ai Code (main orchestrator)
+Task: Housekeeping close-out — .env/.env.example, full journey test suite, tsc type fixes (carried over from prior session's tool outage)
+
+Work Log:
+- Added `.env` (local-only) and `.env.example` (committed template) with the exact 5-variable consumption set (DATABASE_URL required; FINFAM_DB_NAME/USER/PORT for ensure-db; FLOW_TEST_BASE_URL for tests) — later extended by Task 8 with the notification variables.
+- Fixed git tracking: `git rm --cached .env`; `.gitignore` now uses `.env*` + `!.env.example`.
+- Wrote the multi-outcome HTTP journey suite (tests/flow.test.ts, outcomes.test.ts, validation.test.ts + helpers api/db/answer-key, scripts/test.sh, package.json `test` script) — bun test, zero new deps, real dev server.
+- Post-outage verification: tsc clean for all src/ and tests/ code; also fixed 3 small pre-existing src type errors (assessment-runner Radio.Content stray `value` prop + Button variant "link"→"ghost"; providers.tsx Toast placement "bottom-right"→"bottom end"). Only the documented examples//skills/ baseline remains.
+- Full suite green after fixes: 107 pass / 0 fail / 449 expect() across 4 files (73 journey/outcome/validation + 34 notification).
+
+Stage Summary:
+- Environment template + full-journey regression suite are in place and verified; tsc/lint/test all healthy. Ready baseline for Stage 7 planning.
+
+---
+Task ID: 10
+Agent: Z.ai Code (main orchestrator)
+Task: STAGE 7 RE-PLANNING ONLY — "Staff Portal Foundation, Onboarding & Resumption" — revise the previous Stage 7 plan to incorporate the official SECTION 7 (Immediate Onboarding & Resumption Instructions) as the portal's onboarding-first experience. No Stage 7 implementation.
+
+Work Log:
+- Closed out prior housekeeping first (tsc clean for src/ + tests/; 107/107 tests green; 3 small pre-existing src type errors fixed; worklog Task 9 entry appended).
+- Full architecture reconnaissance (schema, all 9 services, notification stack, routes, configs, docs/CONTENT-QUESTIONS.md §33–§39): confirmed Staff + StaffOnboarding/StaffOnboardingStep (stage 6, 7-step config v1.0, lazy entry, sequential steps, completedAt latch), NotificationDelivery outbox with reserved STAFF_ACCOUNT_CREATED type/template, activation transaction shape (updateMany latch → Staff row → StageEvent → STAFF_ACTIVATED enqueue, dispatch after commit), reference-based onboarding routes (/onboarding/[reference] + /api/onboarding/[reference]/{steps,complete}), no StaffAccount/auth/session infrastructure anywhere.
+- Identified the previous Stage 7 plan's key decision that the new brief REVERSES: account provisioning moves from "after onboarding completion" to "immediately after Staff Activation" (§3/§30 of the new brief); portal becomes onboarding-first until completion.
+- Authored and delivered the revised Stage 7 plan (30 deliverables + Final Planning Gate) as the task response: StaffAccount/StaffLoginCode/StaffSession models, email-OTP auth over the outbox (one-shot payload path, no-retry OTP semantics, hashed codes), DB-backed HttpOnly-cookie sessions, activation-transaction provisioning + idempotent backfill, /staff route architecture with first-login onboarding gating, authenticated onboarding wrappers over the ONE existing onboarding state (legacy reference route kept working during migration), Section 7 content mapped to an 8-step config v2.0 (intro/communication/verification/resources/orientation/assignment/accountability/ready), system-verified vs external verification split, honest WhatsApp/resources posture, testing matrix, business questions, risks, sequence.
+
+Stage Summary:
+- Stage 7 is RE-PLANNED ONLY — zero implementation. New brief reversions recorded: provisioning at activation (not onboarding completion); onboarding inside the authenticated portal (single onboarding state, no duplication). APPROVED_STAFF unchanged; no new CandidateStatus/RecruitmentStage/StageEvent. Implementation awaits separate approval; open business items consolidated in the plan's gate (WhatsApp number, session duration, OTP policy confirmations, production domain, dev OTP-echo policy, etc.).

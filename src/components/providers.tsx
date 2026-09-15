@@ -14,7 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <Toast.Provider placement="bottom-right" />
+      <Toast.Provider placement="bottom end" />
     </>
   );
 }
