@@ -10,6 +10,7 @@ import {
   STAFF_ID_SEQUENCE_NAME,
 } from "@/config/activation";
 import { db } from "@/lib/db";
+import { provisionStaffAccount } from "@/server/services/staff-accounts";
 import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
 import { buildDedupeKey } from "@/server/notifications/notification-types";
 import { AppError, conflictError, notFoundError } from "@/lib/errors";
@@ -81,11 +82,13 @@ type AppointmentRelation = {
 };
 
 type StaffRelation = {
+  id: string;
   staffId: string;
   version: string;
   roleTitle: string;
   appointmentReference: string;
   activatedAt: Date;
+  account: { id: string } | null;
 };
 
 type CandidateWithActivation = {
@@ -113,11 +116,13 @@ const CANDIDATE_SELECT = {
   },
   staff: {
     select: {
+      id: true,
       staffId: true,
       version: true,
       roleTitle: true,
       appointmentReference: true,
       activatedAt: true,
+      account: { select: { id: true } },
     },
   },
 } as const;
@@ -263,7 +268,21 @@ export async function activateStaff(
   const candidate = await loadCandidate(reference);
 
   // Idempotent: an activated staff profile is final — return the record.
+  // Self-healing guard (Stage 7): a Staff row that predates Staff Account
+  // provisioning still gets its portal account here, through the SAME
+  // provisionStaffAccount core the activation path uses — exactly-once by
+  // unique FK + dedupeKey, so revisits stay no-ops.
   if (candidate.status === "APPROVED_STAFF" && candidate.staff) {
+    if (!candidate.staff.account) {
+      const healed = await provisionStaffAccount(db, {
+        staffId: candidate.staff.id,
+        candidateId: candidate.id,
+        recipientEmail: candidate.email,
+      });
+      if (healed.deliveryId) {
+        dispatchNotification(healed.deliveryId);
+      }
+    }
     return toView(candidate);
   }
 
@@ -291,11 +310,14 @@ export async function activateStaff(
   const wasEntered = candidate.status === "ACTIVATION_PENDING";
   const activatedAt = new Date();
 
-  // The STAFF_ACTIVATED intent is queued in the SAME transaction as the
-  // activation (outbox pattern — brief §13), and ONLY on the latch-winner
-  // path — a concurrent loser never queues a duplicate (§11/§28). The
-  // Mailjet send happens after the commit, fire-and-forget (§12/§16).
+  // The STAFF_ACTIVATED and STAFF_ACCOUNT_CREATED intents are queued in the
+  // SAME transaction as the activation (outbox pattern — brief §13), and
+  // ONLY on the latch-winner path — a concurrent loser never queues a
+  // duplicate (§11/§28). The Mailjet sends happen after the commit,
+  // fire-and-forget (§12/§16); a Mailjet outage can never roll back the
+  // activation, the Staff row or the StaffAccount row.
   let deliveryId: string | null = null;
+  let accountDeliveryId: string | null = null;
 
   const activated = await db.$transaction(async (tx) => {
     // The gate: exactly one transaction can move the candidate to
@@ -344,6 +366,17 @@ export async function activateStaff(
       select: { id: true },
     });
 
+    // Stage 7: the Staff Portal account is provisioned in the SAME winning
+    // transaction — Staff row + account + StageEvent + both notification
+    // intents commit atomically (approved architecture §2). The shared core
+    // is the exact code path the backfill uses.
+    const provisioned = await provisionStaffAccount(tx, {
+      staffId: staffRow.id,
+      candidateId: candidate.id,
+      recipientEmail: candidate.email,
+    });
+    accountDeliveryId = provisioned.deliveryId;
+
     // Exactly ONE completion event for the whole stage.
     await tx.stageEvent.create({
       data: {
@@ -367,6 +400,9 @@ export async function activateStaff(
 
   if (activated && deliveryId) {
     dispatchNotification(deliveryId);
+  }
+  if (activated && accountDeliveryId) {
+    dispatchNotification(accountDeliveryId);
   }
 
   // Whether this request performed the transition or lost a benign race,

@@ -446,6 +446,88 @@ request ever leaves the server and suppressed sends are logged
 (`[notifications] suppressed …`). Fixtures and E2E suites can never email a
 real candidate.
 
+## Staff Portal (Stage 7)
+
+The Staff Portal is the operational home for **activated** FinFam Staff
+(`APPROVED_STAFF`). It is a fully authenticated experience on top of the
+recruitment data — recruitment pages and reference URLs remain available as
+historical records, but all ongoing staff operations live in the portal.
+
+### Architecture
+
+```text
+Staff Activation (one transaction)
+  → Staff row + StaffAccount row + StageEvent
+  → STAFF_ACTIVATED + STAFF_ACCOUNT_CREATED notification intents
+        ↓ (after commit: Mailjet)
+"Your FinFam Staff Portal is ready" email  →  /staff/login
+        ↓
+Email OTP (6 digits, 10 min, single use, hashed at rest)
+        ↓
+DB-backed session (HttpOnly cookie ff_staff_session, 7-day MVP default)
+        ↓
+/staff  → onboarding incomplete? YES → /staff/onboarding (onboarding-first)
+                              NO  → Staff Portal home
+```
+
+Key invariants:
+
+- **Identity is session-only**: every Staff API resolves
+  `Session → StaffAccount → Staff → Candidate` from the HttpOnly cookie. No
+  staff ID / reference / appointment reference is ever accepted as
+  identity — Staff A cannot reach Staff B's data by any URL, query or body
+  manipulation.
+- **One onboarding state, two doors**: `/onboarding/[reference]` (legacy,
+  kept working) and `/staff/onboarding` (authenticated) operate on the SAME
+  `StaffOnboarding`/`StaffOnboardingStep` rows through one shared service
+  core. Progress is visible through both instantly.
+- **OTP security**: codes are generated with `crypto.randomInt`, stored only
+  as sha256 hashes, expire in 10 minutes, tolerate max 5 failed attempts,
+  are single-use (consumed exactly once by one verification transaction),
+  superseded by newer requests, and protected by a 60s resend cooldown and
+  a 5-per-15-minutes request limit. The OTP email is ONE-SHOT (no automatic
+  retry — request a fresh code instead). Unknown/suspended emails receive
+  the same neutral response and create no rows (anti-enumeration).
+- **Suspension**: a `SUSPENDED` StaffAccount cannot receive usable codes,
+  verify, or hold a resolving session (no admin UI in this stage).
+- **Onboarding content v2.0** (`src/config/onboarding.ts`): the approved
+  "Section 7 — Immediate Onboarding & Resumption Instructions" mapped to
+  eight steps (intro → communication → verification → resources →
+  orientation → assignment → accountability → ready), ending in one
+  explicit acknowledgement. WhatsApp contact is honest pending copy until
+  `ONBOARDING_WHATSAPP_NUMBER` is configured (then a plain `wa.me` link
+  with the pre-filled first message — no API integration). Verification
+  distinguishes system-verified facts (derived from persisted records) from
+  external onboarding actions (never auto-ticked).
+
+### Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/staff/login` | Email-OTP sign-in (two steps) |
+| `/staff` | Portal home — redirects to onboarding until it is completed |
+| `/staff/onboarding` | Onboarding & resumption experience (read-only summary once completed) |
+| `/staff/appointment` | Session-owned view of the issued provisional letter |
+| `/staff/resources` | Honest resource availability (list-only until real assets exist) |
+| `/staff/profile` | Read-only staff identity |
+
+APIs: `POST /api/staff/auth/{request-code,verify,logout}`, `GET
+/api/staff/me`, `GET /api/staff/onboarding`, `POST
+/api/staff/onboarding/steps`, `POST /api/staff/onboarding/complete`.
+
+### Backfill (existing Staff)
+
+Staff records created before Stage 7 receive their account idempotently:
+
+```bash
+bun run backfill:staff-accounts -- --dry-run   # inspect
+bun run backfill:staff-accounts                # provision + queue emails
+```
+
+The script uses the SAME `provisionStaffAccount()` core as live activation;
+reruns are no-ops (unique FK + exactly-once notification dedupeKey). The
+production run is a deployment step.
+
 ## Environment variables
 
 | Variable                    | Required | Purpose                                        |
@@ -460,6 +542,9 @@ real candidate.
 | `MAILJET_API_URL`           | no       | Override the Send API endpoint (test seam)     |
 | `NOTIFICATIONS_MAX_ATTEMPTS`| no       | Bounded retry budget (default `3`)             |
 | `NOTIFICATIONS_SEND_TIMEOUT_MS` | no   | Per-send timeout (default `10000`)             |
+| `STAFF_AUTH_DEV_CODE_ECHO`  | no       | **DEV/TEST ONLY** — echoes the OTP in the API response when `true`. **MUST be `false` in production.** Default `false` |
+| `ONBOARDING_WHATSAPP_NUMBER`| no       | Official onboarding WhatsApp number (digits, international format). Empty = honest pending copy in onboarding |
+| `STAFF_SESSION_TTL_DAYS`    | no       | Staff Portal session duration in days (default `7`) |
 
 Copy `.env.example` → `.env` and adjust. Rules:
 
@@ -490,22 +575,20 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
 
 ## Next phase
 
-**The FinFam recruitment + onboarding MVP is complete.** All six recruitment
-stages (Application → Orientation → Assessment → Agreement → Appointment →
-Activation) plus the staff-side Onboarding stage are implemented, verified
-and integrated on the unified journey. The Mailjet transactional
-notification service now runs as a cross-cutting platform service across
-all lifecycle events (see above). **Stage 7 — Staff Portal Foundation &
-Secure Account Access has been PLANNED (not implemented)** as the first
-phase of the FinFam Staff Platform; see the Stage 7 plan and
-[docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md) for its open
-business questions.
+**Stages 1–7 are complete.** All six recruitment stages (Application →
+Orientation → Assessment → Agreement → Appointment → Activation), the
+staff-side Onboarding state, the Mailjet transactional notification
+service, and **Stage 7 — Staff Portal Foundation, Onboarding & Resumption**
+(secure accounts, email-OTP login, DB-backed sessions, onboarding-first
+portal — see above) are implemented and verified.
 
-Any further product work — Staff Portal, staff dashboard, daily-report
-submission, payroll/commissions, member tracking, ID-card generator, admin
-console — belongs to a separate **FinFam Staff Platform / Operations
-roadmap** and must go through its own planning phase before implementation.
-**Do not start building any of it automatically.**
+The next Staff Platform module — per the approved roadmap — is **Daily
+Reporting & Accountability**. It is deliberately NOT built: Stage 7 ships
+zero reporting forms, tables or APIs. Any further product work — daily
+reporting, prospect/member tracking, earnings, performance, ID-card
+generator, admin console — belongs to the **FinFam Staff Platform /
+Operations roadmap** and must go through its own planning phase before
+implementation. **Do not start building any of it automatically.**
 
 Business decisions still outstanding (official onboarding WhatsApp number,
 canonical role title portal-wide, identity-verification hardening, resource

@@ -35,10 +35,22 @@ export function OnboardingDecision({
   reference,
   version,
   acknowledgementLabel,
+  /**
+   * POST endpoint that completes onboarding. Legacy reference door
+   * (default): /api/onboarding/[reference]/complete. Authenticated Staff
+   * Portal door: /api/staff/onboarding/complete. Both close the ONE
+   * onboarding state.
+   */
+  endpoint,
+  /** Where to send the staff member after completion. Legacy default:
+   *  the unified journey; Staff Portal: /staff. */
+  completedHref,
 }: {
   reference: string;
   version: string;
   acknowledgementLabel: string;
+  endpoint?: string;
+  completedHref?: string;
 }) {
   const router = useRouter();
   const modal = useOverlayState();
@@ -56,7 +68,7 @@ export function OnboardingDecision({
 
     try {
       await apiFetch<OnboardingView>(
-        `/api/onboarding/${reference}/complete`,
+        endpoint ?? `/api/onboarding/${reference}/complete`,
         {
           method: "POST",
           body: JSON.stringify({ acknowledgement: acknowledged, version }),
@@ -67,9 +79,8 @@ export function OnboardingDecision({
         description: "You are ready to begin your FinFam assignment.",
         variant: "success",
       });
-      // The onboarding stage is closed — the unified journey (where the
-      // server decides the state) is the authoritative terminal view.
-      router.push(`/application/${reference}`);
+      // Onboarding is closed — the server decides the authoritative view.
+      router.push(completedHref ?? `/application/${reference}`);
     } catch (error) {
       if (error instanceof ApiClientError && error.fields?.acknowledgement) {
         setAcknowledgementError(error.fields.acknowledgement);

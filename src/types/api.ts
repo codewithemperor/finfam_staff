@@ -10,6 +10,8 @@ export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "UNAUTHORIZED"
+  | "RATE_LIMITED"
   | "INTERNAL";
 
 export interface ApiFieldErrors {

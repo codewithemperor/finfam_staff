@@ -17,12 +17,19 @@ export function OnboardingProgress({
   completedSteps,
   currentStepId,
   reference,
+  /**
+   * Base href for read-only review links of completed steps. Legacy
+   * reference door (default): /onboarding/[reference]?step=<id>.
+   * Authenticated Staff Portal door: /staff/onboarding?step=<id>.
+   */
+  reviewHrefBase,
 }: {
   /** Config step summaries in order (id + title only are needed here). */
   steps: { id: string; title: string }[];
   completedSteps: OnboardingCompletedStep[];
   currentStepId: string | null;
   reference: string;
+  reviewHrefBase?: string;
 }) {
   const completedIds = new Set(completedSteps.map((step) => step.id));
   const currentIndex = steps.findIndex((step) => step.id === currentStepId);
@@ -71,7 +78,7 @@ export function OnboardingProgress({
               </span>
               {isCompleted ? (
                 <Link
-                  href={`/onboarding/${reference}?step=${step.id}`}
+                  href={`${reviewHrefBase ?? `/onboarding/${reference}`}?step=${step.id}`}
                   className="rounded font-normal text-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <span className="sr-only">{stateText}: </span>

@@ -770,8 +770,11 @@ completes, or whether a staff portal will follow.
   staff-platform features are out of scope and belong to a separate
   FinFam Staff Platform / Operations roadmap — there is no Stage 7 in
   this recruitment journey.
-- **Status:** 🏷️ Resolved for the MVP by approval; Staff Portal question
-  remains open for the business to plan.
+- **Status:** 🏷️ Resolved for the Stage 6 MVP by approval — **superseded by
+  Stage 7 (§40)**: the Staff Portal now exists, and the completed-onboarding
+  home is the authenticated portal (`/staff`), which shows "Your onboarding
+  is complete. You are ready to begin your FinFam assignment." The unified
+  journey remains the historical recruitment record.
 
 ## 37. Mailjet sender address — UNRESOLVED (deployment requirement)
 
@@ -833,7 +836,9 @@ implementation must not begin until they are confirmed:
 14. Whether multiple staff roles/permissions will exist.
 15. Session duration/security requirements (plan proposes 7-day sessions, rotation on login).
 
-- **Status:** ⏳ Unresolved — Stage 7 is PLANNING ONLY; nothing is implemented.
+- **Status:** ✅ Superseded by §40 — the revised Stage 7 plan was approved
+  and implemented (account provisioning moved to activation; onboarding
+  moved inside the authenticated portal).
 
 ---
 
@@ -841,3 +846,59 @@ implementation must not begin until they are confirmed:
 figures, add a numbered section here instead of choosing one. Implementation
 waits for confirmation. When a question is resolved, mark it with the
 authoritative source and keep it here as the audit trail.
+
+## 40. Stage 7 — Staff Portal Foundation, Onboarding & Resumption — IMPLEMENTED (approved brief; defaults recorded)
+
+The revised Stage 7 plan was APPROVED and implemented. The approved brief
+resolved several earlier open questions and set explicit MVP defaults:
+
+**Resolved by the approved brief:**
+
+| Item | Decision |
+| --- | --- |
+| Account creation moment | DURING Staff Activation (same transaction as the Staff row) — supersedes the earlier "after onboarding completion" recommendation (closes the question raised in §39-1) |
+| Authentication | Email OTP; no passwords, no magic links, no external providers (closes §39-2/§39-4) |
+| Portal access vs onboarding | Onboarding happens INSIDE the portal; the portal is onboarding-first until completion (closes §39-5) |
+| Session model | DB-backed, HttpOnly cookie `ff_staff_session`, SameSite=Lax, Secure in production, token stored hashed; 7-day MVP default (configurable `STAFF_SESSION_TTL_DAYS`) |
+| OTP policy | 6 digits · 10-minute expiry · single-use · max 5 failed attempts · 60s resend cooldown · 5 codes / 15 min · sha256-hashed at rest · never logged |
+| OTP email retries | ONE delivery attempt per code (one-shot); a failed send means the user requests a fresh code — no plaintext is ever persisted for retry |
+| Account recovery | OTP resend IS the recovery mechanism; lost-email recovery is an offline/admin process |
+| Suspension | `SUSPENDED` status exists and blocks every auth path; no admin UI |
+| Account-created email | Subject "Your FinFam Staff Portal is ready"; links to `/staff/login` via `APP_BASE_URL` (never a hard-coded domain) |
+| Onboarding content | Section 7 mapped to 8 steps, config v2.0; acknowledgement wording fixed verbatim |
+| WhatsApp | Number still NOT SUPPLIED (§33 stands); `ONBOARDING_WHATSAPP_NUMBER` env override renders a plain `wa.me` link when configured; contact is NOT a completion gate (§30) |
+| Verification | System-verified facts (from persisted records) vs external onboarding actions (never auto-ticked); no fake automation |
+| Resources | List-only, honest availability copy (§35 stands) |
+| Portal role presentation | Appointment designation **Remote Staff** + operational role **FinFam Growth Ambassador**, shown separately |
+| Legacy `/onboarding/[reference]` | Kept operational during Stage 7 (two doors, one state) |
+| Development OTP echo | `STAFF_AUTH_DEV_CODE_ECHO=true` allowed ONLY for local dev/test; **MUST be `false` in production** (echoed OTP = account takeover) |
+
+**Still open (unresolved business questions):**
+
+1. Official WhatsApp onboarding number (§33) — required before real staff
+   reach the communication step so the handoff is actionable.
+2. Actual Staff Communication Group access mechanism.
+3. Real resource files (would become a future StaffResource feature with
+   access-control review).
+4. Staff ID-card design (deferred; not built).
+5. Who performs the external communication verification, and whether it
+   must eventually become a hard completion gate.
+6. Canonical portal-wide role-title relationship (Remote Staff / FinFam
+   Growth Ambassador / Marketing & Customer Care Executive) — §21 stands.
+7. Production domain for `APP_BASE_URL` (deployment requirement; links in
+   the account-created/OTP emails depend on it).
+8. Account suspension administrator + workflow (the status exists; nobody
+   can set it yet).
+9. Long-term retirement of reference-based onboarding access (security
+   migration; deliberate future decision).
+10. Production backfill execution ownership (`bun run backfill:staff-accounts`
+    is safe and idempotent; someone must run it at deploy time with
+    `NOTIFICATIONS_ENABLED=true` and a validated Mailjet sender — §37).
+11. Mailjet sender validation + credentials to enable real sending (§37).
+
+**Next module boundary:** the approved roadmap puts **Daily Reporting &
+Accountability** next. Stage 7 ships NO reporting forms, tables or APIs —
+the accountability step is explanatory copy only. Do not build reporting
+without a new approved brief.
+
+- **Status:** ✅ Implemented (Stage 7); open items listed above.

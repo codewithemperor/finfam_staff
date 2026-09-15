@@ -9,10 +9,10 @@ import type { NotificationType } from "@prisma/client";
  * mirrors it 1:1); this file adds the typed payload contract, the dedupe-key
  * convention and the runtime configuration used by the delivery service.
  *
- * STAFF_ACCOUNT_CREATED is RESERVED for Stage 7 (Staff Portal Foundation):
- * the type, payload and template exist so the architecture already supports
- * it, but nothing in the recruitment/onboarding flow may enqueue it until a
- * real Staff Account model exists (brief §2/§25).
+ * STAFF_ACCOUNT_CREATED was reserved for Stage 7 and is now enqueued by
+ * Staff Account provisioning (activation transaction + backfill) — exactly
+ * once per StaffAccount row via its dedupeKey. STAFF_LOGIN_CODE (Stage 7)
+ * is ONE-SHOT: the plaintext OTP never touches the database (see below).
  *
  * Deliberately absent: keys for page views, orientation sections, onboarding
  * steps or any other small step — those would be notification spam (§7/§8).
@@ -82,6 +82,14 @@ export interface StaffAccountCreatedPayload extends NotificationRecipient {
   staffId: string;
 }
 
+export interface StaffLoginCodePayload extends NotificationRecipient {
+  staffId: string;
+  /** The 6-digit login code. ONE-SHOT: never persisted, never logged (§10). */
+  loginCode: string;
+  /** ISO timestamp after which the code is dead. */
+  expiresAt: string;
+}
+
 /**
  * Payload contract per notification key. Templates render strictly from
  * these payloads — they never read the database themselves.
@@ -97,6 +105,23 @@ export type NotificationPayloadMap = {
   ONBOARDING_STARTED: OnboardingStartedPayload;
   ONBOARDING_COMPLETED: OnboardingCompletedPayload;
   STAFF_ACCOUNT_CREATED: StaffAccountCreatedPayload;
+  STAFF_LOGIN_CODE: StaffLoginCodePayload;
+};
+
+/**
+ * One-shot notification types (Stage 7, brief §10): their payload contains
+ * short-lived secret material (the plaintext OTP) that is deliberately NOT
+ * stored anywhere, so it can never be re-derived for a retry. They are
+ * dispatched exactly once from memory; a failed delivery is terminal for
+ * that code and the user requests a fresh one.
+ */
+export const ONE_SHOT_NOTIFICATION_TYPES: readonly NotificationTypeId[] = [
+  "STAFF_LOGIN_CODE",
+] as const;
+
+/** Per-type delivery-attempt budget overrides (§10: one attempt per OTP). */
+export const MAX_ATTEMPTS_OVERRIDES: Partial<Record<NotificationTypeId, number>> = {
+  STAFF_LOGIN_CODE: 1,
 };
 
 export type NotificationTypeId = keyof NotificationPayloadMap;

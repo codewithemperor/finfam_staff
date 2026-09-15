@@ -91,10 +91,10 @@ enum NotificationStatus {
 
 /// Stable lifecycle notification keys (brief §7). One value per meaningful
 /// state change — there is deliberately no per-page-view or per-step key.
-/// STAFF_ACCOUNT_CREATED is RESERVED for Stage 7 (Staff Portal): the type and
-/// template exist so the architecture supports it, but nothing in the
-/// recruitment/onboarding flow may trigger it until a real Staff Account
-/// model exists.
+/// STAFF_ACCOUNT_CREATED was reserved for Stage 7 and is now fired by Staff
+/// Account provisioning (activation transaction + backfill, Stage 7):
+/// exactly-once per StaffAccount row via its dedupeKey.
+/// STAFF_LOGIN_CODE (Stage 7) carries one-shot OTP semantics — see below.
 enum NotificationType {
   APPLICATION_RECEIVED
   ORIENTATION_COMPLETED
@@ -106,6 +106,22 @@ enum NotificationType {
   ONBOARDING_STARTED
   ONBOARDING_COMPLETED
   STAFF_ACCOUNT_CREATED
+
+  /// Staff Portal email-OTP login code (Stage 7). One-shot semantics: the
+  /// plaintext code exists only in memory between creation and the single
+  /// delivery attempt, so the payload can never be re-derived for a retry —
+  /// a failed delivery is terminal for that code and the user requests a
+  /// fresh one. Codes themselves are stored hashed on staff_login_codes.
+  STAFF_LOGIN_CODE
+}
+
+/// Status of a Staff Portal account (Stage 7). SUSPENDED exists so future
+/// administrative workflows can disable access without deleting the Staff
+/// identity; every auth/session check must respect it. No suspension UI
+/// exists in the MVP (docs/CONTENT-QUESTIONS.md).
+enum StaffAccountStatus {
+  ACTIVE
+  SUSPENDED
 }
 
 /// A person going through the FinFam recruitment journey.
@@ -410,7 +426,99 @@ model Staff {
   /// first valid onboarding visit; one journey per Staff record.
   onboarding StaffOnboarding?
 
+  /// Staff Portal account (Stage 7) — provisioned INSIDE the activation
+  /// transaction by the same code path the backfill uses
+  /// (src/server/services/staff-accounts.ts), so an activation can never
+  /// exist without its portal account.
+  account StaffAccount?
+
   @@map("staff")
+}
+
+/// The Staff member's authenticated Staff Portal access (Stage 7). One row
+/// per Staff record, created in the SAME transaction as the Staff row by
+/// staff activation (and idempotently by the backfill script for pre-existing
+/// Staff). The account owns login codes and portal sessions and carries the
+/// future suspension flag — nothing else:
+///
+/// - It duplicates NO identity data. Name, email, phone and appointment
+///   facts are reached through StaffAccount → Staff → Candidate; the login
+///   email IS the candidate's registered email (brief §3/§4).
+/// - It stores NO credentials. Login is email OTP (hashed codes live on
+///   StaffLoginCode); sessions are DB rows with only the token hash
+///   (StaffSession).
+/// - status = SUSPENDED blocks code requests, verification and session
+///   resolution; there is deliberately no admin UI in this stage.
+model StaffAccount {
+  id      String             @id @default(cuid())
+  /// One portal account per Staff identity.
+  staffId String             @unique
+  staff   Staff              @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  /// ACTIVE by default; SUSPENDED refuses every auth path (brief §17).
+  status  StaffAccountStatus @default(ACTIVE)
+  /// Set on each successful OTP verification.
+  lastLoginAt DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  loginCodes StaffLoginCode[]
+  sessions   StaffSession[]
+
+  @@map("staff_accounts")
+}
+
+/// One emailed email-OTP login code for a Staff Portal account (Stage 7).
+///
+/// Security properties (brief §6/§7/§10): the 6-digit code is generated with
+/// cryptographically secure randomness and stored ONLY as a sha256 hash —
+/// the plaintext lives in memory just long enough to render the one-shot
+/// notification payload and is never persisted or logged. A code is
+/// single-use (consumedAt latch), expires after 10 minutes, tolerates at
+/// most 5 failed verification attempts, and only the LATEST code of an
+/// account is ever verifiable (a newer request replaces older ones).
+/// Request-side cooldown and rate limits are enforced by the auth service
+/// from createdAt history (60s cooldown, 5 codes / 15 minutes).
+model StaffLoginCode {
+  id        String       @id @default(cuid())
+  accountId String
+  account   StaffAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// sha256 hex digest of the 6-digit code. Never the plaintext.
+  codeHash  String
+  /// After this instant the code is dead even if unused.
+  expiresAt DateTime
+  /// Single-use latch: set by the ONE verification transaction that wins.
+  consumedAt DateTime?
+  /// Failed verification attempts against this code (max 5).
+  attemptCount Int      @default(0)
+  createdAt DateTime     @default(now())
+
+  @@index([accountId, createdAt])
+  @@map("staff_login_codes")
+}
+
+/// One authenticated Staff Portal session (Stage 7). The browser holds only
+/// an opaque random token in an HttpOnly cookie; the server stores ONLY the
+/// sha256 hash of that token, so a database read can never mint a session.
+/// Sessions expire (7-day MVP default), can be revoked (logout — the DB row
+/// is revoked, not merely the cookie dropped) and resolve only for ACTIVE
+/// accounts, so a suspended Staff member loses portal access immediately.
+model StaffSession {
+  id        String       @id @default(cuid())
+  accountId String
+  account   StaffAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// sha256 hex digest of the cookie token. Unique — lookup key.
+  tokenHash String       @unique
+  createdAt DateTime     @default(now())
+  /// Hard expiry checked on every resolution (MVP: 7 days, configurable).
+  expiresAt DateTime
+  /// Logout / future suspension revokes the row — cookie deletion alone is
+  /// never trusted.
+  revokedAt DateTime?
+  /// Refreshed opportunistically by /api/staff/me.
+  lastSeenAt DateTime?
+
+  @@index([accountId])
+  @@map("staff_sessions")
 }
 
 /// Server-controlled sequence behind the FF-STF-NNNN Staff IDs. A single

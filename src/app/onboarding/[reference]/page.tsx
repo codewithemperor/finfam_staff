@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { OnboardingContinue } from "@/components/onboarding/onboarding-continue";
 import { OnboardingDecision } from "@/components/onboarding/onboarding-decision";
 import { OnboardingProgress } from "@/components/onboarding/onboarding-progress";
+import { OnboardingStepContent } from "@/components/onboarding/onboarding-step-content";
 import { JourneyNotFoundPanel } from "@/components/recruitment/journey-not-found";
 import { PageShell } from "@/components/layout/page-shell";
 import {
@@ -12,13 +13,11 @@ import {
 } from "@/components/recruitment/recruitment-progress";
 import { StatusBadge } from "@/components/recruitment/status-badge";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Alert } from "@heroui/react";
 import { CANDIDATE_STATUS_DETAILS, getStageStates } from "@/config/recruitment";
 import { ONBOARDING_STEPS } from "@/config/onboarding";
 import { AppError } from "@/lib/errors";
 import { normalizeReferenceNumber } from "@/lib/reference";
 import { getOnboardingView } from "@/server/services/onboarding";
-import type { OnboardingBlock } from "@/types/recruitment";
 
 export const metadata: Metadata = {
   title: "Staff Onboarding",
@@ -27,62 +26,15 @@ export const metadata: Metadata = {
 };
 
 /**
- * Renders onboarding content blocks as plain, readable typography — the
- * same document philosophy as the activation screen: whitespace, not
- * nested cards.
- */
-function OnboardingStepBlocks({ blocks }: { blocks: OnboardingBlock[] }) {
-  return (
-    <div className="flex flex-col">
-      {blocks.map((block, index) => {
-        switch (block.type) {
-          case "paragraph":
-            return (
-              <p
-                key={index}
-                className="mt-4 max-w-[68ch] text-[15px] leading-7 text-foreground first:mt-0"
-              >
-                {block.text}
-              </p>
-            );
-          case "list":
-            return (
-              <ul
-                key={index}
-                className="mt-4 max-w-[68ch] list-disc space-y-2.5 pl-5 text-[15px] leading-7 text-foreground first:mt-0"
-              >
-                {block.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            );
-          case "alert":
-            return (
-              <Alert
-                key={index}
-                status={block.tone}
-                className="mt-4 max-w-[68ch] first:mt-0"
-              >
-                <Alert.Indicator />
-                <Alert.Content>
-                  <Alert.Title>{block.title}</Alert.Title>
-                  <Alert.Description>{block.text}</Alert.Description>
-                </Alert.Content>
-              </Alert>
-            );
-          default:
-            return null;
-        }
-      })}
-    </div>
-  );
-}
-
-/**
  * Staff Onboarding — the home of stage 6, the FINAL stage of the FinFam
  * recruitment/onboarding MVP: the staff-side operational briefing that
  * turns Approved Staff into operationally onboarded staff. Everything is
  * decided by the server from persisted state.
+ *
+ * Stage 7: this REFERENCE door is kept working (two doors, one state) —
+ * the authenticated Staff Portal door is /staff/onboarding. Both render
+ * the same Section 7 v2.0 content through the shared OnboardingStepContent
+ * component and operate on the same StaffOnboarding rows.
  *
  * - Unknown reference → the established neutral not-found panel.
  * - Not eligible (any pre-APPROVED_STAFF stage, or no Staff record) →
@@ -259,7 +211,7 @@ export default async function OnboardingPage({
             >
               {step.title}
             </h2>
-            <OnboardingStepBlocks blocks={step.blocks} />
+            <OnboardingStepContent step={step} view={view} />
           </div>
 
           {reviewingCompletedStep ? (

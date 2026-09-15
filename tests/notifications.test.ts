@@ -24,7 +24,11 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { ASSESSMENT_META, ASSESSMENT_QUESTION_IDS } from "@/config/assessment";
 import { AGREEMENT_META } from "@/config/agreement";
 import { ACTIVATION_META } from "@/config/activation";
-import { ONBOARDING_META } from "@/config/onboarding";
+import {
+  ONBOARDING_FINAL_STEP_ID,
+  ONBOARDING_META,
+  ONBOARDING_STEP_IDS,
+} from "@/config/onboarding";
 import { ORIENTATION_SECTION_IDS } from "@/config/orientation";
 import {
   buildMailjetMessage,
@@ -380,6 +384,12 @@ describe("Notification templates", () => {
       designation: "Remote Staff",
     },
     STAFF_ACCOUNT_CREATED: { ...BASE_PAYLOAD, staffId: "FF-STF-0099" },
+    STAFF_LOGIN_CODE: {
+      ...BASE_PAYLOAD,
+      staffId: "FF-STF-0099",
+      loginCode: "482913",
+      expiresAt: "2026-09-15T12:10:00.000Z",
+    },
   } as const;
 
   it("renders subject, text and HTML for every lifecycle key", () => {
@@ -462,14 +472,42 @@ describe("Notification templates", () => {
     }
   });
 
-  it("never invents a Staff Portal link before Stage 7 exists", () => {
-    const email = renderNotificationEmail(
+  it("recruitment emails never link the Staff Portal; Stage 7 emails link /staff/login", () => {
+    // Recruitment-stage emails keep the recruitment portal as their only
+    // destination — the Staff Portal must not be reachable from them.
+    for (const type of [
+      "STAFF_ACTIVATED",
+      "ONBOARDING_STARTED",
       "ONBOARDING_COMPLETED",
-      payloadFor("ONBOARDING_COMPLETED"),
+    ] as const) {
+      const email = renderNotificationEmail(type, payloadFor(type), baseUrl);
+      expect(email.html).not.toContain("/staff/");
+      expect(email.text).not.toContain("/staff/");
+    }
+
+    // Stage 7 emails (account ready, OTP) point to the authenticated
+    // sign-in page — the approved post-revision architecture (brief §44/§9).
+    const accountEmail = renderNotificationEmail(
+      "STAFF_ACCOUNT_CREATED",
+      payloadFor("STAFF_ACCOUNT_CREATED"),
       baseUrl,
     );
-    expect(email.html).not.toContain("/staff/");
-    expect(email.text).not.toContain("/staff/");
+    expect(accountEmail.html).toContain("/staff/login");
+    expect(accountEmail.text).toContain("/staff/login");
+    expect(accountEmail.subject).toBe("Your FinFam Staff Portal is ready");
+
+    const codeEmail = renderNotificationEmail(
+      "STAFF_LOGIN_CODE",
+      payloadFor("STAFF_LOGIN_CODE"),
+      baseUrl,
+    );
+    expect(codeEmail.html).toContain("/staff/login");
+    expect(codeEmail.subject).toBe("Your FinFam Staff Portal login code");
+    // The OTP email carries the code and its expiry — and nothing secret
+    // beyond that (no password, no reusable credential).
+    expect(codeEmail.html).toContain("482913");
+    expect(codeEmail.text).toContain("482913");
+    expect(codeEmail.text).toMatch(/10 minutes/);
   });
 });
 
@@ -500,7 +538,9 @@ describe("Notification configuration and dedupe keys", () => {
   });
 
   it("pins the template registry version", () => {
-    expect(NOTIFICATION_TEMPLATE_VERSION).toBe("1.0");
+    // v2.0: Stage 7 added the STAFF_LOGIN_CODE + updated STAFF_ACCOUNT_CREATED
+    // templates (registry versions are pinned on delivery rows at enqueue).
+    expect(NOTIFICATION_TEMPLATE_VERSION).toBe("2.0");
   });
 });
 
@@ -559,7 +599,12 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
     reference = data.referenceNumber;
     candidateId = await candidateIdOf(reference);
 
-    const rows = await deliveryRows({ type: "APPLICATION_RECEIVED" });
+    // Candidate-scoped: other suites may register their own candidates
+    // concurrently, so the global table is never an assertion target.
+    const rows = await deliveryRows({
+      candidateId,
+      type: "APPLICATION_RECEIVED",
+    });
     expect(rows).toHaveLength(1);
     const row = rows[0]!;
     expect(row.candidateId).toBe(candidateId);
@@ -781,6 +826,14 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
 
     const rows = await deliveryRows({ candidateId, type: "STAFF_ACTIVATED" });
     expect(rows).toHaveLength(1);
+
+    // Stage 7: the winning activation ALSO provisioned the StaffAccount and
+    // queued exactly ONE STAFF_ACCOUNT_CREATED email (same transaction).
+    const accountRows = await deliveryRows({
+      candidateId,
+      type: "STAFF_ACCOUNT_CREATED",
+    });
+    expect(accountRows).toHaveLength(1);
   });
 
   it("onboarding start queues one email; steps queue none; completion queues one", async () => {
@@ -797,15 +850,11 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
     });
     expect(startedRows).toHaveLength(1);
 
-    // Steps 1–6: deliberately NO email per step (§7/§8).
-    for (const stepId of [
-      "welcome",
-      "communication",
-      "resources",
-      "engagement",
-      "reporting",
-      "standards",
-    ]) {
+    // Steps: deliberately NO email per step (§7/§8). v2.0 review steps are
+    // every configured step except the final "ready" acknowledgement step.
+    for (const stepId of ONBOARDING_STEP_IDS.filter(
+      (id) => id !== ONBOARDING_FINAL_STEP_ID,
+    )) {
       expectOk<OnboardingView>(
         await apiRequest("POST", `/api/onboarding/${reference}/steps`, {
           stepId,
@@ -814,7 +863,7 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
         `step ${stepId}`,
       );
       const total = await deliveryRows({ candidateId });
-      expect(total).toHaveLength(8); // 7 events so far + nothing new
+      expect(total).toHaveLength(9); // 8 events so far + nothing new
     }
 
     expectOk<OnboardingView>(
@@ -842,7 +891,7 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
     expect(completedRows).toHaveLength(1);
   });
 
-  it("the journey end-state has exactly the nine lifecycle emails — and no STAFF_ACCOUNT_CREATED", async () => {
+  it("the journey end-state has exactly the ten lifecycle emails — STAFF_ACCOUNT_CREATED exactly once", async () => {
     const journey = expectOk<RecruitmentJourneyView>(
       await apiRequest("GET", `/api/journey/${reference}`),
       200,
@@ -852,7 +901,7 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
     expect(journey.onboarding?.state).toBe("COMPLETED");
 
     const rows = await deliveryRows({ candidateId });
-    expect(rows).toHaveLength(9);
+    expect(rows).toHaveLength(10);
     const types = rows.map((row) => row.type).sort();
     const expectedTypes: NotificationType[] = [
       "AGREEMENT_ACCEPTED",
@@ -864,10 +913,13 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
       "ONBOARDING_STARTED",
       "ORIENTATION_COMPLETED",
       "STAFF_ACTIVATED",
+      "STAFF_ACCOUNT_CREATED",
     ].sort() as NotificationType[];
     expect(types).toEqual(expectedTypes);
-    // The reserved Stage 7 type must never fire during recruitment.
-    expect(types).not.toContain("STAFF_ACCOUNT_CREATED");
+    // Stage 7: the account-created email fired exactly once, at activation.
+    expect(
+      rows.filter((row) => row.type === "STAFF_ACCOUNT_CREATED"),
+    ).toHaveLength(1);
     // Everything stayed PENDING: the dev server has notifications disabled.
     for (const row of rows) {
       expect(row.status).toBe("PENDING");

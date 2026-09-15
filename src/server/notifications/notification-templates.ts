@@ -24,7 +24,7 @@ import {
  */
 
 /** Version stored on every NotificationDelivery row at enqueue time. */
-export const NOTIFICATION_TEMPLATE_VERSION = "1.0";
+export const NOTIFICATION_TEMPLATE_VERSION = "2.0";
 
 /** FinFam accent green — single source: src/app/globals.css --accent. */
 const ACCENT = "#0c7a43";
@@ -297,19 +297,36 @@ const RENDERERS: NotificationRenderers = {
     }),
 
   STAFF_ACCOUNT_CREATED: (payload, { baseUrl, name }) =>
-    // RESERVED for Stage 7 (Staff Portal Foundation). Nothing in the
-    // recruitment/onboarding flow enqueues this type today (brief §2/§25);
-    // the template exists so the architecture already supports it. The
-    // wording will be finalised with the Stage 7 account model — it must
-    // never imply credentials it does not carry (no passwords, no secrets).
+    // Stage 7 (approved): portal access is ready. Focused ONLY on the
+    // portal + how to sign in (brief §45) — recruitment results and the
+    // Staff ID assignment stay in the STAFF_ACTIVATED email. Login uses a
+    // secure email code; no password or reusable credential ever exists.
     render({
-      subject: "Your FinFam Staff Portal account",
-      heading: `${name}, your Staff Portal account has been created.`,
+      subject: "Your FinFam Staff Portal is ready",
+      heading: `${name}, your FinFam Staff Portal is ready.`,
       paragraphs: [
-        "A secure account has been created for your FinFam staff profile, giving you access to the Staff Portal.",
-        "Follow the secure link below to sign in. FinFam will never send you a password by email.",
+        "Your Staff Portal account has been created, giving you secure access to the FinFam Staff Portal.",
+        "Signing in uses a secure login code sent to this email address — there is no password. Once signed in, you can complete your onboarding and resumption instructions inside the portal.",
       ],
       callout: { label: "Staff ID", value: payload.staffId },
+      link: { label: "Open the Staff Portal", path: "/staff/login" },
+      baseUrl,
+      referenceNumber: payload.referenceNumber,
+    }),
+
+  STAFF_LOGIN_CODE: (payload, { baseUrl, name }) =>
+    // Stage 7 OTP email (brief §9): ONLY FinFam context, the six-digit
+    // code, expiry information and a security note. No financial data, no
+    // documents, no credentials, no links besides the neutral sign-in page.
+    render({
+      subject: "Your FinFam Staff Portal login code",
+      heading: `${name}, your FinFam login code.`,
+      paragraphs: [
+        "Enter this code on the FinFam Staff Portal sign-in page to continue.",
+        "This code expires 10 minutes after it was sent and can be used once. If you did not request it, you can safely ignore this email — no one can sign in without it.",
+      ],
+      callout: { label: "Login code", value: payload.loginCode },
+      link: { label: "Open the Staff Portal sign-in", path: "/staff/login" },
       baseUrl,
       referenceNumber: payload.referenceNumber,
     }),

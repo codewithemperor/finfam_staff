@@ -359,11 +359,16 @@ export interface ActivationView {
  * One content block of an onboarding step — the same plain-document
  * philosophy as the activation blocks: readable typography, not cards.
  * Content lives in src/config/onboarding.ts; nothing here is secret.
+ * (Stage 7 v2.0 adds `facts` for label/value pairs such as the appointment
+ * designation vs operational role split, and `tagline` for the restrained
+ * closing typography.)
  */
 export type OnboardingBlock =
   | { type: "paragraph"; text: string }
   | { type: "list"; items: string[] }
-  | { type: "alert"; tone: "accent" | "warning"; title: string; text: string };
+  | { type: "alert"; tone: "accent" | "warning"; title: string; text: string }
+  | { type: "facts"; items: { label: string; value: string }[] }
+  | { type: "tagline"; lines: string[] };
 
 export interface OnboardingStep {
   /** Stable step id — persisted in staff_onboarding_steps; never reorder casually. */
@@ -414,10 +419,24 @@ export interface OnboardingRecordView {
 }
 
 /**
- * Onboarding-stage view returned by GET /api/onboarding/[reference],
- * POST .../steps and POST .../complete. `eligible` is true only for an
- * APPROVED_STAFF candidate whose Staff record exists; `staff` and
- * `onboarding` are null otherwise.
+ * Server-derived verification data for the "Staff Verification" step
+ * (Stage 7, brief §31/§38). `systemChecks` are derived from ACTUAL
+ * persisted records — the client renders them as verified; it can never
+ * manufacture a check. `externalActions` are real-world steps the portal
+ * cannot truthfully verify (WhatsApp contact, group access) and are always
+ * labelled "External onboarding action" — never auto-ticked.
+ */
+export interface OnboardingVerificationView {
+  systemChecks: { id: string; label: string; detail: string }[];
+  externalActions: { id: string; label: string; detail: string }[];
+}
+
+/**
+ * Onboarding-stage view returned by GET /api/onboarding/[reference] and
+ * (Stage 7) the authenticated GET /api/staff/onboarding, POST .../steps and
+ * POST .../complete. `eligible` is true only for an APPROVED_STAFF
+ * candidate whose Staff record exists; `staff`, `onboarding` and
+ * `verification` are null otherwise.
  */
 export interface OnboardingView {
   referenceNumber: string;
@@ -426,6 +445,7 @@ export interface OnboardingView {
   eligible: boolean;
   staff: StaffRecordView | null;
   onboarding: OnboardingRecordView | null;
+  verification: OnboardingVerificationView | null;
   content: OnboardingContent;
 }
 

@@ -17,6 +17,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 import { ASSESSMENT_META, ASSESSMENT_QUESTION_IDS } from "@/config/assessment";
+import { ONBOARDING_META } from "@/config/onboarding";
 import { ORIENTATION_SECTION_IDS } from "@/config/orientation";
 import { loadAnswerKey } from "./helpers/answer-key";
 import {
@@ -241,7 +242,7 @@ describe("Staff-side boundaries are enforced from the wrong side", () => {
     expectFail(
       await apiRequest("POST", `/api/onboarding/${reference}/complete`, {
         acknowledgement: true,
-        version: "1.0",
+        version: ONBOARDING_META.version,
       }),
       409,
       "CONFLICT",

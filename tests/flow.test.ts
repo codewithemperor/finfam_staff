@@ -22,10 +22,12 @@ import { ACTIVATION_META } from "@/config/activation";
 import { AGREEMENT_META } from "@/config/agreement";
 import { ASSESSMENT_META, ASSESSMENT_QUESTION_IDS } from "@/config/assessment";
 import {
+  ONBOARDING_FINAL_STEP_ID,
   ONBOARDING_META,
   ONBOARDING_STEP_IDS,
 } from "@/config/onboarding";
 import { ORIENTATION_SECTION_IDS } from "@/config/orientation";
+
 import { loadAnswerKey } from "./helpers/answer-key";
 import {
   apiRequest,
@@ -34,7 +36,12 @@ import {
   expectOk,
   REFERENCE_PATTERN,
 } from "./helpers/api";
+
 import { cleanupTestCandidates, db, uniqueEmail } from "./helpers/db";
+
+const ONBOARDING_REVIEW_STEPS = ONBOARDING_STEP_IDS.filter(
+  (id) => id !== ONBOARDING_FINAL_STEP_ID,
+);
 
 import type {
   ActivationView,
@@ -462,7 +469,7 @@ describe("Stage 5 — Staff Activation", () => {
 });
 
 describe("Stage 6 — Staff Onboarding", () => {
-  it("journey shows the onboarding card (NOT_STARTED 0/7) and no next action", async () => {
+  it("journey shows the onboarding card (NOT_STARTED 0/8) and no next action", async () => {
     const data = expectOk<RecruitmentJourneyView>(
       await apiRequest("GET", `/api/journey/${reference}`),
       200,
@@ -474,7 +481,7 @@ describe("Stage 6 — Staff Onboarding", () => {
     expect(data.staffRecord?.staffId).toMatch(/^FF-STF-\d{4,}$/);
     expect(data.onboarding?.state).toBe("NOT_STARTED");
     expect(data.onboarding?.completedSteps).toBe(0);
-    expect(data.onboarding?.totalSteps).toBe(7);
+    expect(data.onboarding?.totalSteps).toBe(ONBOARDING_STEP_IDS.length);
     expect(data.stages.every((stage) => stage.state === "completed")).toBe(true);
   });
 
@@ -489,9 +496,14 @@ describe("Stage 6 — Staff Onboarding", () => {
     expect(data.onboarding?.state).toBe("IN_PROGRESS");
     expect(data.onboarding?.currentStepId).toBe(ONBOARDING_STEP_IDS[0]);
     expect(data.onboarding?.steps).toHaveLength(0);
-    expect(data.content.steps).toHaveLength(7);
-    // Approved Stage 6 default: the official WhatsApp number is not supplied.
+    expect(data.content.steps).toHaveLength(ONBOARDING_STEP_IDS.length);
+    expect(data.content.version).toBe(ONBOARDING_META.version);
+    // Approved default (§33, still open): the official WhatsApp number is
+    // not supplied — honest pending state, never a fabricated contact.
     expect(data.content.whatsappNumber).toBeNull();
+    expect(data.content.whatsappMessage).toBe(
+      "Hello, I have received my FinFam Provisional Letter of Appointment and I am ready for onboarding.",
+    );
   });
 
   it("re-opening does not duplicate the record or complete anything", async () => {
@@ -561,8 +573,8 @@ describe("Stage 6 — Staff Onboarding", () => {
     );
   });
 
-  it("completes review steps 1–6 in order; resume pointer follows", async () => {
-    const reviewSteps = ONBOARDING_STEP_IDS.slice(0, 6);
+  it("completes the review steps (all but the final acknowledgement step) in order; resume pointer follows", async () => {
+    const reviewSteps = ONBOARDING_REVIEW_STEPS;
     for (let index = 0; index < reviewSteps.length; index += 1) {
       const stepId = reviewSteps[index];
       const data = expectOk<OnboardingView>(
@@ -586,7 +598,7 @@ describe("Stage 6 — Staff Onboarding", () => {
       200,
       "duplicate onboarding step",
     );
-    expect(data.onboarding?.steps).toHaveLength(6);
+    expect(data.onboarding?.steps).toHaveLength(ONBOARDING_REVIEW_STEPS.length);
   });
 
   it("completes onboarding exactly once (final step recorded by the acknowledgement)", async () => {
@@ -637,7 +649,7 @@ describe("Stage 6 — Staff Onboarding", () => {
     );
   });
 
-  it("journey shows the completed onboarding card (7/7) with no CTA", async () => {
+  it("journey shows the completed onboarding card (8/8) with no CTA", async () => {
     const data = expectOk<RecruitmentJourneyView>(
       await apiRequest("GET", `/api/journey/${reference}`),
       200,
@@ -646,8 +658,8 @@ describe("Stage 6 — Staff Onboarding", () => {
     expect(data.status).toBe("APPROVED_STAFF");
     expect(data.nextAction).toBeNull();
     expect(data.onboarding?.state).toBe("COMPLETED");
-    expect(data.onboarding?.completedSteps).toBe(7);
-    expect(data.onboarding?.totalSteps).toBe(7);
+    expect(data.onboarding?.completedSteps).toBe(ONBOARDING_STEP_IDS.length);
+    expect(data.onboarding?.totalSteps).toBe(ONBOARDING_STEP_IDS.length);
     expect(data.onboarding?.completedAt).not.toBeNull();
   });
 });

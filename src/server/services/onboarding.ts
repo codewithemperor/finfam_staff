@@ -23,6 +23,7 @@ import type {
   OnboardingCompletedStep,
   OnboardingRecordView,
   OnboardingStateId,
+  OnboardingVerificationView,
   OnboardingView,
   StaffRecordView,
 } from "@/types/recruitment";
@@ -56,12 +57,13 @@ import type {
  *   idempotent). `currentStepId` (the resume point) is derived on write —
  *   never trusted from the client.
  * - Completion: explicit, server-validated, exactly once. Requires the
- *   StaffOnboarding record, ALL review steps (1–6) completed per
+ *   StaffOnboarding record, ALL review steps (all but the final one)
+ *   completed per
  *   persistence, the literal acknowledgement and the current content
  *   version. The final "ready" step is recorded by the completion itself —
  *   its review IS the acknowledgement — in the same transaction as the
- *   completedAt latch, so the persisted audit trail always holds all seven
- *   step rows plus ONE completion timestamp. The exactly-once latch is a
+ *   completedAt latch, so the persisted audit trail always holds every
+ *   configured step row plus ONE completion timestamp. The exactly-once latch is a
  *   conditional update on `completedAt = null` — repeated or concurrent
  *   completions produce ONE timestamp, and losers re-read the winner's
  *   state. Completion re-pins the version so the row records which set of
@@ -76,6 +78,18 @@ const NOT_FOUND_MESSAGE =
   "We couldn't find an application with that reference number. Check the number and try again, or contact us if you have lost it.";
 
 const ELIGIBLE_STATUS = "APPROVED_STAFF";
+
+/**
+ * The official onboarding WhatsApp number (Stage 7, brief §28). The env
+ * override wins so the business can configure it without a code change;
+ * null (not supplied) keeps the honest pending copy. Read server-side only
+ * — never in client bundles.
+ */
+function getOnboardingWhatsappNumber(): string | null {
+  const fromEnv = process.env.ONBOARDING_WHATSAPP_NUMBER?.trim() ?? "";
+  if (fromEnv.length > 0) return fromEnv.replace(/[^0-9]/g, "") || null;
+  return ONBOARDING_WHATSAPP.number;
+}
 
 type OnboardingStepRelation = { stepId: string; completedAt: Date };
 
@@ -202,6 +216,53 @@ function toStaffView(staff: StaffRelation): StaffRecordView {
   };
 }
 
+function toVerificationView(
+  candidate: CandidateWithOnboarding,
+  staff: StaffRelation,
+): OnboardingVerificationView {
+  // System checks are derived from ACTUAL persisted records (§31): the
+  // client renders them as verified but can never manufacture one.
+  const systemChecks = [
+    {
+      id: "identity-record",
+      label: "Identity record",
+      detail: candidate.fullName,
+    },
+    {
+      id: "appointment-issued",
+      label: "Appointment issued",
+      detail: staff.appointmentReference,
+    },
+    {
+      id: "staff-id-assigned",
+      label: "Staff ID assigned",
+      detail: staff.staffId,
+    },
+    {
+      id: "staff-profile-active",
+      label: "Staff profile active",
+      detail: staff.roleTitle,
+    },
+  ];
+
+  // External actions are real-world steps this portal cannot truthfully
+  // verify (§14/§30) — they are never auto-ticked by any UI.
+  const externalActions = [
+    {
+      id: "contact-onboarding-team",
+      label: "Contact onboarding team",
+      detail: "WhatsApp contact with the designated FinFam onboarding team.",
+    },
+    {
+      id: "communication-group-access",
+      label: "Communication-group access",
+      detail: "Access to the FinFam Staff Communication Group, granted by the onboarding team.",
+    },
+  ];
+
+  return { systemChecks, externalActions };
+}
+
 function toView(
   candidate: CandidateWithOnboarding,
   staff: StaffRelation | null,
@@ -213,10 +274,11 @@ function toView(
     eligible: staff != null,
     staff: staff ? toStaffView(staff) : null,
     onboarding: staff?.onboarding ? toRecordView(staff.onboarding) : null,
+    verification: staff ? toVerificationView(candidate, staff) : null,
     content: {
       version: ONBOARDING_META.version,
       acknowledgementLabel: ONBOARDING_ACKNOWLEDGEMENT_LABEL,
-      whatsappNumber: ONBOARDING_WHATSAPP.number,
+      whatsappNumber: getOnboardingWhatsappNumber(),
       whatsappMessage: ONBOARDING_WHATSAPP.message,
       steps: ONBOARDING_STEPS,
     },
@@ -307,16 +369,35 @@ async function ensureOnboardingRecord(
 }
 
 /**
- * Read the onboarding stage. For eligible staff this lazily creates the
- * onboarding record on first open (idempotent, race-safe) and returns the
- * full view; for everyone else it returns an honest eligible:false view
- * with no record — reading never writes onboarding progress.
+ * Read the onboarding stage by RECRUITMENT REFERENCE (legacy door — kept
+ * working during Stage 7, brief §25). For eligible staff this lazily
+ * creates the onboarding record on first open (idempotent, race-safe) and
+ * returns the full view; for everyone else it returns an honest
+ * eligible:false view with no record — reading never writes progress.
  */
 export async function getOnboardingView(
   reference: string,
 ): Promise<OnboardingView> {
-  const candidate = await loadCandidate(reference);
+  return getOnboardingViewForCandidate(await loadCandidate(reference));
+}
 
+/**
+ * Read the onboarding stage by Staff ROW ID (authenticated Staff Portal
+ * door — Stage 7). EXACTLY the same core, rules and one StaffOnboarding
+ * state as the reference door (brief §23/§24): completing a step through
+ * either is immediately visible through the other.
+ */
+export async function getOnboardingViewForStaff(
+  staffRowId: string,
+): Promise<OnboardingView> {
+  return getOnboardingViewForCandidate(
+    await loadCandidateByStaffRowId(staffRowId),
+  );
+}
+
+async function getOnboardingViewForCandidate(
+  candidate: CandidateWithOnboarding,
+): Promise<OnboardingView> {
   // Defensive integrity check: an APPROVED_STAFF candidate always has a
   // Staff row by construction (activation creates both in one transaction).
   // Refuse loudly rather than guess if the invariant is ever broken.
@@ -349,17 +430,40 @@ export async function getOnboardingView(
 }
 
 /**
- * Complete one onboarding step — an explicit, server-validated action
- * ("I have reviewed this onboarding section"). Enforces sequential order,
- * exactly-once persistence (unique constraint backstop) and the resume
- * pointer. Idempotent for safe double submits; a completed step after final
- * completion is refused (409).
+ * Complete one onboarding step by RECRUITMENT REFERENCE (legacy door).
+ * See the staff-keyed variant — both share one core.
  */
 export async function completeOnboardingStep(
   reference: string,
   input: OnboardingStepInput,
 ): Promise<OnboardingView> {
-  const candidate = await loadCandidate(reference);
+  return completeOnboardingStepForCandidate(
+    await loadCandidate(reference),
+    input,
+  );
+}
+
+/**
+ * Complete one onboarding step by Staff ROW ID (authenticated door).
+ * An explicit, server-validated action ("I have reviewed this onboarding
+ * section"): sequential order, exactly-once persistence (unique constraint
+ * backstop), the resume pointer — idempotent for safe double submits; a
+ * completed step after final completion is refused (409).
+ */
+export async function completeOnboardingStepForStaff(
+  staffRowId: string,
+  input: OnboardingStepInput,
+): Promise<OnboardingView> {
+  return completeOnboardingStepForCandidate(
+    await loadCandidateByStaffRowId(staffRowId),
+    input,
+  );
+}
+
+async function completeOnboardingStepForCandidate(
+  candidate: CandidateWithOnboarding,
+  input: OnboardingStepInput,
+): Promise<OnboardingView> {
   const staff = eligibleStaffOf(candidate);
 
   // Server-enforced eligibility: onboarding writes are refused for every
@@ -437,24 +541,46 @@ export async function completeOnboardingStep(
     });
   });
 
-  return getOnboardingView(reference);
+  // Reload FRESH from the database: the candidate object above predates the
+  // transaction, and the view must reflect the persisted step that was just
+  // written (a stale in-memory re-render would show the old resume point).
+  return getOnboardingViewForCandidate(
+    await loadCandidateByCandidateId(candidate.id),
+  );
 }
 
 /**
- * Complete onboarding — the explicit, auditable end of stage 6. Requires
- * the onboarding record, ALL seven steps completed per server persistence,
- * the literal acknowledgement and the current content version (the schema
- * enforces both before this runs). The exactly-once latch is the
- * conditional update on `completedAt = null` inside the transaction:
- * repeated or concurrent completions produce ONE completion timestamp and
- * the persisted record is returned — never a duplicate. No CandidateStatus
- * change, no StageEvent, no other table is touched.
+ * Complete onboarding by RECRUITMENT REFERENCE (legacy door). See the
+ * staff-keyed variant — both share one core and one completion latch.
  */
 export async function completeOnboarding(
   reference: string,
   input: OnboardingCompleteInput,
 ): Promise<OnboardingView> {
-  const candidate = await loadCandidate(reference);
+  return completeOnboardingForCandidate(
+    await loadCandidate(reference),
+    input,
+  );
+}
+
+/**
+ * Complete onboarding by Staff ROW ID (authenticated door) — the explicit,
+ * auditable end of the onboarding/resumption experience.
+ */
+export async function completeOnboardingForStaff(
+  staffRowId: string,
+  input: OnboardingCompleteInput,
+): Promise<OnboardingView> {
+  return completeOnboardingForCandidate(
+    await loadCandidateByStaffRowId(staffRowId),
+    input,
+  );
+}
+
+async function completeOnboardingForCandidate(
+  candidate: CandidateWithOnboarding,
+  input: OnboardingCompleteInput,
+): Promise<OnboardingView> {
   const staff = eligibleStaffOf(candidate);
 
   // Server-enforced eligibility (same rule as every onboarding write).
@@ -488,7 +614,8 @@ export async function completeOnboarding(
       recipientEmail: candidate.email,
     }));
 
-  // The review steps (1–6) must all be completed; the final "ready" step is
+  // All review steps (everything except the final "ready" step) must be
+  // completed; the final step is
   // recorded by the acknowledgement itself (below), never by "Continue".
   const completedIds = new Set(onboarding.steps.map((s) => s.stepId));
   const missingStep = ONBOARDING_STEPS.filter(
@@ -566,7 +693,52 @@ export async function completeOnboarding(
     dispatchNotification(deliveryId);
   }
 
-  // Whether this request performed the completion or lost a benign race,
-  // the authoritative view is read back from persisted state (idempotent).
-  return getOnboardingView(reference);
+  // Reload FRESH from the database — whether this request performed the
+  // completion or lost a benign race, the authoritative persisted state is
+  // returned (the in-memory candidate predates the completion transaction).
+  return getOnboardingViewForCandidate(
+    await loadCandidateByCandidateId(candidate.id),
+  );
+}
+
+/** Load by candidate id — fresh re-read after a write transaction. */
+async function loadCandidateByCandidateId(
+  candidateId: string,
+): Promise<CandidateWithOnboarding> {
+  const candidate = await db.candidate.findUnique({
+    where: { id: candidateId },
+    select: CANDIDATE_SELECT,
+  });
+  if (!candidate) {
+    throw new AppError(
+      "INTERNAL",
+      "Your onboarding could not be opened. Please try again.",
+      { status: 500 },
+    );
+  }
+  return candidate as CandidateWithOnboarding;
+}
+
+/**
+ * Load the onboarding candidate by Staff ROW id (authenticated door). The
+ * session chain guarantees the Staff row existed moments ago; a missing row
+ * here is an impossible state — refuse loudly rather than guess.
+ */
+async function loadCandidateByStaffRowId(
+  staffRowId: string,
+): Promise<CandidateWithOnboarding> {
+  const row = await db.staff.findUnique({
+    where: { id: staffRowId },
+    select: { candidate: { select: CANDIDATE_SELECT } },
+  });
+
+  if (!row) {
+    throw new AppError(
+      "INTERNAL",
+      "Your onboarding could not be opened. Please sign in again.",
+      { status: 500 },
+    );
+  }
+
+  return row.candidate as CandidateWithOnboarding;
 }

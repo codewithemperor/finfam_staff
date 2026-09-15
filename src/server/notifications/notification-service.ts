@@ -10,6 +10,7 @@ import {
   type NotificationPayloadMap,
   type NotificationTypeId,
   type NotificationRuntimeConfig,
+  MAX_ATTEMPTS_OVERRIDES,
   entityIdFromDedupeKey,
   getNotificationConfig,
   isDeliveryActive,
@@ -53,6 +54,16 @@ export interface EnqueuedNotification {
   dedupeKey: string;
   /** True when a row with this dedupeKey already existed (idempotent skip). */
   alreadyQueued: boolean;
+}
+
+export interface EnqueueOneShotNotificationInput extends EnqueueNotificationInput {
+  /**
+   * The typed payload for a ONE-SHOT type (Stage 7 OTP — brief §10). It is
+   * used from memory by the single post-commit dispatch and is NEVER
+   * persisted; a crashed/failed one-shot delivery is terminal for that
+   * notification (the user requests a fresh one).
+   */
+  payload: NotificationPayloadMap[NotificationTypeId];
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -105,13 +116,34 @@ export async function enqueueNotification(
 }
 
 /**
+ * Queue a ONE-SHOT notification (Stage 7 OTP — brief §10). Same exactly-once
+ * queueing as `enqueueNotification`; the caller receives the payload back so
+ * it can hand it to `dispatchNotification` AFTER the commit. The payload is
+ * held only in memory — it is never persisted, never logged, and a failed
+ * delivery is terminal for this notification.
+ */
+export async function enqueueOneShotNotification(
+  client: Prisma.TransactionClient,
+  input: EnqueueOneShotNotificationInput,
+): Promise<EnqueuedNotification & { payload: NotificationPayloadMap[NotificationTypeId] }> {
+  const enqueued = await enqueueNotification(client, input);
+  return { ...enqueued, payload: input.payload };
+}
+
+/**
  * Fire-and-forget post-commit delivery. Call this AFTER the business
  * transaction has committed with the deliveryId captured inside the
  * transaction. It never throws and never blocks the business response —
  * an email failure must not surface as a recruitment failure (§12/§14).
+ *
+ * For ONE-SHOT types (Stage 7 OTP) pass the in-memory payload captured at
+ * enqueue time; without it such a row can never be rendered (by design).
  */
-export function dispatchNotification(deliveryId: string): void {
-  void sendNotification(deliveryId).catch((error: unknown) => {
+export function dispatchNotification(
+  deliveryId: string,
+  payloadOverride?: NotificationPayloadMap[NotificationTypeId],
+): void {
+  void sendNotification(deliveryId, payloadOverride).catch((error: unknown) => {
     console.error("[notifications] dispatch crashed", {
       deliveryId,
       error: error instanceof Error ? error.message : String(error),
@@ -120,6 +152,14 @@ export function dispatchNotification(deliveryId: string): void {
 }
 
 export type DeliveryOutcome = "SENT" | "FAILED" | "SKIPPED" | "SUPPRESSED";
+
+/** Delivery-attempt budget for one notification type (§10 OTP override). */
+function maxAttemptsFor(
+  type: NotificationType,
+  config: NotificationRuntimeConfig,
+): number {
+  return MAX_ATTEMPTS_OVERRIDES[type] ?? config.maxAttempts;
+}
 
 /**
  * Attempt delivery of ONE queued notification. Safe to call repeatedly:
@@ -131,6 +171,7 @@ export type DeliveryOutcome = "SENT" | "FAILED" | "SKIPPED" | "SUPPRESSED";
  */
 export async function sendNotification(
   deliveryId: string,
+  payloadOverride?: NotificationPayloadMap[NotificationTypeId],
 ): Promise<DeliveryOutcome> {
   const config = getNotificationConfig();
 
@@ -149,7 +190,8 @@ export async function sendNotification(
   if (!row || row.status === "SENT") {
     return "SKIPPED";
   }
-  if (row.attemptCount >= config.maxAttempts) {
+  const budget = maxAttemptsFor(row.type, config);
+  if (row.attemptCount >= budget) {
     console.log("[notifications] attempt budget exhausted", {
       deliveryId,
       type: row.type,
@@ -174,7 +216,10 @@ export async function sendNotification(
   const attemptNumber = row.attemptCount + 1;
 
   try {
-    const payload = await deriveNotificationPayload(row.type, row.dedupeKey);
+    // One-shot payloads arrive from memory (never stored); everything else
+    // is re-derived from immutable snapshot rows so retries stay faithful.
+    const payload =
+      payloadOverride ?? (await deriveNotificationPayload(row.type, row.dedupeKey));
     if (!payload) {
       await markFailed(
         deliveryId,
@@ -486,10 +531,35 @@ async function deriveNotificationPayload(
       };
     }
 
-    case "STAFF_ACCOUNT_CREATED":
-      // RESERVED for Stage 7: there is no StaffAccount model yet, so no
-      // payload can be derived. Nothing enqueues this type during the
-      // recruitment/onboarding MVP (brief §2/§25).
+    case "STAFF_ACCOUNT_CREATED": {
+      // Stage 7: the entity id is the StaffAccount row. Accounts own no
+      // snapshot data — identity is reached through Staff → Candidate.
+      const account = await db.staffAccount.findUnique({
+        where: { id: entityId },
+        select: {
+          staff: {
+            select: {
+              staffId: true,
+              candidate: { select: PAYLOAD_CANDIDATE_SELECT },
+            },
+          },
+        },
+      });
+      if (!account) return null;
+      return {
+        candidateId: account.staff.candidate.id,
+        candidateName: account.staff.candidate.fullName,
+        recipientEmail: account.staff.candidate.email,
+        referenceNumber: account.staff.candidate.referenceNumber,
+        staffId: account.staff.staffId,
+      };
+    }
+
+    case "STAFF_LOGIN_CODE":
+      // ONE-SHOT (Stage 7, brief §10): the plaintext OTP is deliberately
+      // never persisted, so a queued row can never be re-derived. Rows of
+      // this type are dispatched once from memory by the auth service; a
+      // lost/failed delivery stays dead and the user requests a new code.
       return null;
   }
 }

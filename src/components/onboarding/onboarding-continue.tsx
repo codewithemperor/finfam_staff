@@ -22,10 +22,17 @@ export function OnboardingContinue({
   reference,
   stepId,
   stepTitle,
+  /**
+   * POST endpoint that records the step. Legacy reference door (default):
+   * /api/onboarding/[reference]/steps. Authenticated Staff Portal door:
+   * /api/staff/onboarding/steps. Both write the ONE onboarding state.
+   */
+  endpoint,
 }: {
   reference: string;
   stepId: string;
   stepTitle: string;
+  endpoint?: string;
 }) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -37,10 +44,13 @@ export function OnboardingContinue({
     setSubmitting(true);
 
     try {
-      await apiFetch<OnboardingView>(`/api/onboarding/${reference}/steps`, {
-        method: "POST",
-        body: JSON.stringify({ stepId }),
-      });
+      await apiFetch<OnboardingView>(
+        endpoint ?? `/api/onboarding/${reference}/steps`,
+        {
+          method: "POST",
+          body: JSON.stringify({ stepId }),
+        },
+      );
       // The server advanced the resume point — re-render at the next step.
       router.refresh();
     } catch (error) {

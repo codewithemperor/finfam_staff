@@ -33,10 +33,14 @@ export async function apiRequest<T = unknown>(
   method: "GET" | "POST",
   path: string,
   body?: unknown,
+  cookie?: string,
 ): Promise<ApiResult<T>> {
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    headers: {
+      ...(body === undefined ? {} : { "content-type": "application/json" }),
+      ...(cookie === undefined ? {} : { cookie }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(20_000),
   });

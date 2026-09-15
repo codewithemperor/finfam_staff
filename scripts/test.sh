@@ -11,4 +11,6 @@ set -a
 # shellcheck disable=SC1091
 source .env
 set +a
-exec bun test --conditions react-server "$@"
+# 30s per-test default: journey-driving tests make many real HTTP calls
+# against the dev server; the 5s bun default is too tight for them.
+exec bun test --conditions react-server --timeout 30000 "$@"
