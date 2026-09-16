@@ -36,7 +36,14 @@ function countField(label: string) {
 /**
  * The nine daily metrics, built from the config category table so the
  * validated fields and the rendered form can never drift apart.
+ * (Object.fromEntries widens the keys, so the shape is cast to the exact
+ * metric shape below — and the test suite asserts
+ * schema keys === DAILY_REPORT_METRIC_NAMES === DailyReportDraftInput.)
  */
+type MetricShape = {
+  [K in Exclude<keyof DailyReportDraftInput, "activitySummary">]: z.ZodNumber;
+};
+
 const metricShape = Object.fromEntries(
   DAILY_REPORT_CATEGORIES.flatMap((category) =>
     category.fields.map((field) => [
@@ -44,7 +51,7 @@ const metricShape = Object.fromEntries(
       countField(field.label),
     ]),
   ),
-) as Record<(typeof DAILY_REPORT_METRIC_NAMES)[number], z.ZodNumber>;
+) as MetricShape;
 
 /** Body of PATCH /api/staff/reports/[id] — a full draft save. */
 export const dailyReportDraftSchema = z.object({
@@ -64,7 +71,19 @@ export const dailyReportDraftSchema = z.object({
     }),
 });
 
-export type DailyReportDraftInput = z.infer<typeof dailyReportDraftSchema>;
+/** The exact approved metric names — pinned explicitly (see note above). */
+export type DailyReportDraftInput = {
+  individualsContacted: number;
+  groupsApproached: number;
+  followUpActivities: number;
+  newRegistrations: number;
+  establishedMembersCreated: number;
+  firstDepositsAchieved: number;
+  savingsGoalsActivated: number;
+  memberEngagement: number;
+  connectionsBuilt: number;
+  activitySummary: string | null;
+};
 
 /** Body of POST /api/staff/reports — create-or-get, optional date. */
 export const createReportSchema = z.object({

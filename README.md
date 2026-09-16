@@ -528,6 +528,66 @@ The script uses the SAME `provisionStaffAccount()` core as live activation;
 reruns are no-ops (unique FK + exactly-once notification dedupeKey). The
 production run is a deployment step.
 
+## Daily Reporting & Accountability (Stage 8)
+
+The one ongoing operational module of the Staff Platform: each Staff member
+self-reports the day's activity — **one report per Staff member per
+Africa/Lagos calendar date** — across the four categories taught by the
+onboarding "accountability" step (Prospects / Member Growth / Savings
+Activities / Community Activities; nine integer counts + an optional
+plain-text summary).
+
+### Rules (all server-enforced in `src/server/services/daily-reports.ts`)
+
+- **Eligibility** — ACTIVE session + APPROVED_STAFF + onboarding COMPLETED.
+  Anyone else gets `403 FORBIDDEN` (a new API error code, distinct from
+  401, so an onboarding gate is never misrouted to the login screen).
+- **Dates** — `reportDate` is the Africa/Lagos calendar date the work
+  occurred (`src/lib/dates/lagos.ts` is the single fixed-offset +01:00
+  conversion point — Lagos has no DST, so there is zero timezone
+  dependency). `submittedAt` is the server instant of finalisation.
+  Future dates are rejected; backdating is bounded by
+  `DAILY_REPORT_BACKDATE_LIMIT_DAYS` (default 7). There is deliberately
+  **no clock deadline** and no reminder notification.
+- **Lifecycle** — `DRAFT → SUBMITTED`, one way. Creation is race-safe
+  create-or-get (`@@unique([staffId, reportDate])`; the P2002 loser
+  re-reads the winner), so two tabs can never produce two reports for a
+  date. Submission is a conditional `updateMany` latch — exactly one
+  `submittedAt` under concurrency; every repeat returns the same final
+  state. Submitted reports are **permanently read-only** (`409` on edit);
+  drafts are never deleted in the MVP (revise instead).
+- **Validation** — counts are integers 0–999, **never silently clamped**;
+  the summary is optional trimmed plain text ≤ 1000 chars; an all-zero
+  report is valid. Every report row pins `version = "1.0"`
+  (`DAILY_REPORT_META`) so later field evolution can't re-mean history.
+- **Receipt** — submitting queues ONE `DAILY_REPORT_SUBMITTED` email
+  inside the winning transaction (dedupeKey
+  `DAILY_REPORT_SUBMITTED:<reportId>` — exactly once) and dispatches it
+  only after commit; a Mailjet failure can never disturb the submission.
+  The receipt contains the report date + received time + portal link —
+  **no metrics digest**.
+- **Boundary** — the data is STAFF SELF-REPORTED activity (the UI labels
+  it "Reported…", never "verified"). It never touches payroll (no ₦650
+  path exists anywhere) and stores **no person-level member/prospect
+  records** — only aggregate daily counts.
+
+### Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/staff/reports` | History (20/page, month filter) + today's state header |
+| `/staff/reports/new` | Start action: create-or-get today's report, then redirect |
+| `/staff/reports/[reportId]` | Draft = editor; submitted = read-only detail |
+
+APIs: `GET/POST /api/staff/reports`, `GET/PATCH
+/api/staff/reports/[id]`, `POST /api/staff/reports/[id]/submit`. Identity
+is always the session chain — no staffId/reference/email is accepted from
+the browser; foreign report ids answer the same `404` as unknown ones.
+
+The portal home shows one **Daily Reporting** card with today's three
+states (Not started → Start / Draft → Continue / Submitted → View, with
+the Africa/Lagos submission time).
+
 ## Environment variables
 
 | Variable                    | Required | Purpose                                        |
@@ -545,6 +605,7 @@ production run is a deployment step.
 | `STAFF_AUTH_DEV_CODE_ECHO`  | no       | **DEV/TEST ONLY** — echoes the OTP in the API response when `true`. **MUST be `false` in production.** Default `false` |
 | `ONBOARDING_WHATSAPP_NUMBER`| no       | Official onboarding WhatsApp number (digits, international format). Empty = honest pending copy in onboarding |
 | `STAFF_SESSION_TTL_DAYS`    | no       | Staff Portal session duration in days (default `7`) |
+| `DAILY_REPORT_BACKDATE_LIMIT_DAYS` | no | How many past Africa/Lagos days a report may cover (default `7`; `0` = today only) |
 
 Copy `.env.example` → `.env` and adjust. Rules:
 
@@ -575,20 +636,24 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
 
 ## Next phase
 
-**Stages 1–7 are complete.** All six recruitment stages (Application →
+**Stages 1–8 are complete.** All six recruitment stages (Application →
 Orientation → Assessment → Agreement → Appointment → Activation), the
 staff-side Onboarding state, the Mailjet transactional notification
-service, and **Stage 7 — Staff Portal Foundation, Onboarding & Resumption**
+service, **Stage 7 — Staff Portal Foundation, Onboarding & Resumption**
 (secure accounts, email-OTP login, DB-backed sessions, onboarding-first
-portal — see above) are implemented and verified.
+portal — see above), and **Stage 8 — Daily Reporting & Accountability**
+(one self-reported report per Staff member per Africa/Lagos day, DRAFT →
+SUBMITTED, exactly-once receipt email — see above) are implemented and
+verified.
 
-The next Staff Platform module — per the approved roadmap — is **Daily
-Reporting & Accountability**. It is deliberately NOT built: Stage 7 ships
-zero reporting forms, tables or APIs. Any further product work — daily
-reporting, prospect/member tracking, earnings, performance, ID-card
-generator, admin console — belongs to the **FinFam Staff Platform /
-Operations roadmap** and must go through its own planning phase before
-implementation. **Do not start building any of it automatically.**
+Any further product work — supervisor review of reports, prospect/member
+tracking (person-level records), analytics/target dashboards, performance
+scoring, earnings, commission, payroll, ID-card generator, admin console —
+belongs to the **FinFam Staff Platform / Operations roadmap** and must go
+through its own planning phase before implementation. **Do not start
+building any of it automatically.** Note the standing Stage 8 boundaries:
+report data never feeds compensation, and no Stage 8 model stores any
+person-level member/prospect record.
 
 Business decisions still outstanding (official onboarding WhatsApp number,
 canonical role title portal-wide, identity-verification hardening, resource

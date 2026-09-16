@@ -7,6 +7,7 @@ import {
 import {
   formatLagosDateLabel,
   formatLagosDateTimeLabel,
+  toLagosDateString,
 } from "@/lib/dates/lagos";
 
 /**
@@ -245,7 +246,7 @@ const RENDERERS: NotificationRenderers = {
       subject: "Your FinFam provisional appointment",
       heading: `${name}, your provisional letter of appointment has been issued.`,
       paragraphs: [
-        `Your provisional appointment as <strong>${escapeHtml(payload.designation)}</strong> was issued on ${escapeHtml(formatDate(payload.issuedAt))}. The full letter, including its terms, is available in the portal.`,
+        `Your provisional appointment as <strong>${escapeHtml(payload.designation)}</strong> was issued on ${escapeHtml(formatLagosDateLabel(toLagosDateString(new Date(payload.issuedAt))))}. The full letter, including its terms, is available in the portal.`,
         "Please review it carefully. Staff activation follows the appointment.",
       ],
       callout: { label: "Appointment reference", value: payload.appointmentReference },

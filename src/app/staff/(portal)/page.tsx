@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ButtonLink } from "@/components/ui/button-link";
 import { STAFF_RESOURCES_PENDING_NOTICE } from "@/config/staff-portal";
 import { getStaffSession } from "@/lib/auth/session";
+import { formatLagosTimeLabel } from "@/lib/dates/lagos";
 import { getStaffPortalHome } from "@/server/services/staff-portal";
 
 export const metadata: Metadata = {
@@ -39,7 +40,7 @@ export default async function StaffHomePage() {
 
   return (
     <>
-      <div className="max-w-3xl">
+      <div className="mt-10 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
           FinFam Staff Portal
         </p>
@@ -51,6 +52,69 @@ export default async function StaffHomePage() {
           assignment.
         </p>
       </div>
+
+      {/* Daily Reporting — the one ongoing operational action (Stage 8).
+          The card routes on TODAY'S Africa/Lagos state only; no metrics,
+          no streaks, no reminders. */}
+      <section
+        aria-labelledby="portal-daily-reporting"
+        className="mt-8 rounded-lg border border-border bg-surface p-6"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <h2
+              id="portal-daily-reporting"
+              className="text-sm font-semibold text-foreground"
+            >
+              Daily Reporting
+            </h2>
+            {home.dailyReporting.state === "NOT_STARTED" && (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {format(new Date(`${home.dailyReporting.date}T12:00:00Z`), "d MMMM yyyy")}{" "}
+                — you haven&apos;t started today&apos;s report yet.
+                <span className="sr-only"> Status: not started.</span>
+              </p>
+            )}
+            {home.dailyReporting.state === "DRAFT" && (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {format(new Date(`${home.dailyReporting.date}T12:00:00Z`), "d MMMM yyyy")}{" "}
+                — today&apos;s report is a draft, waiting to be submitted.
+                <span className="sr-only"> Status: draft.</span>
+              </p>
+            )}
+            {home.dailyReporting.state === "SUBMITTED" && (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {format(new Date(`${home.dailyReporting.date}T12:00:00Z`), "d MMMM yyyy")}{" "}
+                — today&apos;s report was submitted
+                {home.dailyReporting.submittedAt
+                  ? ` at ${formatLagosTimeLabel(new Date(home.dailyReporting.submittedAt))} (Africa/Lagos)`
+                  : ""}
+                . Thank you.
+                <span className="sr-only"> Status: submitted.</span>
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
+            <ButtonLink
+              href={
+                home.dailyReporting.state === "NOT_STARTED"
+                  ? "/staff/reports/new"
+                  : `/staff/reports/${home.dailyReporting.reportId}`
+              }
+              size="sm"
+            >
+              {home.dailyReporting.state === "NOT_STARTED"
+                ? "Start today's report"
+                : home.dailyReporting.state === "DRAFT"
+                  ? "Continue today's report"
+                  : "View today's report"}
+            </ButtonLink>
+            <ButtonLink href="/staff/reports" variant="ghost" size="sm">
+              All reports
+            </ButtonLink>
+          </div>
+        </div>
+      </section>
 
       <div className="mt-10 grid gap-8 md:grid-cols-2 md:gap-10">
         {/* Staff Identity */}

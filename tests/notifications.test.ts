@@ -539,8 +539,9 @@ describe("Notification configuration and dedupe keys", () => {
 
   it("pins the template registry version", () => {
     // v2.0: Stage 7 added the STAFF_LOGIN_CODE + updated STAFF_ACCOUNT_CREATED
-    // templates (registry versions are pinned on delivery rows at enqueue).
-    expect(NOTIFICATION_TEMPLATE_VERSION).toBe("2.0");
+    // templates. v2.1: Stage 8 added the DAILY_REPORT_SUBMITTED receipt
+    // (registry versions are pinned on delivery rows at enqueue).
+    expect(NOTIFICATION_TEMPLATE_VERSION).toBe("2.1");
   });
 });
 

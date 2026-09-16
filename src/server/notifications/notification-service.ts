@@ -4,6 +4,7 @@ import type { NotificationType, Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { OPEN_POSITION } from "@/config/content";
+import { lagosDateISOFromUtcMidnight } from "@/lib/dates/lagos";
 import { ASSESSMENT_POLICY } from "@/server/assessment-content";
 
 import {
@@ -552,6 +553,37 @@ async function deriveNotificationPayload(
         recipientEmail: account.staff.candidate.email,
         referenceNumber: account.staff.candidate.referenceNumber,
         staffId: account.staff.staffId,
+      };
+    }
+
+    case "DAILY_REPORT_SUBMITTED": {
+      // Stage 8: the entity id is the DailyReport row. The receipt is
+      // derived from the persisted report — reportDate is read back to its
+      // Africa/Lagos "YYYY-MM-DD" form via the single timezone util, and
+      // submittedAt is the latched finalisation instant, so retries render
+      // the SAME receipt content every time.
+      const report = await db.dailyReport.findUnique({
+        where: { id: entityId },
+        select: {
+          reportDate: true,
+          submittedAt: true,
+          staff: {
+            select: {
+              staffId: true,
+              candidate: { select: PAYLOAD_CANDIDATE_SELECT },
+            },
+          },
+        },
+      });
+      if (!report || !report.submittedAt) return null;
+      return {
+        candidateId: report.staff.candidate.id,
+        candidateName: report.staff.candidate.fullName,
+        recipientEmail: report.staff.candidate.email,
+        referenceNumber: report.staff.candidate.referenceNumber,
+        staffId: report.staff.staffId,
+        reportDate: lagosDateISOFromUtcMidnight(report.reportDate),
+        submittedAt: report.submittedAt.toISOString(),
       };
     }
 

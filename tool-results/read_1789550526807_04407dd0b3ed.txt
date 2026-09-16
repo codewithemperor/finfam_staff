@@ -1,0 +1,760 @@
+     1→// ---------------------------------------------------------------------------
+     2→// FinFam Recruitment Portal — schema
+     3→//
+     4→// Implemented stages: Application (scaffold), FSOW Orientation (stage 1),
+     5→// Automated Interview Assessment (stage 2), Responsibility & Reward
+     6→// Agreement (stage 3 — persisted as the OFFER stage/statuses; the
+     7→// candidate-facing label is "Agreement", see src/config/recruitment.ts),
+     8→// the Provisional Appointment (stage 4 — lazy issuance, one letter per
+     9→// candidate, see src/server/services/appointment.ts), Staff Activation
+    10→// (stage 5 — explicit in-portal activation, one Staff identity per
+    11→// candidate, see src/server/services/activation.ts), and Staff Onboarding
+    12→// (stage 6 — STAFF-SIDE operational briefing after recruitment completes:
+    13→// StaffOnboarding + StaffOnboardingStep, see src/server/services/
+    14→// onboarding.ts). Onboarding deliberately adds NO CandidateStatus value
+    15→// and NO RecruitmentStage value — APPROVED_STAFF remains the terminal
+    16→// recruitment status, and StageEvent stays recruitment-only.
+    17→//
+    18→// Staff Platform (post-recruitment, ongoing): Stage 7 added the
+    19→// authenticated Staff Portal (StaffAccount/StaffLoginCode/StaffSession —
+    20→// email-OTP auth, DB-backed sessions) and Stage 8 adds Daily Reporting &
+    21→// Accountability (DailyReport — one self-reported activity report per
+    22→// Staff member per Africa/Lagos reporting date, see
+    23→// src/server/services/daily-reports.ts). Neither module touches the
+    24→// recruitment state machine.
+    25→//
+    26→// Cross-cutting platform service: NotificationDelivery (brief
+    27→// "notification_service") records transactional email intents for
+    28→// lifecycle events via the central notification service
+    29→// (src/server/notifications/) — outbox pattern, dedupe-key exactly-once,
+    30→// Mailjet delivery AFTER the business transaction commits.
+    31→// See docs/CONTENT-QUESTIONS.md before extending: stage rules are
+    32→// finalized stage-by-stage in the product planning phase.
+    33→// ---------------------------------------------------------------------------
+    34→
+    35→generator client {
+    36→  provider = "prisma-client-js"
+    37→}
+    38→
+    39→datasource db {
+    40→  provider = "postgresql"
+    41→  url      = env("DATABASE_URL")
+    42→}
+    43→
+    44→/// Lifecycle status of a candidate. The list mirrors the business's draft
+    45→/// state machine (see docs/PLANNING.md). Transitions between states will be
+    46→/// enforced by the server-side stage service in the planning phase — not by
+    47→/// ad-hoc writes.
+    48→enum CandidateStatus {
+    49→  APPLICANT
+    50→  ORIENTATION_PENDING
+    51→  ORIENTATION_COMPLETED
+    52→  ASSESSMENT_PENDING
+    53→  ASSESSMENT_PASSED
+    54→  ASSESSMENT_FAILED
+    55→  OFFER_PENDING
+    56→  OFFER_ACCEPTED
+    57→  OFFER_DECLINED
+    58→  APPOINTMENT_ISSUED
+    59→  ACTIVATION_PENDING
+    60→  APPROVED_STAFF
+    61→}
+    62→
+    63→/// High-level stages of the recruitment journey, in order.
+    64→enum RecruitmentStage {
+    65→  APPLICATION
+    66→  ORIENTATION
+    67→  ASSESSMENT
+    68→  OFFER
+    69→  APPOINTMENT
+    70→  ACTIVATION
+    71→}
+    72→
+    73→/// Kind of event recorded against a candidate's stage timeline.
+    74→enum StageEventType {
+    75→  ENTERED
+    76→  COMPLETED
+    77→  FAILED
+    78→  NOTE
+    79→}
+    80→
+    81→/// Status of a specific application.
+    82→enum ApplicationStatus {
+    83→  SUBMITTED
+    84→  WITHDRAWN
+    85→}
+    86→
+    87→/// Delivery status of a transactional notification.
+    88→///
+    89→/// SENT means the email provider ACCEPTED the transactional send request —
+    90→/// it is deliberately NOT a claim of inbox delivery. Actual delivery, bounces
+    91→/// and spam events require provider webhooks, which are out of MVP scope
+    92→/// (docs/CONTENT-QUESTIONS.md). FAILED means the last send attempt was
+    93→/// rejected or errored; PENDING means not yet (successfully) sent.
+    94→enum NotificationStatus {
+    95→  PENDING
+    96→  SENT
+    97→  FAILED
+    98→}
+    99→
+   100→/// Stable lifecycle notification keys (brief §7). One value per meaningful
+   101→/// state change — there is deliberately no per-page-view or per-step key.
+   102→/// STAFF_ACCOUNT_CREATED was reserved for Stage 7 and is now fired by Staff
+   103→/// Account provisioning (activation transaction + backfill, Stage 7):
+   104→/// exactly-once per StaffAccount row via its dedupeKey.
+   105→/// STAFF_LOGIN_CODE (Stage 7) carries one-shot OTP semantics — see below.
+   106→enum NotificationType {
+   107→  APPLICATION_RECEIVED
+   108→  ORIENTATION_COMPLETED
+   109→  ASSESSMENT_PASSED
+   110→  ASSESSMENT_FAILED
+   111→  AGREEMENT_ACCEPTED
+   112→  APPOINTMENT_ISSUED
+   113→  STAFF_ACTIVATED
+   114→  ONBOARDING_STARTED
+   115→  ONBOARDING_COMPLETED
+   116→  STAFF_ACCOUNT_CREATED
+   117→
+   118→  /// Staff Portal email-OTP login code (Stage 7). One-shot semantics: the
+   119→  /// plaintext code exists only in memory between creation and the single
+   120→  /// delivery attempt, so the payload can never be re-derived for a retry —
+   121→  /// a failed delivery is terminal for that code and the user requests a
+   122→  /// fresh one. Codes themselves are stored hashed on staff_login_codes.
+   123→  STAFF_LOGIN_CODE
+   124→
+   125→  /// Daily-report receipt (Stage 8). Queued inside the ONE submission
+   126→  /// transaction that wins the DRAFT → SUBMITTED latch, keyed
+   127→  /// "DAILY_REPORT_SUBMITTED:<reportId>" — exactly once per submitted
+   128→  /// report. A concise transactional receipt (report date + received
+   129→  /// confirmation), NOT a metrics digest and never a reminder — no
+   130→  /// DAILY_REPORT_REMINDER exists until a deadline policy is confirmed.
+   131→  DAILY_REPORT_SUBMITTED
+   132→}
+   133→
+   134→/// Status of a Staff Portal account (Stage 7). SUSPENDED exists so future
+   135→/// administrative workflows can disable access without deleting the Staff
+   136→/// identity; every auth/session check must respect it. No suspension UI
+   137→/// exists in the MVP (docs/CONTENT-QUESTIONS.md).
+   138→enum StaffAccountStatus {
+   139→  ACTIVE
+   140→  SUSPENDED
+   141→}
+   142→
+   143→/// Lifecycle of one daily activity report (Stage 8). Deliberately the
+   144→/// SMALLEST useful lifecycle: DRAFT (being written, freely editable) →
+   145→/// SUBMITTED (final, read-only permanently in the Staff MVP). There is
+   146→/// deliberately no REVIEWED/APPROVED/REJECTED/FLAGGED — no supervisor
+   147→/// workflow exists, and inventing one would be speculative.
+   148→enum DailyReportStatus {
+   149→  DRAFT
+   150→  SUBMITTED
+   151→}
+   152→
+   153→/// One Staff member's reported activity for ONE reporting date (Stage 8 —
+   154→/// Daily Reporting & Accountability, an ongoing STAFF PLATFORM module that
+   155→/// adds NO recruitment state: no CandidateStatus, no RecruitmentStage, no
+   156→/// StageEvent). Flat typed columns carry the nine approved daily metrics
+   157→/// (the four categories taught by the onboarding "accountability" step) —
+   158→/// not a JSON blob and not metric rows — because the set is small, fixed
+   159→/// and individually validated/displayed. `@@unique([staffId, reportDate])`
+   160→/// is the one-report-per-staff-per-date rule and the concurrency backstop:
+   161→/// create-or-get races lose the P2002 and re-read the winner.
+   162→///
+   163→/// Facts kept separate on purpose (brief §4): `reportDate` is the calendar
+   164→/// date the reported work occurred (Africa/Lagos — stored as that calendar
+   165→/// DATE, see src/lib/dates/lagos.ts), while `submittedAt` is the server
+   166→/// instant the report was finalised; createdAt/updatedAt are row
+   167→/// bookkeeping and never stand in for the activity date.
+   168→///
+   169→/// The data is STAFF SELF-REPORTED (brief §22): it is accountability/
+   170→/// activity data only — never presented as independently verified, never
+   171→/// used for compensation (no ₦650 payroll path exists anywhere), and it
+   172→/// contains NO person-level member/prospect records (that is a future
+   173→/// module). `version` pins the report-schema interpretation at creation.
+   174→model DailyReport {
+   175→  id      String            @id @default(cuid())
+   176→  /// Owning Staff row — resolved from the authenticated session chain,
+   177→  /// NEVER from client input (brief §31/§32).
+   178→  staffId String
+   179→  staff   Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
+   180→  /// Calendar date the reported work occurred (Africa/Lagos). Stored as
+   181→  /// that DATE (UTC midnight of the Lagos date, src/lib/dates/lagos.ts).
+   182→  reportDate DateTime        @db.Date
+   183→  /// Report-schema version pinned at creation ("1.0",
+   184→  /// src/config/daily-report.ts). Immutable.
+   185→  version String
+   186→  status  DailyReportStatus @default(DRAFT)
+   187→
+   188→  // ── Prospects ─────────────────────────────────────────────────────────
+   189→  individualsContacted Int @default(0)
+   190→  groupsApproached     Int @default(0)
+   191→  followUpActivities   Int @default(0)
+   192→  // ── Member Growth ─────────────────────────────────────────────────────
+   193→  newRegistrations          Int @default(0)
+   194→  establishedMembersCreated Int @default(0)
+   195→  // ── Savings Activities ────────────────────────────────────────────────
+   196→  firstDepositsAchieved Int @default(0)
+   197→  savingsGoalsActivated Int @default(0)
+   198→  // ── Community Activities ──────────────────────────────────────────────
+   199→  memberEngagement Int @default(0)
+   200→  connectionsBuilt Int @default(0)
+   201→
+   202→  /// Optional plain-text context the counts cannot capture. Trimmed,
+   203→  /// max 1000 chars, server-validated. Plain text only — never PII.
+   204→  activitySummary String?
+   205→
+   206→  /// Server finalisation instant. Null while DRAFT; the one-way latch
+   207→  /// (status DRAFT → SUBMITTED via a conditional update) stamps it exactly
+   208→  /// once, so repeated/concurrent submits yield ONE timestamp.
+   209→  submittedAt DateTime?
+   210→  createdAt   DateTime  @default(now())
+   211→  updatedAt   DateTime  @updatedAt
+   212→
+   213→  /// One Staff member + one activity date = one report.
+   214→  @@unique([staffId, reportDate])
+   215→  @@map("daily_reports")
+   216→}
+   217→
+   218→/// A person going through the FinFam recruitment journey.
+   219→model Candidate {
+   220→  id              String          @id @default(cuid())
+   221→  /// Public, non-guessable lookup key used by candidates to check their
+   222→  /// status. Not a secret on its own; never put PII in URLs instead.
+   223→  referenceNumber String          @unique
+   224→  fullName        String
+   225→  email           String          @unique
+   226→  phone           String
+   227→  city            String?
+   228→  status          CandidateStatus @default(APPLICANT)
+   229→  createdAt       DateTime        @default(now())
+   230→  updatedAt       DateTime        @updatedAt
+   231→
+   232→  applications Application[]
+   233→  events       StageEvent[]
+   234→  orientation  Orientation?
+   235→  attempts     AssessmentAttempt[]
+   236→  agreement    Agreement?
+   237→  appointment  Appointment?
+   238→  staff        Staff?
+   239→  notifications NotificationDelivery[]
+   240→
+   241→  @@index([status])
+   242→  @@map("candidates")
+   243→}
+   244→
+   245→/// A submitted application for a specific role.
+   246→model Application {
+   247→  id          String            @id @default(cuid())
+   248→  candidateId String
+   249→  candidate   Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   250→  roleTitle   String
+   251→  status      ApplicationStatus @default(SUBMITTED)
+   252→  submittedAt DateTime          @default(now())
+   253→  createdAt   DateTime          @default(now())
+   254→  updatedAt   DateTime          @updatedAt
+   255→
+   256→  @@index([candidateId])
+   257→  @@map("applications")
+   258→}
+   259→
+   260→/// Append-only timeline of stage transitions. Powers the candidate status
+   261→/// page and (later) the admin audit trail. Never mutated, only appended.
+   262→model StageEvent {
+   263→  id          String           @id @default(cuid())
+   264→  candidateId String
+   265→  candidate   Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   266→  stage       RecruitmentStage
+   267→  type        StageEventType
+   268→  description String?
+   269→  occurredAt  DateTime         @default(now())
+   270→
+   271→  @@index([candidateId, occurredAt])
+   272→  @@map("stage_events")
+   273→}
+   274→
+   275→/// A candidate's progress through the FinFam Staff Orientation Workshop
+   276→/// (FSOW) — stage 1 after the application. Created lazily when the candidate
+   277→/// completes their first section; one row per candidate.
+   278→model Orientation {
+   279→  id          String    @id @default(cuid())
+   280→  candidateId String    @unique
+   281→  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   282→  /// Resume point: the section the candidate is currently on (stable id from
+   283→  /// src/config/orientation.ts, e.g. "your-role"). Derived on write, stored
+   284→  /// so "continue where you stopped" survives content reordering.
+   285→  currentSectionId String?
+   286→  /// When the candidate acknowledged the integrity policy in the completion
+   287→  /// confirmation (server-verified — never trusted from the client).
+   288→  acknowledgedAt DateTime?
+   289→  /// When the candidate explicitly completed the workshop. Null until the
+   290→  /// completion action is accepted by the server.
+   291→  completedAt DateTime?
+   292→  createdAt   DateTime  @default(now())
+   293→  updatedAt   DateTime  @updatedAt
+   294→
+   295→  sections OrientationSection[]
+   296→
+   297→  @@map("orientations")
+   298→}
+   299→
+   300→/// Completion record for one orientation section. Append-only: one row per
+   301→/// completed section per candidate (enforced by the unique constraint); rows
+   302→/// are never edited or deleted.
+   303→model OrientationSection {
+   304→  id            String      @id @default(cuid())
+   305→  orientationId String
+   306→  orientation   Orientation @relation(fields: [orientationId], references: [id], onDelete: Cascade)
+   307→  /// Stable section id from src/config/orientation.ts (e.g. "about-finfam").
+   308→  sectionId     String
+   309→  completedAt   DateTime    @default(now())
+   310→
+   311→  @@unique([orientationId, sectionId])
+   312→  @@index([orientationId])
+   313→  @@map("orientation_sections")
+   314→}
+   315→
+   316→/// One run of the Automated Interview Assessment (stage 2). Created when the
+   317→/// candidate explicitly starts (or retakes) the assessment. A candidate may
+   318→/// have several attempts over time; the active attempt is the one without a
+   319→/// submittedAt. The final result is persisted on this row at submission —
+   320→/// computed exclusively server-side (src/server/assessment-content.ts).
+   321→model AssessmentAttempt {
+   322→  id            String    @id @default(cuid())
+   323→  candidateId   String
+   324→  candidate     Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   325→  /// 1-based counter per candidate (resumes never create new attempts).
+   326→  attemptNumber Int
+   327→  startedAt     DateTime  @default(now())
+   328→  /// Null while the attempt is active; set once the server accepts a
+   329→  /// submission. Submission is idempotent-safe — double submits never
+   330→  /// create duplicate results.
+   331→  submittedAt   DateTime?
+   332→  // --- Final result (set only by the server-side scoring service) ---------
+   333→  correctCount  Int?
+   334→  marksAwarded  Int?
+   335→  totalMarks    Int?
+   336→  percentage    Float?
+   337→  passed        Boolean?
+   338→  createdAt     DateTime  @default(now())
+   339→  updatedAt     DateTime  @updatedAt
+   340→
+   341→  questions AssessmentAttemptQuestion[]
+   342→  answers   AssessmentAnswer[]
+   343→
+   344→  @@unique([candidateId, attemptNumber])
+   345→  @@index([candidateId])
+   346→  @@map("assessment_attempts")
+   347→}
+   348→
+   349→/// Persisted question order for one attempt (snapshot of the authoritative
+   350→/// config order at start time). Keeps resume/navigation stable for the life
+   351→/// of the attempt even if the config later changes.
+   352→model AssessmentAttemptQuestion {
+   353→  id         String            @id @default(cuid())
+   354→  attemptId  String
+   355→  attempt    AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+   356→  /// Stable question id from src/config/assessment.ts (e.g. "q-01").
+   357→  questionId String
+   358→  /// 0-based position in this attempt's fixed order.
+   359→  position   Int
+   360→
+   361→  @@unique([attemptId, questionId])
+   362→  @@index([attemptId, position])
+   363→  @@map("assessment_attempt_questions")
+   364→}
+   365→
+   366→/// The candidate's saved answer to one question of one attempt. Upserted on
+   367→/// every change (idempotent autosave); answers are rejected after the
+   368→/// attempt has been submitted.
+   369→model AssessmentAnswer {
+   370→  id             String            @id @default(cuid())
+   371→  attemptId      String
+   372→  attempt        AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+   373→  questionId     String
+   374→  /// 0-based index of the chosen option, validated server-side.
+   375→  selectedOption Int
+   376→  updatedAt      DateTime          @updatedAt
+   377→
+   378→  @@unique([attemptId, questionId])
+   379→  @@index([attemptId])
+   380→  @@map("assessment_answers")
+   381→}
+   382→
+   383→/// The candidate's recorded decision on the Responsibility & Reward
+   384→/// Agreement — the OFFER stage of the journey (candidate-facing label:
+   385→/// "Agreement"). One row per candidate, created only when an explicit,
+   386→/// server-validated acceptance is received; opening or viewing the
+   387→/// agreement NEVER creates a row or implies acceptance. The `version`
+   388→/// pins the exact agreement content the candidate accepted
+   389→/// (src/config/agreement.ts) so later content changes stay auditable.
+   390→///
+   391→/// Decline is NOT modelled yet — the decline policy is an unresolved
+   392→/// business decision (docs/CONTENT-QUESTIONS.md §16); the OFFER_DECLINED
+   393→/// status exists in the enum for that future decision.
+   394→model Agreement {
+   395→  id          String    @id @default(cuid())
+   396→  candidateId String    @unique
+   397→  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   398→  /// Content version identifier the acceptance applies to (e.g. "1.0").
+   399→  version     String
+   400→  /// When the candidate explicitly accepted. Null until acceptance is
+   401→  /// accepted by the server (never set by viewing).
+   402→  acceptedAt  DateTime?
+   403→  createdAt   DateTime  @default(now())
+   404→  updatedAt   DateTime  @updatedAt
+   405→
+   406→  @@map("agreements")
+   407→}
+   408→
+   409→/// The candidate's issued Provisional Letter of Appointment — stage 4 of
+   410→/// the journey. Issued lazily and exactly once, server-side, when an
+   411→/// OFFER_ACCEPTED candidate first opens the appointment stage
+   412→/// (src/server/services/appointment.ts); viewing again is a read-only
+   413→/// record and NEVER re-issues or mutates the letter.
+   414→///
+   415→/// Hybrid historical-integrity model: the columns below are the immutable,
+   416→/// candidate-specific SNAPSHOT (who, which letter, when, under which
+   417→/// content version) while the letter TEXT itself lives in an append-only
+   418→/// content registry (src/config/appointment.ts, APPOINTMENT_CONTENT_
+   419→/// VERSIONS) resolved by `version`. An appointment issued under v1.0 must
+   420→/// stay reproducible as v1.0 forever — later wording changes append new
+   421→/// registry versions and never touch issued ones. There is deliberately no
+   422→/// separate effectiveDate column: the letter date IS `issuedAt` for the
+   423→/// MVP (docs/CONTENT-QUESTIONS.md §23 keeps the distinction open).
+   424→model Appointment {
+   425→  id          String    @id @default(cuid())
+   426→  candidateId String    @unique
+   427→  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   428→  /// Official letter reference in the FFL/HR/PLA/NNN format. Allocated
+   429→  /// server-side from the AppointmentSequence inside the issuance
+   430→  /// transaction — never derived from client input, never from count(*).
+   431→  /// The unique constraint is the final backstop against duplicates.
+   432→  appointmentReference String @unique
+   433→  /// Pinned content-registry version (e.g. "1.0") the letter was issued
+   434→  /// under. Immutable after issuance.
+   435→  version     String
+   436→  /// Printed candidate name, snapshotted from Candidate.fullName at
+   437→  /// issuance. Never read from the client at render time.
+   438→  printedName String
+   439→  /// Official appointment designation, snapshotted at issuance. The
+   440→  /// approved MVP value is "Remote Staff" (the designation used by the
+   441→  /// official Provisional Letter of Appointment) — not renamed to any
+   442→  /// other role title (docs/CONTENT-QUESTIONS.md §21).
+   443→  roleTitle   String
+   444→  /// Server issuance timestamp. Doubles as the printed letter date for
+   445→  /// the MVP; no separate effectiveDate exists (§23).
+   446→  issuedAt    DateTime
+   447→  createdAt   DateTime  @default(now())
+   448→  updatedAt   DateTime  @updatedAt
+   449→
+   450→  @@map("appointments")
+   451→}
+   452→
+   453→/// Server-controlled sequence behind the FFL/HR/PLA/NNN appointment
+   454→/// references. A single row per sequence: `value` holds the LAST allocated
+   455→/// number; allocation is an atomic `UPDATE ... SET value = value + 1
+   456→/// RETURNING value` inside the issuance transaction, so concurrent
+   457→/// issuances can never receive the same number (the unique constraint on
+   458→/// appointments.appointmentReference stays the final backstop).
+   459→///
+   460→/// Initialisation: the supplied official sample letter carries
+   461→/// FFL/HR/PLA/012 and is treated as the most recently existing appointment
+   462→/// (an externally issued document — it is NOT written into the database).
+   463→/// The sequence therefore starts at 12, making the first system-issued
+   464→/// reference FFL/HR/PLA/013. Documented assumption; see
+   465→/// docs/CONTENT-QUESTIONS.md §22.
+   466→model AppointmentSequence {
+   467→  id    String @id @default(cuid())
+   468→  /// Singleton sequence name (one row: "PROVISIONAL_APPOINTMENT").
+   469→  name  String @unique
+   470→  /// Last allocated sequence number (initialised to 12 by migration).
+   471→  value Int
+   472→
+   473→  @@map("appointment_sequences")
+   474→}
+   475→
+   476→/// The candidate's permanent FinFam staff identity — stage 5 of the journey.
+   477→/// Created exactly once, server-side, when an eligible (APPOINTMENT_ISSUED
+   478→/// or ACTIVATION_PENDING) candidate explicitly activates their staff profile
+   479→/// (src/server/services/activation.ts); this row IS the activation record —
+   480→/// there is deliberately no separate StaffActivation model. Opening the
+   481→/// activation stage NEVER creates this row; only the explicit, server-
+   482→/// validated activation action does.
+   483→///
+   484→/// Only identity facts that must remain stable are snapshotted here
+   485→/// (staffId, version, roleTitle, appointmentReference, activatedAt) — all
+   486→/// immutable after activation. Personal data is deliberately NOT duplicated:
+   487→/// name, contact details and application data stay on the Candidate/
+   488→/// Application records and are reached by relation.
+   489→model Staff {
+   490→  id          String    @id @default(cuid())
+   491→  candidateId String    @unique
+   492→  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   493→  /// Official staff identifier (Stage 5 MVP format FF-STF-NNNN, approved in
+   494→  /// docs/CONTENT-QUESTIONS.md §30). Allocated server-side from the
+   495→  /// StaffIdSequence inside the activation transaction — never derived from
+   496→  /// client input, never from count(*). The unique constraint is the final
+   497→  /// backstop. Immutable once assigned; future format changes never modify
+   498→  /// already-assigned IDs.
+   499→  staffId     String    @unique
+   500→  /// Activation-content version pinned at activation (e.g. "1.0",
+   501→  /// src/config/activation.ts). Immutable.
+   502→  version     String
+   503→  /// Official designation, snapshotted FROM the issued Appointment row at
+   504→  /// activation ("Remote Staff" for the current appointment version). The
+   505→  /// appointment remains the authoritative source for the designation under
+   506→  /// which the person was activated. Immutable.
+   507→  roleTitle   String
+   508→  /// Appointment reference, snapshotted at activation so the staff identity
+   509→  /// is self-contained. Immutable.
+   510→  appointmentReference String
+   511→  /// Server activation timestamp. Immutable.
+   512→  activatedAt DateTime
+   513→  createdAt   DateTime  @default(now())
+   514→  updatedAt   DateTime  @updatedAt
+   515→
+   516→  /// Staff-side operational onboarding (stage 6) — created lazily on the
+   517→  /// first valid onboarding visit; one journey per Staff record.
+   518→  onboarding StaffOnboarding?
+   519→
+   520→  /// Staff Portal account (Stage 7) — provisioned INSIDE the activation
+   521→  /// transaction by the same code path the backfill uses
+   522→  /// (src/server/services/staff-accounts.ts), so an activation can never
+   523→  /// exist without its portal account.
+   524→  account StaffAccount?
+   525→
+   526→  /// Daily activity reports (Stage 8) — one per reporting date at most
+   527→  /// (unique [staffId, reportDate]); owned exclusively via the session.
+   528→  reports DailyReport[]
+   529→
+   530→  @@map("staff")
+   531→}
+   532→
+   533→/// The Staff member's authenticated Staff Portal access (Stage 7). One row
+   534→/// per Staff record, created in the SAME transaction as the Staff row by
+   535→/// staff activation (and idempotently by the backfill script for pre-existing
+   536→/// Staff). The account owns login codes and portal sessions and carries the
+   537→/// future suspension flag — nothing else:
+   538→///
+   539→/// - It duplicates NO identity data. Name, email, phone and appointment
+   540→///   facts are reached through StaffAccount → Staff → Candidate; the login
+   541→///   email IS the candidate's registered email (brief §3/§4).
+   542→/// - It stores NO credentials. Login is email OTP (hashed codes live on
+   543→///   StaffLoginCode); sessions are DB rows with only the token hash
+   544→///   (StaffSession).
+   545→/// - status = SUSPENDED blocks code requests, verification and session
+   546→///   resolution; there is deliberately no admin UI in this stage.
+   547→model StaffAccount {
+   548→  id      String             @id @default(cuid())
+   549→  /// One portal account per Staff identity.
+   550→  staffId String             @unique
+   551→  staff   Staff              @relation(fields: [staffId], references: [id], onDelete: Cascade)
+   552→  /// ACTIVE by default; SUSPENDED refuses every auth path (brief §17).
+   553→  status  StaffAccountStatus @default(ACTIVE)
+   554→  /// Set on each successful OTP verification.
+   555→  lastLoginAt DateTime?
+   556→  createdAt  DateTime       @default(now())
+   557→  updatedAt  DateTime       @updatedAt
+   558→
+   559→  loginCodes StaffLoginCode[]
+   560→  sessions   StaffSession[]
+   561→
+   562→  @@map("staff_accounts")
+   563→}
+   564→
+   565→/// One emailed email-OTP login code for a Staff Portal account (Stage 7).
+   566→///
+   567→/// Security properties (brief §6/§7/§10): the 6-digit code is generated with
+   568→/// cryptographically secure randomness and stored ONLY as a sha256 hash —
+   569→/// the plaintext lives in memory just long enough to render the one-shot
+   570→/// notification payload and is never persisted or logged. A code is
+   571→/// single-use (consumedAt latch), expires after 10 minutes, tolerates at
+   572→/// most 5 failed verification attempts, and only the LATEST code of an
+   573→/// account is ever verifiable (a newer request replaces older ones).
+   574→/// Request-side cooldown and rate limits are enforced by the auth service
+   575→/// from createdAt history (60s cooldown, 5 codes / 15 minutes).
+   576→model StaffLoginCode {
+   577→  id        String       @id @default(cuid())
+   578→  accountId String
+   579→  account   StaffAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+   580→  /// sha256 hex digest of the 6-digit code. Never the plaintext.
+   581→  codeHash  String
+   582→  /// After this instant the code is dead even if unused.
+   583→  expiresAt DateTime
+   584→  /// Single-use latch: set by the ONE verification transaction that wins.
+   585→  consumedAt DateTime?
+   586→  /// Failed verification attempts against this code (max 5).
+   587→  attemptCount Int      @default(0)
+   588→  createdAt DateTime     @default(now())
+   589→
+   590→  @@index([accountId, createdAt])
+   591→  @@map("staff_login_codes")
+   592→}
+   593→
+   594→/// One authenticated Staff Portal session (Stage 7). The browser holds only
+   595→/// an opaque random token in an HttpOnly cookie; the server stores ONLY the
+   596→/// sha256 hash of that token, so a database read can never mint a session.
+   597→/// Sessions expire (7-day MVP default), can be revoked (logout — the DB row
+   598→/// is revoked, not merely the cookie dropped) and resolve only for ACTIVE
+   599→/// accounts, so a suspended Staff member loses portal access immediately.
+   600→model StaffSession {
+   601→  id        String       @id @default(cuid())
+   602→  accountId String
+   603→  account   StaffAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+   604→  /// sha256 hex digest of the cookie token. Unique — lookup key.
+   605→  tokenHash String       @unique
+   606→  createdAt DateTime     @default(now())
+   607→  /// Hard expiry checked on every resolution (MVP: 7 days, configurable).
+   608→  expiresAt DateTime
+   609→  /// Logout / future suspension revokes the row — cookie deletion alone is
+   610→  /// never trusted.
+   611→  revokedAt DateTime?
+   612→  /// Refreshed opportunistically by /api/staff/me.
+   613→  lastSeenAt DateTime?
+   614→
+   615→  @@index([accountId])
+   616→  @@map("staff_sessions")
+   617→}
+   618→
+   619→/// Server-controlled sequence behind the FF-STF-NNNN Staff IDs. A single
+   620→/// row per sequence: `value` holds the LAST allocated number; allocation is
+   621→/// an atomic `UPDATE ... SET value = value + 1 RETURNING value` inside the
+   622→/// activation transaction, so concurrent activations can never receive the
+   623→/// same ID (the unique constraint on staff.staffId stays the final
+   624→/// backstop).
+   625→///
+   626→/// Initialisation: seeded to 0 by migration (approved Stage 5 MVP
+   627→/// convention), so the first system-issued Staff ID is FF-STF-0001.
+   628→model StaffIdSequence {
+   629→  id    String @id @default(cuid())
+   630→  /// Singleton sequence name (one row: "STAFF_ID").
+   631→  name  String @unique
+   632→  /// Last allocated sequence number (initialised to 0 by migration).
+   633→  value Int
+   634→
+   635→  @@map("staff_id_sequences")
+   636→}
+   637→
+   638→/// Staff-side operational onboarding (stage 6) — the FINAL stage of the
+   639→/// FinFam recruitment/onboarding MVP. One record per Staff member, created
+   640→/// lazily when an eligible (APPROVED_STAFF with a Staff row) staff member
+   641→/// first opens the onboarding stage (src/server/services/onboarding.ts).
+   642→///
+   643→/// Onboarding is deliberately NOT part of the recruitment state machine:
+   644→/// it adds no CandidateStatus value, no RecruitmentStage value and no
+   645→/// StageEvent — the six-stage recruitment stepper and the append-only
+   646→/// StageEvent timeline stay recruitment-only. Auditability comes from this
+   647→/// record itself: startedAt, the per-step StaffOnboardingStep completion
+   648→/// rows, the final completedAt and the pinned content version.
+   649→///
+   650→/// Opening onboarding NEVER completes a step and never completes onboarding;
+   651→/// step completion and the final acknowledgement are explicit, server-
+   652→/// validated actions. `currentStepId` is the resume point (the first
+   653→/// not-yet-completed step id from src/config/onboarding.ts), derived on
+   654→/// write so "continue where you stopped" survives content reordering.
+   655→model StaffOnboarding {
+   656→  id          String @id @default(cuid())
+   657→  /// One onboarding journey per Staff record.
+   658→  staffId     String @unique
+   659→  staff       Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+   660→  /// Onboarding-content version pinned at entry ("1.0",
+   661→  /// src/config/onboarding.ts); re-pinned at completion so the row records
+   662→  /// which set of instructions the staff member completed.
+   663→  version     String
+   664→  /// Resume point: first not-yet-completed step (stable config id, e.g.
+   665→  /// "welcome"). Derived on write — never trusted from the client.
+   666→  currentStepId String?
+   667→  /// When the staff member first opened onboarding (lazy entry).
+   668→  startedAt   DateTime
+   669→  /// When the staff member explicitly completed onboarding. Null until the
+   670→  /// completion action is accepted by the server; the exactly-once latch
+   671→  /// for completion is `completedAt = null` → set.
+   672→  completedAt DateTime?
+   673→  createdAt   DateTime @default(now())
+   674→  updatedAt   DateTime @updatedAt
+   675→
+   676→  steps StaffOnboardingStep[]
+   677→
+   678→  @@map("staff_onboarding")
+   679→}
+   680→
+   681→/// Transactional email delivery record (outbox pattern, brief §9).
+   682→///
+   683→/// One row per lifecycle notification INTENT. Rows are created by the
+   684→/// central notification service in the SAME database transaction as the
+   685→/// meaningful state change they belong to (brief §13), so a committed
+   686→/// business event always has a corresponding notification intent even if
+   687→/// the email provider is down. The unique `dedupeKey` is the exactly-once
+   688→/// latch: user double-clicks, request retries, concurrent requests and
+   689→/// route refreshes can never queue a duplicate email (brief §11).
+   690→///
+   691→/// The actual Mailjet network call happens AFTER the business transaction
+   692→/// commits — never while the transaction holds database locks (§16). A
+   693→/// Mailjet outage therefore marks rows FAILED/PENDING but can never roll
+   694→/// back or corrupt recruitment state (§12/§14).
+   695→///
+   696→/// No credentials are ever stored here; no rendered HTML is stored — the
+   697→/// email body is re-derived from immutable snapshot data at send time so
+   698→/// retries stay faithful (staff/appointment/agreement/attempt snapshot
+   699→/// rows are immutable by schema design).
+   700→model NotificationDelivery {
+   701→  id        String             @id @default(cuid())
+   702→  /// The candidate the notification belongs to, where applicable. Cascade
+   703→  /// delete mirrors every other candidate-owned record.
+   704→  candidateId String?
+   705→  candidate Candidate?         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+   706→  /// Stable lifecycle key (NotificationType).
+   707→  type      NotificationType
+   708→  /// Stable idempotency key "<TYPE>:<immutable entity id>" (e.g.
+   709→  /// "APPLICATION_RECEIVED:<candidateId>", "ASSESSMENT_PASSED:<attemptId>",
+   710→  /// "STAFF_ACTIVATED:<staff row id>"). Unique — the exactly-once latch.
+   711→  dedupeKey String             @unique
+   712→  /// Recipient email snapshotted at enqueue time (never re-read at send).
+   713→  recipientEmail String
+   714→  /// Code-owned template registry version used to render the email
+   715→  /// (src/server/notifications/notification-templates.ts).
+   716→  templateVersion String
+   717→  /// Email provider handling delivery (MVP: "mailjet").
+   718→  provider  String
+   719→  /// Provider message id, when the provider accepted a send.
+   720→  providerMessageId String?
+   721→  /// PENDING until the provider accepts a send; SENT once accepted
+   722→  /// (NOT a claim of inbox delivery — see NotificationStatus).
+   723→  status    NotificationStatus @default(PENDING)
+   724→  /// Number of delivery attempts made (bounded by config).
+   725→  attemptCount Int             @default(0)
+   726→  /// When the provider accepted the send (status became SENT).
+   727→  sentAt    DateTime?
+   728→  /// Last delivery attempt, successful or not.
+   729→  lastAttemptAt DateTime?
+   730→  /// Safe error code from the last failed attempt (HTTP status class or
+   731→  /// NETWORK_ERROR/TIMEOUT). Never contains credentials or bodies.
+   732→  lastErrorCode String?
+   733→  /// Safe error message from the last failed attempt.
+   734→  lastErrorMessage String?
+   735→  createdAt DateTime           @default(now())
+   736→  updatedAt DateTime           @updatedAt
+   737→
+   738→  @@index([status])
+   739→  @@index([candidateId])
+   740→  @@map("notification_deliveries")
+   741→}
+   742→
+   743→/// Completion record for one onboarding step. Append-only: one row per
+   744→/// completed step per onboarding journey (enforced by the unique
+   745→/// constraint); rows are never edited or deleted. Steps are sequential —
+   746→/// order is enforced server-side against src/config/onboarding.ts, never
+   747→/// trusted from the client.
+   748→model StaffOnboardingStep {
+   749→  id           String          @id @default(cuid())
+   750→  onboardingId String
+   751→  onboarding   StaffOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+   752→  /// Stable step id from src/config/onboarding.ts (e.g. "welcome").
+   753→  stepId       String
+   754→  completedAt  DateTime        @default(now())
+   755→
+   756→  @@unique([onboardingId, stepId])
+   757→  @@index([onboardingId])
+   758→  @@map("staff_onboarding_steps")
+   759→}
+   760→

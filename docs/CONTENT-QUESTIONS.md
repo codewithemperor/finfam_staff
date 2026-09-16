@@ -902,3 +902,59 @@ the accountability step is explanatory copy only. Do not build reporting
 without a new approved brief.
 
 - **Status:** ✅ Implemented (Stage 7); open items listed above.
+
+## 41. Stage 8 — Daily Reporting & Accountability — IMPLEMENTED (approved brief; defaults recorded)
+
+- **Status:** ✅ Implemented (Stage 8). One self-reported DailyReport per
+  Staff member per Africa/Lagos calendar date; DRAFT → SUBMITTED one-way;
+  race-safe create-or-get; conditional-latch submission (exactly one
+  `submittedAt`); submitted reports permanently read-only; no draft
+  deletion in the MVP.
+- **Approved MVP defaults recorded here for the business:**
+  1. **Timezone** — Africa/Lagos fixed +01:00 (no DST; zero-dependency
+     util at `src/lib/dates/lagos.ts`). `reportDate` = the date the work
+     occurred; `submittedAt` = the server finalisation instant.
+  2. **Backdating** — up to **7 days** back (env
+     `DAILY_REPORT_BACKDATE_LIMIT_DAYS`); future dates rejected; **no
+     clock deadline** and **no reminder notification** (deliberately —
+     no deadline policy exists; see open item 4 below).
+  3. **Metrics** — the four onboarding categories verbatim (Prospects /
+     Member Growth / Savings Activities / Community Activities), nine
+     integer counts 0–999 (never clamped) + optional plain-text summary
+     ≤ 1000 chars. All-zero reports are valid. Helper copy in the form
+     shows the approved MVP meaning of each count — including the four
+     ambiguous ones, which the plan resolved as **COUNTS** (e.g.
+     "Established Members created" = *Reported* members who reached
+     Established status through your support that day).
+  4. **Submission receipt** — `DAILY_REPORT_SUBMITTED` email (template
+     registry v2.1): report date + received time + portal link only, no
+     metrics digest, sent exactly once via the outbox. A provider outage
+     can never roll back a submission.
+  5. **Self-reported framing** — every surface labels the data as
+     self-reported ("Reported Established Members", visible notice:
+     "not independently verified by FinFam systems"). History rows and
+     the detail view reuse this framing.
+  6. **Onboarding v2.1** — the accountability step's closing line now
+     points at the Daily Reports tool ("You submit your daily report in
+     the Staff Portal under Daily Reports…") instead of v2.0's "not part
+     of this portal yet". Steps, order, completion semantics and the
+     acknowledgement wording are unchanged; rows keep their pinned
+     version.
+- **Boundaries enforced in code and tests:** report data never feeds
+  compensation (no ₦650/payroll path exists anywhere), and no Stage 8
+  model stores any person-level member/prospect record (aggregate daily
+  counts only). Supervisor review (REVIEWED/APPROVED states) is
+  deliberately absent — no supervisor workflow exists.
+- **Open items for the business (none block the MVP):**
+  1. Confirm the backdate window (7 days) per region/role over time.
+  2. A submission deadline policy (e.g. "by 10 PM next day") would change
+     copy, add overdue semantics and likely require the deferred
+     reminder notification — needs an explicit new brief.
+  3. Draft expiry/retention policy (drafts currently live until revised
+     or submitted).
+  4. What (if anything) supervisors do with these numbers — any review
+     workflow, target or dashboard is a NEW module on the Staff Platform
+     roadmap (not auto-built), and must preserve the self-reported
+     framing and the payroll firewall.
+  5. Whether the receipt email should later include the metrics digest
+     (deliberately excluded in the MVP; the portal is authoritative).

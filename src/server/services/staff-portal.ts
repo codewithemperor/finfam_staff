@@ -5,8 +5,10 @@ import { getAppointmentContent } from "@/config/appointment";
 import { ONBOARDING_WHATSAPP } from "@/config/onboarding";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import { getDailyReportTodayState } from "@/server/services/daily-reports";
 import type { StaffSessionContext } from "@/server/services/staff-auth";
 import type { IssuedAppointmentView } from "@/types/recruitment";
+import type { DailyReportTodayState } from "@/types/staff-reports";
 
 /**
  * Staff Portal view services (Stage 7) — read models for the authenticated
@@ -18,7 +20,10 @@ import type { IssuedAppointmentView } from "@/types/recruitment";
  * Deliberately NO metrics, KPIs or activity data: the portal shows only
  * real, persisted facts (brief §40). Onboarding state is READ here — the
  * home page never lazily creates the onboarding record (that side effect
- * belongs to the onboarding door itself).
+ * belongs to the onboarding door itself). Stage 8 adds exactly ONE
+ * reporting fact to the home view: today's Daily Report state (NOT_STARTED
+ * / DRAFT / SUBMITTED) so the home card can route to the right action —
+ * no aggregates, no history, no metric values.
  */
 
 export interface StaffPortalHomeView {
@@ -41,6 +46,8 @@ export interface StaffPortalHomeView {
   };
   /** Official WhatsApp contact when configured; null keeps honest pending copy. */
   whatsappNumber: string | null;
+  /** Today's Daily Report state for the home card (Stage 8, brief §35). */
+  dailyReporting: DailyReportTodayState;
   resources: {
     /** Categories the business supplies; none exist yet (honest state). */
     categories: readonly string[];
@@ -111,6 +118,7 @@ export async function getStaffPortalHome(
       completedAt: completedAt?.toISOString() ?? null,
     },
     whatsappNumber: ONBOARDING_WHATSAPP.number,
+    dailyReporting: await getDailyReportTodayState(staffRowId),
     resources: {
       categories: STAFF_RESOURCE_CATEGORIES,
       available: false,

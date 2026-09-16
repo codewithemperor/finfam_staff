@@ -1,7 +1,7 @@
 import type { OnboardingStep } from "@/types/recruitment";
 
 /**
- * FinFam Staff Onboarding — Section 7 content v2.0 (Stage 7, CLIENT-SAFE).
+ * FinFam Staff Onboarding — Section 7 content v2.1 (Stage 7/8, CLIENT-SAFE).
  *
  * "Section 7 — Immediate Onboarding & Resumption Instructions" is now the
  * AUTHORITATIVE onboarding content (approved brief §26–§37). It is served
@@ -35,15 +35,18 @@ import type { OnboardingStep } from "@/types/recruitment";
  *   (§32).
  * - The final staff orientation (§33) is concise operational resumption
  *   guidance — it does NOT recreate the FSOW.
- * - Daily accountability (§35) EXPLAINS the four reporting categories; the
- *   reporting product itself belongs to the NEXT Staff Platform module and
- *   is explicitly not built here.
+ * - Daily accountability (§35) EXPLAINS the four reporting categories.
+ *   v2.0 said the reporting tool itself was not part of the portal yet;
+ *   v2.1 (Stage 8) points that closing line at the Daily Reports tool that
+ *   now EXISTS in the Staff Portal — the step list, order and completion
+ *   semantics are otherwise unchanged, and historical acknowledgement
+ *   wording (pinned per row) is unaffected.
  * - Versioning stays lightweight: `ONBOARDING_META.version` is pinned on
  *   the StaffOnboarding row at entry (and re-pinned at completion) so the
  *   acknowledgement wording stays auditable.
  */
 export const ONBOARDING_META = {
-  version: "2.0",
+  version: "2.1",
 } as const;
 
 /**
@@ -297,7 +300,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       },
       {
         type: "paragraph",
-        text: "How and where to submit your daily reports will be explained by the onboarding team as part of your first-work instructions — reporting is described here so you know what will be expected; the reporting tool itself is not part of this portal yet.",
+        text: "You submit your daily report in the Staff Portal under Daily Reports — one report per working day, covering these four categories. Your first-work instructions explain when your reporting routine begins.",
       },
     ],
   },
