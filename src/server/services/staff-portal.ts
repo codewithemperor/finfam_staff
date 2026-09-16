@@ -1,14 +1,20 @@
 import "server-only";
 
-import { STAFF_PORTAL_OPERATIONAL_ROLE, STAFF_RESOURCE_CATEGORIES } from "@/config/staff-portal";
+import { STAFF_PORTAL_OPERATIONAL_ROLE } from "@/config/staff-portal";
 import { getAppointmentContent } from "@/config/appointment";
 import { ONBOARDING_WHATSAPP } from "@/config/onboarding";
+import {
+  getStaffResourcesHomeSummary,
+  type StaffResourcesHomeSummary,
+} from "@/config/staff-resources";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { getDailyReportTodayState } from "@/server/services/daily-reports";
+import { getStaffTrainingHomeState } from "@/server/services/staff-training";
 import type { StaffSessionContext } from "@/server/services/staff-auth";
 import type { IssuedAppointmentView } from "@/types/recruitment";
 import type { DailyReportTodayState } from "@/types/staff-reports";
+import type { TrainingHomeState } from "@/types/staff-training";
 
 /**
  * Staff Portal view services (Stage 7) — read models for the authenticated
@@ -48,11 +54,13 @@ export interface StaffPortalHomeView {
   whatsappNumber: string | null;
   /** Today's Daily Report state for the home card (Stage 8, brief §35). */
   dailyReporting: DailyReportTodayState;
-  resources: {
-    /** Categories the business supplies; none exist yet (honest state). */
-    categories: readonly string[];
-    available: false;
-  };
+  /** Staff Training facts for the home card (Stage 9, brief §38) — a
+   * READ-ONLY lookup that never creates an enrollment. */
+  training: TrainingHomeState;
+  /** Staff Resources facts for the home card (Stage 10) — derived from
+   * the source-controlled registry (src/config/staff-resources.ts),
+   * never a hard-coded availability flag. */
+  resources: StaffResourcesHomeSummary;
   accountStatus: "ACTIVE" | "SUSPENDED";
 }
 
@@ -119,10 +127,8 @@ export async function getStaffPortalHome(
     },
     whatsappNumber: ONBOARDING_WHATSAPP.number,
     dailyReporting: await getDailyReportTodayState(staffRowId),
-    resources: {
-      categories: STAFF_RESOURCE_CATEGORIES,
-      available: false,
-    },
+    training: await getStaffTrainingHomeState(staffRowId),
+    resources: getStaffResourcesHomeSummary(),
     accountStatus: staff.account?.status ?? "ACTIVE",
   };
 }

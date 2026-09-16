@@ -1,0 +1,2155 @@
+# FINFAM STAFF PLATFORM
+
+# STAGE 10 — MEMBER GROWTH TRACKING & EARNINGS
+
+## PLANNING ONLY
+
+Stage 9 — **Staff Training** is complete and verified.
+
+Current platform:
+
+```text
+Recruitment
+✓ Application
+✓ Orientation
+✓ Assessment
+✓ Agreement
+✓ Provisional Appointment
+✓ Staff Activation
+
+Staff Platform
+✓ Staff Account / Email OTP / Sessions
+✓ Onboarding & Resumption
+✓ Daily Reporting & Accountability
+✓ Staff Training
+
+NEXT
+→ Member Growth Tracking & Earnings
+```
+
+This task is:
+
+# PLANNING ONLY
+
+Do NOT implement Stage 10.
+
+Do NOT create migrations.
+
+Do NOT create Member/Prospect tables.
+
+Do NOT create earnings tables.
+
+Do NOT create CRM pages.
+
+Do NOT create calculations.
+
+Do NOT integrate any unverified external system.
+
+Inspect the existing architecture first and produce the complete Stage 10 implementation plan.
+
+Then STOP.
+
+---
+
+# 1. STAGE 10 PURPOSE
+
+Stage 10 combines the previously separate concepts:
+
+1. Prospect & Member Tracking
+2. Earnings & Incentives
+
+into one Staff Platform module:
+
+# MEMBER GROWTH TRACKING & EARNINGS
+
+The reason these belong together is that Staff earnings ultimately depend on successfully established members.
+
+However:
+
+# tracking activity and authoritative earnings qualification are NOT the same thing.
+
+The architecture must keep those concepts separate.
+
+---
+
+# 2. CORE BUSINESS FLOW
+
+Conceptually:
+
+```text
+Staff
+ ↓
+Prospect
+ ↓
+Registration
+ ↓
+FinFam Member
+ ↓
+First Deposit
+ ↓
+Savings ≥ ₦5,000 in first month
+ ↓
+Established Member
+ ↓
+Authoritative qualification event
+ ↓
+Staff earning
+ ↓
+Monthly bonus tier
+ ↓
+Monthly earnings statement
+```
+
+The exact authoritative source for each membership/deposit/savings event must be verified before implementation.
+
+Do not invent it.
+
+---
+
+# 3. CRITICAL DATA-TRUST FIREWALL
+
+The existing Daily Reporting module is:
+
+# SELF-REPORTED ACTIVITY
+
+Therefore this is forbidden:
+
+```text
+Daily Report:
+Reported Established Members = 12
+
+12 × ₦650
+→ Earnings
+```
+
+Daily Reports must NEVER directly create:
+
+* earnings
+* commission
+* bonus
+* payroll
+* authoritative member qualification
+
+Stage 10 must establish a separate authoritative data path.
+
+---
+
+# 4. AUTHORITATIVE EARNINGS RULE
+
+Staff earnings may only be generated from:
+
+# AUTHORITATIVE MEMBER / ACCOUNT DATA
+
+not Staff declarations.
+
+The planning agent must inspect whether the codebase currently has any connection to:
+
+* FinFam member database
+* registration platform
+* savings/account system
+* deposit ledger
+* referral/member attribution system
+* external API
+* webhook
+* imported authoritative dataset
+
+If such a system exists:
+
+document it exactly.
+
+If none exists:
+
+# SAY SO EXPLICITLY.
+
+Do not invent an integration.
+
+---
+
+# 5. IMPORTANT PLANNING OUTCOME IF AUTHORITATIVE DATA DOES NOT EXIST
+
+Stage 10 may still plan both halves.
+
+But distinguish:
+
+## Member Growth Tracking
+
+Can potentially be implemented from Staff-entered operational data.
+
+## Authoritative Earnings
+
+Cannot truthfully go live until authoritative qualification data exists.
+
+The plan must explain the clean integration boundary.
+
+Do NOT solve missing authoritative data by allowing Staff to mark someone as financially qualified.
+
+---
+
+# 6. OFFICIAL ESTABLISHED MEMBER DEFINITION
+
+Use the approved compensation policy.
+
+An Established Member requires, during the first month:
+
+```text
+Membership Signup
++
+First Deposit
++
+Maintain Savings ≥ ₦5,000
+```
+
+All three conditions matter.
+
+Do NOT simplify this to:
+
+```text
+registered member = established member
+```
+
+or:
+
+```text
+first deposit = established member
+```
+
+---
+
+# 7. OFFICIAL CORE EARNINGS FORMULA
+
+The approved formula is:
+
+```text
+Monthly Earnings
+=
+Established Members × ₦650
++
+Applicable Target Bonus
+```
+
+This may only operate over authoritative Established Member records.
+
+Do not connect the formula to DailyReport.
+
+---
+
+# 8. MONTHLY BONUS POLICY
+
+Approved non-cumulative monthly milestone tiers:
+
+```text
+0–99 Established Members
+Bonus = ₦0
+
+100–199 Established Members
+Bonus = ₦10,000
+
+200+ Established Members
+Bonus = ₦20,000
+```
+
+Exactly one tier applies per month.
+
+Bonuses are:
+
+# NON-CUMULATIVE.
+
+Do NOT calculate:
+
+```text
+₦10,000 + ₦20,000
+```
+
+at 200+.
+
+---
+
+# 9. APPROVED EARNINGS EXAMPLES
+
+The official source includes:
+
+```text
+100 Established Members
+100 × ₦650 + ₦10,000
+= ₦75,000
+
+200 Established Members
+200 × ₦650 + ₦20,000
+= ₦150,000
+
+300 Established Members
+300 × ₦650 + ₦20,000
+= ₦215,000
+```
+
+Use these as future calculation tests.
+
+Do not turn them into promotional claims.
+
+---
+
+# 10. MONTHLY PERFORMANCE TARGET
+
+Official target:
+
+# 200 Established Members per month
+
+But:
+
+> 200 is a target, not a ceiling.
+
+Every qualifying member above 200 continues to earn:
+
+```text
+₦650
+```
+
+Do not cap qualifying member earnings at 200.
+
+---
+
+# 11. REFERRAL LINK POLICY
+
+Approved policy:
+
+* Staff should use their referral link for tracking
+* referral link is for attribution/tracking
+* referral link itself does NOT generate a separate commission
+
+Do NOT introduce:
+
+```text
+referral commission
+```
+
+unless later approved.
+
+---
+
+# 12. PAYMENT TIMING
+
+Approved payment timing:
+
+> Month end or latest the first week of the new month.
+
+Stage 10 may display calculated/approved earnings states, but do not silently invent:
+
+* exact payday
+* bank disbursement automation
+* transfer status
+* payment gateway
+
+unless architecture already exists.
+
+---
+
+# 13. ANNUAL RECOGNITION
+
+The appointment mentions annual recognition effective December 2026.
+
+Details are not defined.
+
+Therefore Stage 10 must NOT calculate or award:
+
+* annual prizes
+* recognition bonuses
+* rankings
+* year-end rewards
+
+These belong to later policy/Performance work.
+
+---
+
+# 14. STAGE 10 HAS TWO DISTINCT DOMAINS
+
+Architecturally separate:
+
+# A. MEMBER GROWTH TRACKING
+
+Operational relationship between Staff and prospects/members.
+
+and:
+
+# B. AUTHORITATIVE EARNINGS
+
+Financial result derived from verified membership qualification.
+
+Do not collapse them into one mutable "Member" table controlled by Staff.
+
+---
+
+# 15. MEMBER GROWTH TRACKING PURPOSE
+
+Staff need to understand:
+
+* who they are currently engaging
+* follow-up status
+* whether a prospect registered
+* member-growth progression
+* which people need follow-up
+* which records have become authoritative FinFam members
+* which authoritative members eventually qualify as Established
+
+This is operational CRM-lite functionality.
+
+It is not a full enterprise CRM.
+
+---
+
+# 16. PROSPECT TRACKING — MINIMUM DATA QUESTION
+
+Determine the smallest personal-data set required.
+
+Possible fields may include:
+
+```text
+name
+phone
+email?
+source?
+notes?
+```
+
+But do NOT blindly implement these.
+
+Assess:
+
+* actual operational need
+* Nigerian privacy implications
+* duplication with FinFam member registration system
+* consent
+* retention
+* member-account matching
+
+Recommend the smallest viable dataset.
+
+---
+
+# 17. DO NOT COLLECT UNNECESSARY MEMBER DATA
+
+Staff Growth Tracking must never collect:
+
+* member passwords
+* PINs
+* OTPs
+* account login credentials
+* BVN
+* NIN
+* bank credentials
+* account balances
+* unnecessary financial details
+
+The Staff privacy rule continues to apply.
+
+---
+
+# 18. TRACKING STATE MODEL
+
+Evaluate the smallest useful operational lifecycle.
+
+Potential conceptual stages:
+
+```text
+PROSPECT
+CONTACTED
+FOLLOW_UP
+REGISTERED
+MEMBER
+```
+
+But be careful:
+
+# ESTABLISHED is financially authoritative.
+
+A Staff member should not simply click:
+
+```text
+Mark as Established Member
+```
+
+unless the system is displaying an authoritative external qualification.
+
+Recommend a lifecycle that separates:
+
+```text
+staff-managed relationship status
+```
+
+from:
+
+```text
+system-verified member status
+```
+
+---
+
+# 19. STAFF-MANAGED VS SYSTEM-MANAGED FIELDS
+
+Explicitly define field ownership.
+
+Example concept:
+
+## Staff-managed
+
+* prospect name
+* contact details
+* follow-up status
+* notes
+* next follow-up
+* initial source
+
+## System-managed / authoritative
+
+* registered FinFam member id
+* registration timestamp
+* first deposit qualification
+* first-month savings qualification
+* Established Member status
+* established timestamp
+* earnings eligibility
+
+Do not allow Staff UI to edit authoritative fields.
+
+---
+
+# 20. MEMBER IDENTITY / MATCHING
+
+Planning must determine how a prospect becomes linked to a real FinFam member.
+
+Evaluate approaches such as:
+
+### Option A
+
+Referral link / referral code attribution
+
+### Option B
+
+Member ID lookup
+
+### Option C
+
+Phone/email reconciliation
+
+### Option D
+
+Authoritative event includes Staff attribution
+
+### Option E
+
+Manual admin reconciliation
+
+Do not choose without inspecting available systems.
+
+Recommend the safest architecture based on what actually exists.
+
+---
+
+# 21. STAFF ATTRIBUTION
+
+This is financially critical.
+
+The system must establish:
+
+> Which Staff member receives attribution for which authoritative member?
+
+That attribution cannot be casually editable after financial qualification.
+
+Plan:
+
+* creation rules
+* conflict rules
+* duplicate attribution
+* member already attributed to another Staff member
+* reassignment
+* correction authority
+* auditability
+
+Do not invent resolution rules silently.
+
+---
+
+# 22. DUPLICATE PROSPECTS
+
+Plan how to handle the same person being entered:
+
+* twice by one Staff member
+* by multiple Staff members
+* with different phone/email details
+* after already becoming a member
+
+Do NOT silently deduplicate purely by name.
+
+Potential unique identifiers need business/privacy review.
+
+---
+
+# 23. PROSPECT OWNERSHIP
+
+Staff A must not automatically access Staff B's prospect list.
+
+Identity:
+
+```text
+Session
+→ StaffAccount
+→ Staff
+```
+
+All Staff-facing tracking is scoped to the authenticated Staff.
+
+Future supervisors/admins may gain broader access later in Stage 13.
+
+---
+
+# 24. PROSPECT NOTES
+
+If notes exist:
+
+* plain text
+* length limited
+* operational only
+* no unnecessary sensitive information
+* no financial credentials
+* no account secrets
+
+The UI should warn Staff not to place sensitive account data in notes.
+
+---
+
+# 25. FOLLOW-UP SUPPORT
+
+Potential useful fields:
+
+```text
+lastContactedAt
+nextFollowUpAt?
+followUpStatus
+```
+
+Evaluate whether Stage 10 actually needs these.
+
+Avoid overbuilding task management.
+
+No automated messaging system unless approved.
+
+---
+
+# 26. MEMBER CONVERSION
+
+Once an authoritative member is matched:
+
+The Staff-facing record may display:
+
+```text
+Registered
+First deposit confirmed
+Savings qualification pending
+Established
+```
+
+But values must come from authoritative data.
+
+Do not convert Staff notes into system qualification.
+
+---
+
+# 27. AUTHORITATIVE MEMBER EVENT MODEL
+
+Evaluate whether a normalized model should represent authoritative facts such as:
+
+```text
+MemberRegistration
+FirstDeposit
+SavingsQualification
+EstablishedMemberQualification
+```
+
+or whether these facts come from one external Member snapshot/event.
+
+Prefer the smallest architecture that preserves:
+
+* source
+* timestamp
+* member identity
+* Staff attribution
+* qualification basis
+
+---
+
+# 28. SOURCE PROVENANCE
+
+Every authoritative financial qualification should preserve:
+
+```text
+source
+sourceReference
+sourceTimestamp
+receivedAt
+```
+
+or equivalent.
+
+The platform should be able to answer:
+
+> Why did this person count as an Established Member?
+
+Do not store only:
+
+```text
+isEstablished = true
+```
+
+without provenance if an external system is involved.
+
+---
+
+# 29. EVENT IDEMPOTENCY
+
+If data arrives by:
+
+* webhook
+* import
+* scheduled sync
+* API polling
+
+the same authoritative event may arrive multiple times.
+
+Plan an idempotency mechanism using:
+
+* source event id
+* source reference
+* unique member qualification key
+
+Duplicate authoritative events must never create duplicate earnings.
+
+---
+
+# 30. AUTHORITATIVE DATA CORRECTION
+
+Plan what happens if the upstream system later corrects:
+
+* registration
+* Staff attribution
+* savings qualification
+* duplicate member
+* qualification date
+
+Do not simply delete financial history.
+
+Consider:
+
+* reversals
+* adjustments
+* corrected events
+* audit records
+
+This is especially important once earnings exist.
+
+---
+
+# 31. EARNINGS SHOULD BE LEDGER-LIKE
+
+Strongly evaluate a financial ledger/event model rather than storing only:
+
+```text
+staff.totalEarnings
+```
+
+Recommended principle:
+
+> Persist individual earning components, then derive totals.
+
+Potential conceptual model:
+
+```text
+StaffEarningEntry
+
+id
+staffId
+earningMonth
+type
+amount
+sourceType
+sourceId
+createdAt
+```
+
+Types might eventually include:
+
+```text
+ESTABLISHED_MEMBER
+MONTHLY_TARGET_BONUS
+ADJUSTMENT
+```
+
+Do NOT finalize enum names before inspecting architecture.
+
+---
+
+# 32. WHY NOT A MUTABLE BALANCE FIELD
+
+Avoid:
+
+```text
+Staff.earnings = 150000
+```
+
+as the sole source of truth.
+
+A ledger provides:
+
+* auditability
+* idempotency
+* corrections
+* monthly statements
+* source tracing
+* future payout reconciliation
+
+Plan this carefully.
+
+---
+
+# 33. ESTABLISHED-MEMBER EARNING ENTRY
+
+For each authoritative qualifying member:
+
+Conceptually create exactly one:
+
+```text
+₦650 ESTABLISHED_MEMBER earning entry
+```
+
+per valid Staff-member attribution.
+
+Use a unique financial dedupe key such as:
+
+```text
+staffId + authoritativeMemberQualificationId
+```
+
+or source equivalent.
+
+One qualifying member must not earn ₦650 twice.
+
+---
+
+# 34. MONTHLY BONUS ENTRY
+
+At the monthly boundary, derive authoritative Established Member count.
+
+Then one bonus entry:
+
+```text
+0–99  → ₦0
+100–199 → ₦10,000
+200+ → ₦20,000
+```
+
+Need plan for:
+
+* when bonus becomes final
+* month timezone
+* late authoritative events
+* corrections
+* recalculation
+* adjustment entries
+
+Do not assume month close mechanics.
+
+---
+
+# 35. ZERO BONUS REPRESENTATION
+
+Decide whether:
+
+```text
+₦0 bonus
+```
+
+should generate a ledger row.
+
+Recommended:
+
+Probably not necessary unless audit/reporting benefits justify it.
+
+A statement can derive:
+
+```text
+Applicable bonus: ₦0
+```
+
+without storing a zero financial transaction.
+
+Evaluate.
+
+---
+
+# 36. MONTHLY PERIOD
+
+Use an explicit earnings period.
+
+Likely:
+
+```text
+YYYY-MM
+```
+
+based on:
+
+# Africa/Lagos
+
+because the platform already uses Lagos operational dates.
+
+Confirm whether financial qualification month follows:
+
+* member registration month
+* Established qualification month
+* first-month window
+* another source-defined month
+
+This is a critical business question.
+
+---
+
+# 37. FIRST-MONTH QUALIFICATION
+
+The policy says:
+
+> Maintain Savings ≥ ₦5,000 in the first month.
+
+Planning must clarify what "first month" means.
+
+Possible interpretations:
+
+### A
+
+Calendar month of signup
+
+### B
+
+30 days after signup
+
+### C
+
+FinFam-defined membership month/billing period
+
+Do NOT invent the answer.
+
+This materially affects authoritative qualification.
+
+---
+
+# 38. "MAINTAIN SAVINGS ≥ ₦5,000" SEMANTICS
+
+Clarify whether this means:
+
+* balance reaches ₦5,000 once
+* closing balance ≥ ₦5,000
+* maintained continuously
+* cumulative deposits ≥ ₦5,000
+* another rule
+
+Do not infer from wording.
+
+This must come from the authoritative account system/business policy.
+
+---
+
+# 39. FIRST DEPOSIT SEMANTICS
+
+Clarify:
+
+* any positive deposit?
+* minimum amount?
+* successful/settled deposit only?
+* reversed deposits?
+
+Do not invent.
+
+---
+
+# 40. REGISTRATION SEMANTICS
+
+Clarify which event qualifies as:
+
+# Membership Signup
+
+Potential:
+
+* form submitted
+* account created
+* identity verified
+* cooperative membership activated
+* registration fee paid
+
+Authoritative source must define it.
+
+---
+
+# 41. EARNINGS STATUS MODEL
+
+Consider financial lifecycle such as:
+
+```text
+CALCULATED
+APPROVED
+PAID
+ADJUSTED
+```
+
+but do NOT create statuses without actual workflow.
+
+If Stage 10 does not include payment execution/admin approval, perhaps earnings should only expose:
+
+```text
+Calculated / Earned
+```
+
+with payout outside the system.
+
+Evaluate the smallest honest state model.
+
+---
+
+# 42. PAYOUT IS NOT AUTOMATICALLY STAGE 10
+
+Distinguish:
+
+```text
+Earnings calculation
+```
+
+from:
+
+```text
+Bank payout
+```
+
+Stage 10 may calculate authoritative earnings without initiating transfers.
+
+Do NOT build:
+
+* bank transfers
+* payment gateway
+* payout batch
+* payroll disbursement
+
+unless the repo/business requirements explicitly support it.
+
+---
+
+# 43. STAFF EARNINGS VIEW
+
+Potential route:
+
+```text
+/staff/earnings
+```
+
+Show:
+
+* current month
+* authoritative Established Members
+* base earning
+* applicable bonus
+* total calculated earnings
+* historical months
+* clear status/qualification explanation
+
+No fake balances.
+
+No self-reported Daily Report numbers.
+
+---
+
+# 44. MEMBER GROWTH VIEW
+
+Potential route:
+
+```text
+/staff/growth
+```
+
+or:
+
+```text
+/staff/members
+```
+
+Evaluate the clearest information architecture.
+
+Do not create dozens of CRM sections.
+
+MVP may need:
+
+* list
+* add prospect
+* prospect detail
+* follow-up/update
+* member/qualification status
+
+---
+
+# 45. SHOULD GROWTH + EARNINGS SHARE ONE NAV ITEM?
+
+Evaluate:
+
+### Option A
+
+```text
+Growth
+Earnings
+```
+
+as two navigation destinations under one Stage.
+
+### Option B
+
+one:
+
+```text
+Member Growth
+```
+
+area with earnings summary.
+
+Recommended direction:
+
+Separate destinations may be clearer because operational tracking and financial statements have different purposes.
+
+But do not overpopulate Staff nav.
+
+Assess current 7-link nav at 375px.
+
+---
+
+# 46. STAFF PORTAL HOME
+
+Potential real-data additions:
+
+## Member Growth
+
+```text
+12 active prospects
+5 registrations
+3 verified Established Members
+```
+
+ONLY if those counts come from the relevant authoritative/tracking tables and terminology is clear.
+
+## Earnings
+
+```text
+September 2026
+Authoritative Established Members: 3
+Calculated earnings: ₦1,950
+```
+
+ONLY after authoritative data exists.
+
+Do not create fake metrics.
+
+---
+
+# 47. DAILY REPORTS RELATIONSHIP
+
+Daily Reports can reference:
+
+* self-reported prospects
+* self-reported registrations
+* self-reported Established Members
+
+Stage 10 may later compare/report differences, but:
+
+# NEVER silently reconcile DailyReport counts into authoritative records.
+
+DailyReport stays historical self-reported activity.
+
+---
+
+# 48. STAFF TRAINING RELATIONSHIP
+
+Stage 9 may later link Staff to Member Growth and Earnings guidance.
+
+Do NOT modify Stage 9 unless necessary.
+
+Training completion must not be required to earn unless explicitly approved.
+
+---
+
+# 49. MEMBER TRACKING PRIVACY
+
+Planning must explicitly assess:
+
+* lawful basis/consent for storing prospect contact details
+* minimum required PII
+* retention
+* deletion
+* duplicate handling
+* access control
+* supervisor/admin future access
+
+Do not build a massive PII store casually.
+
+---
+
+# 50. PROSPECT DELETION / RETENTION
+
+Determine:
+
+* can Staff delete a prospect?
+* what happens after registration?
+* should records be archived?
+* retention period
+* financial/audit implications after member qualification
+
+Recommended:
+
+Once linked to authoritative financial qualification, do not allow Staff deletion.
+
+Before that, draft/prospect deletion may be reasonable.
+
+Flag policy.
+
+---
+
+# 51. EARNINGS HISTORY IMMUTABILITY
+
+Historical earnings statements should not silently change without trace.
+
+If authoritative data changes:
+
+use:
+
+* adjustment
+* reversal
+* recalculation event
+
+rather than rewriting history invisibly.
+
+Plan the simplest auditable mechanism.
+
+---
+
+# 52. EARNINGS VERSIONING
+
+The compensation policy is currently versioned indirectly by Appointment/Agreement content.
+
+Strongly consider:
+
+```text
+EARNINGS_POLICY.version = "1.0"
+```
+
+and pin earning entries/monthly statements to it.
+
+Why:
+
+future ₦650 or bonus tiers may change.
+
+Historical statements must retain the rules that produced them.
+
+---
+
+# 53. POLICY EFFECTIVE DATE
+
+The supplied Appointment/Compensation Policy is dated:
+
+# September 1, 2026
+
+Plan how policy effective dates interact with earnings periods.
+
+Do not apply future policy changes retroactively unless explicitly required.
+
+---
+
+# 54. MONTHLY STATEMENT MODEL
+
+Consider whether to persist:
+
+```text
+StaffEarningsStatement
+```
+
+with:
+
+* Staff
+* period
+* policyVersion
+* authoritative member count
+* base earning
+* bonus
+* total
+* calculatedAt
+* finalizedAt?
+
+or derive it dynamically from immutable ledger entries.
+
+Compare:
+
+### Derived-only statement
+
+vs
+
+### persisted monthly snapshot
+
+Recommend based on auditability and correction requirements.
+
+---
+
+# 55. AUTHORITATIVE MEMBER COUNT
+
+Be explicit:
+
+Monthly Established Member count is:
+
+# count of authoritative qualification records attributed to that Staff for the relevant earnings period.
+
+Not:
+
+* DailyReport total
+* prospect count
+* registration count
+* manually typed Staff number
+
+---
+
+# 56. DOUBLE ATTRIBUTION RISK
+
+One authoritative member should not generate:
+
+```text
+₦650 for Staff A
++
+₦650 for Staff B
+```
+
+unless policy explicitly allows shared attribution.
+
+Plan database constraints/business conflict handling.
+
+This is a major financial integrity requirement.
+
+---
+
+# 57. REFERRAL TRACKING
+
+If the external/member system can preserve:
+
+```text
+Staff referral code / Staff ID / referral token
+```
+
+that may become the cleanest attribution source.
+
+Inspect whether such a field already exists anywhere.
+
+Do not infer that Staff ID itself is already accepted by external FinFam systems.
+
+---
+
+# 58. STAFF ID IS NOT AUTHENTICATION
+
+Even if Staff ID is used for referral attribution:
+
+```text
+FF-STF-NNNN
+```
+
+remains:
+
+# identity/reference
+
+not authentication.
+
+Staff Portal authorization continues through:
+
+```text
+Session
+→ StaffAccount
+→ Staff
+```
+
+---
+
+# 59. API DESIGN — TRACKING
+
+Plan minimum authenticated APIs.
+
+Potential:
+
+```text
+GET  /api/staff/growth
+POST /api/staff/growth/prospects
+
+GET   /api/staff/growth/prospects/[id]
+PATCH /api/staff/growth/prospects/[id]
+```
+
+Potential follow-up endpoint only if needed.
+
+Do not finalize until data model is chosen.
+
+No ownership identifiers from the browser.
+
+---
+
+# 60. API DESIGN — EARNINGS
+
+Potential read APIs:
+
+```text
+GET /api/staff/earnings
+GET /api/staff/earnings/[period]
+```
+
+Staff should never be able to:
+
+```text
+POST earnings
+PATCH amount
+Mark member established
+Set bonus
+Mark paid
+```
+
+unless a later authorized admin/system workflow explicitly permits it.
+
+Financial writes should originate from authoritative server processes.
+
+---
+
+# 61. AUTHORITATIVE INGESTION API
+
+If authoritative data must enter FinFam Portal:
+
+plan a separate server-to-server boundary.
+
+Potential:
+
+```text
+POST /api/internal/member-events
+```
+
+or webhook.
+
+Requirements:
+
+* authentication/signature
+* idempotency
+* schema validation
+* source provenance
+* replay safety
+* no browser access
+* safe logs
+
+Do NOT implement an internal endpoint during planning.
+
+---
+
+# 62. IMPORT OPTION
+
+If no API/webhook exists, compare:
+
+### CSV/manual import by authorized admin
+
+### direct database sync
+
+### scheduled API sync
+
+### event webhook
+
+Do not build the wrong architecture before knowing the source system.
+
+Recommend the smallest safe interim path.
+
+Manual Staff-entered financial qualification is NOT an acceptable fallback.
+
+---
+
+# 63. ADMIN/SUPERVISOR BOUNDARY
+
+Stage 13 is Admin/Supervisor Operations.
+
+Therefore Stage 10 Staff-facing implementation should NOT balloon into:
+
+* staff-management console
+* company-wide earnings dashboard
+* manual payout approval UI
+* supervisor reassignment UI
+
+However, Stage 10 planning may identify the minimum internal/system capability needed to support authoritative ingestion.
+
+Keep that narrow.
+
+---
+
+# 64. PERFORMANCE BOUNDARY
+
+Stage 11 owns:
+
+# Performance & Targets
+
+Do NOT build:
+
+* performance scores
+* rankings
+* leaderboards
+* conversion rates
+* monthly target charts
+* recognition
+
+Stage 10 may show the factual authoritative monthly member count necessary to explain earnings.
+
+Do not turn it into performance evaluation.
+
+---
+
+# 65. EARNINGS UI TONE
+
+Financial information should be extremely clear.
+
+Show separate components:
+
+```text
+Established Member earnings
+Bonus
+Total
+```
+
+Do not hide the formula.
+
+Also show:
+
+> Based on authoritative qualifying member records.
+
+Avoid promotional language.
+
+---
+
+# 66. PENDING VS FINAL EARNINGS
+
+Assess whether current-month earnings should be labeled:
+
+```text
+Estimated
+Calculated
+Pending
+Earned
+Final
+```
+
+Do NOT choose a financially misleading term without understanding when qualification data is final.
+
+This is a key business question.
+
+---
+
+# 67. MEMBER QUALIFICATION TIMING
+
+A member may register early in the month but only qualify later.
+
+Plan how the UI distinguishes:
+
+```text
+Registered
+Qualification in progress
+Established
+Not qualified
+```
+
+But "Not qualified" may require an authoritative reason.
+
+Do not speculate.
+
+---
+
+# 68. FAILED/REVERSED QUALIFICATION
+
+Consider:
+
+* deposit reversed
+* member account cancelled
+* savings fell below threshold
+* duplicate registration
+* invalid referral attribution
+
+How should existing earning entries respond?
+
+This drives whether a ledger with adjustments is required.
+
+Do not ignore reversals.
+
+---
+
+# 69. PAYMENT STATUS
+
+If payments are outside the portal, Stage 10 may honestly say:
+
+```text
+Calculated earnings
+```
+
+without:
+
+```text
+Paid
+```
+
+Do not fabricate payout state.
+
+If a real payment system exists, inspect it.
+
+---
+
+# 70. EARNINGS RECEIPT / EMAIL
+
+Evaluate notification events such as:
+
+```text
+MONTHLY_EARNINGS_READY
+PAYMENT_SENT
+```
+
+But only if corresponding real events exist.
+
+Do not email "payment sent" without an authoritative payout event.
+
+Avoid daily earnings emails.
+
+---
+
+# 71. MOBILE UX — MEMBER GROWTH
+
+At 375px:
+
+* simple searchable/filterable list if necessary
+* obvious Add Prospect action
+* compact status
+* clear follow-up details
+* no spreadsheet-like horizontal table
+
+Forms must be comfortable on phones.
+
+---
+
+# 72. MOBILE UX — EARNINGS
+
+At 375px:
+
+Show:
+
+```text
+September 2026
+
+Established members     120
+Base earnings            ₦78,000
+Target bonus             ₦10,000
+Total                    ₦88,000
+```
+
+only as an example of layout.
+
+Actual figures must come from authoritative records.
+
+Do not use giant KPI styling.
+
+---
+
+# 73. DESKTOP UX
+
+Use wider layouts meaningfully:
+
+Member Growth:
+
+```text
+Prospect/member list      Selected record / details
+```
+
+where useful.
+
+Earnings:
+
+```text
+Current statement         Historical periods
+```
+
+Avoid generic analytics dashboard grids.
+
+---
+
+# 74. ACCESSIBILITY
+
+Plan:
+
+* semantic form labels
+* status in text
+* accessible tables/lists
+* keyboard navigation
+* meaningful financial labels
+* clear currency formatting
+* form errors connected to fields
+* no color-only qualification state
+* accessible date controls
+
+---
+
+# 75. CURRENCY
+
+Use:
+
+# Nigerian Naira (₦)
+
+Do not use floating-point money.
+
+Plan integer minor/whole-unit storage.
+
+Because current policy uses whole Naira values, consider:
+
+```text
+amountNaira Int
+```
+
+or a scalable integer minor-unit design.
+
+Explain the recommendation.
+
+---
+
+# 76. FINANCIAL CALCULATION LOCATION
+
+All compensation calculations must be:
+
+# server-side
+
+Never trust client-computed totals.
+
+Client may display values returned by the server.
+
+Use one policy module such as:
+
+```text
+src/config/earnings-policy.ts
+```
+
+with:
+
+* version
+* effective date
+* per-established-member amount
+* bonus tiers
+
+Do not scatter:
+
+```text
+650
+10000
+20000
+```
+
+through the codebase.
+
+---
+
+# 77. FINANCIAL TESTS
+
+Plan exact calculation tests:
+
+```text
+0 members   → ₦0
+99 members  → 99×650 + 0
+100 members → ₦75,000
+199 members → 199×650 + ₦10,000
+200 members → ₦150,000
+300 members → ₦215,000
+```
+
+Also test:
+
+* non-cumulative bonus
+* > 200 continues ₦650/member
+* duplicate qualification no duplicate earning
+
+---
+
+# 78. POLICY VERSION TESTS
+
+Plan future-compatible tests:
+
+* 2026 policy produces expected calculation
+* historical entries retain policy version
+* later policy does not mutate old statement
+* effective-date selection
+
+No later policy needs to be invented now.
+
+---
+
+# 79. MEMBER DATA TESTS
+
+Plan:
+
+* create prospect
+* ownership
+* update allowed staff fields
+* cross-Staff isolation
+* duplicate handling
+* authoritative member link
+* authoritative fields read-only to Staff
+* member qualification provenance
+* no Staff-created Established status
+
+---
+
+# 80. AUTHORITATIVE INGESTION TESTS
+
+If ingestion exists:
+
+* valid signed event
+* invalid signature
+* malformed event
+* replayed event
+* out-of-order event
+* duplicate event
+* correction/reversal
+* Staff attribution conflict
+* member already attributed elsewhere
+
+---
+
+# 81. EARNINGS IDEMPOTENCY TESTS
+
+Verify:
+
+* one authoritative qualification → one earning entry
+* replay qualification → zero duplicates
+* concurrent event processing → one entry
+* one monthly bonus per Staff/period
+* recalculation cannot double-create bonus
+* adjustment trace preserved
+
+---
+
+# 82. STAFF AUTHORIZATION TESTS
+
+Staff A cannot access:
+
+* Staff B prospects
+* Staff B members
+* Staff B earnings
+* Staff B statements
+
+Manipulating:
+
+* Staff ID
+* candidate reference
+* account ID
+* member ID
+* period
+
+must never change Staff ownership.
+
+---
+
+# 83. PRIVACY TESTS
+
+Pin absence of:
+
+* passwords
+* login credentials
+* NIN
+* BVN
+* bank credentials
+* member balance fields in Staff-entered tracking
+
+unless later authoritative integration requires internally stored values — and even then do not expose them to Staff unnecessarily.
+
+---
+
+# 84. FULL REGRESSION
+
+Stage 10 must preserve:
+
+* recruitment
+* Staff Activation
+* Staff Account/auth/session
+* Onboarding
+* Daily Reporting
+* Staff Training
+* notifications
+* Appointment
+* Resources
+* Profile
+
+No rebuild.
+
+---
+
+# 85. PLANNING DELIVERABLES
+
+Return:
+
+1. Existing architecture findings
+2. Authoritative-data availability assessment
+3. Stage 10 scope and boundary
+4. Member Growth vs Earnings separation
+5. Staff-managed vs system-managed fields
+6. Prospect/member data model recommendation
+7. Minimum PII recommendation
+8. Prospect lifecycle
+9. Authoritative member matching
+10. Staff attribution model
+11. Duplicate/conflict handling
+12. Established Member qualification architecture
+13. Source provenance/idempotency
+14. Correction/reversal design
+15. Earnings policy config/version
+16. Earnings ledger recommendation
+17. Monthly statement recommendation
+18. Bonus calculation
+19. Period/month semantics
+20. Payment/payout boundary
+21. Routes
+22. Staff APIs
+23. Internal/system ingestion APIs if required
+24. Staff Portal navigation
+25. Home integration
+26. Daily Reporting relationship
+27. Staff Training relationship
+28. Stage 11 Performance boundary
+29. Security
+30. Privacy
+31. Responsive UX
+32. Accessibility
+33. Notification recommendation
+34. Test matrix
+35. Business questions
+36. Expected files
+37. Files not to rebuild
+38. Risks
+39. Implementation sequence
+
+---
+
+# 86. BUSINESS QUESTIONS — MUST ADDRESS
+
+At minimum identify answers/status for:
+
+1. What system is the authoritative FinFam member database?
+2. Does it expose an API?
+3. Does it support webhooks?
+4. Does it expose registration timestamps?
+5. Does it expose first-deposit events?
+6. Does it expose current/period savings qualification?
+7. Does it store referral Staff attribution?
+8. What identifier links Staff attribution?
+9. Can one member be attributed to multiple Staff?
+10. How are attribution conflicts resolved?
+11. What exactly counts as Membership Signup?
+12. What exactly counts as First Deposit?
+13. What exactly does "Maintain Savings ≥ ₦5,000 in the first month" mean?
+14. What exactly is "first month"?
+15. Which date determines the earnings month?
+16. What happens when a deposit is reversed?
+17. What happens when an Established Member is later invalidated?
+18. Can Staff manually add prospects?
+19. Which prospect PII may Staff collect?
+20. Can Staff delete prospects?
+21. How long are prospect records retained?
+22. Should prospect/member matching use phone/email/member ID/referral token?
+23. When are monthly earnings considered final?
+24. Is an approval step required?
+25. Who can correct financial records?
+26. Is payout handled by another system?
+27. Do we need payment status?
+28. What does "month end or latest first week" mean operationally?
+29. Should Staff receive a monthly earnings email?
+30. Should authoritative member count appear before month-end?
+31. Is the ₦650 policy effective for all Staff from September 1, 2026?
+32. Can compensation policy change per Staff/role later?
+33. How should retroactive corrections be handled?
+34. Does the Staff Portal need downloadable earnings statements?
+35. Does FinFam require formal financial/audit exports?
+
+Do not invent answers.
+
+---
+
+# 87. EXPECTED FILE AREAS
+
+Potential future files may include:
+
+```text
+src/config/earnings-policy.ts
+
+src/server/services/member-growth.ts
+src/server/services/staff-earnings.ts
+src/server/services/member-ingestion.ts
+
+src/lib/validation/member-growth.ts
+src/types/member-growth.ts
+src/types/staff-earnings.ts
+
+src/app/staff/(portal)/growth/*
+src/app/staff/(portal)/earnings/*
+
+src/app/api/staff/growth/*
+src/app/api/staff/earnings/*
+```
+
+Potential Prisma models may include concepts such as:
+
+```text
+StaffProspect
+AuthoritativeMemberLink
+EstablishedMemberQualification
+StaffEarningEntry
+StaffEarningsStatement
+```
+
+These names are NOT approved yet.
+
+The planning agent must recommend the smallest clean schema after inspecting actual data availability.
+
+---
+
+# 88. FILES NOT TO REBUILD
+
+Do NOT rebuild:
+
+* Application
+* Recruitment Orientation
+* Recruitment Assessment
+* Agreement
+* Appointment
+* Staff Activation
+* StaffAccount
+* OTP/session auth
+* Staff Onboarding
+* Daily Reporting
+* Staff Training
+* Mailjet provider/outbox
+* Staff Portal shell
+* Resources
+* Profile
+
+Stage 10 is additive.
+
+---
+
+# 89. RISKS TO ASSESS
+
+Explicitly assess:
+
+* self-reported numbers accidentally becoming payroll
+* no authoritative member integration
+* duplicate Staff attribution
+* duplicate member qualification
+* over-collection of prospect PII
+* inaccurate member matching
+* late qualification events
+* reversed deposits
+* corrections after monthly close
+* mutable earnings history
+* payout state being fabricated
+* future compensation-policy changes
+* scope creep into full CRM
+* scope creep into Performance/Stage 11
+* scope creep into Admin/Stage 13
+* financial concurrency/idempotency
+* staff disputes over attribution
+* audit requirements
+
+---
+
+# 90. IMPLEMENTATION ORDER — PLAN ONLY
+
+Recommend the eventual sequence.
+
+Likely dependency direction:
+
+```text
+1. Confirm authoritative member source + business semantics
+2. Finalize Member Growth schema
+3. Finalize attribution rules
+4. Finalize Established Member qualification contract
+5. Add versioned earnings policy
+6. Add additive schema/migration
+7. Build Member Growth services/APIs
+8. Build authoritative ingestion/sync boundary
+9. Build qualification processor
+10. Build immutable earning-entry generation
+11. Build monthly bonus/statement logic
+12. Build Staff Growth UI
+13. Build Staff Earnings UI
+14. Integrate portal navigation/home
+15. Add notifications only if approved
+16. Security/privacy/idempotency tests
+17. Financial calculation tests
+18. Full regression
+19. Browser responsive/a11y
+20. Docs
+21. Completion report
+22. STOP before Stage 11
+```
+
+But the agent must revise this order based on actual architecture findings.
+
+---
+
+# 91. FINAL GATE
+
+End exactly with:
+
+## Ready for implementation
+
+List only decisions that are technically/business-safe.
+
+If authoritative member data is not available, explicitly identify which portions can safely be implemented and which must remain blocked.
+
+## Requires business confirmation
+
+List all unresolved rules that materially affect:
+
+* member matching
+* qualification
+* attribution
+* earnings
+* financial corrections
+* payment status
+
+## Proposed implementation order
+
+Give the safest dependency order.
+
+Then STOP.
+
+Do NOT implement Stage 10.
+
+Do NOT create migrations.
+
+Do NOT create CRM pages.
+
+Do NOT calculate real earnings.
+
+Do NOT begin Stage 11.
+
+---
+
+# 92. STAGE 11 BOUNDARY
+
+After Stage 10, the next planned module is:
+
+# STAGE 11 — PERFORMANCE & TARGETS
+
+That later module may use authoritative Stage 10 data for:
+
+* 200-member monthly target
+* factual historical performance
+* target progress
+* activity/performance summaries
+* recognition
+
+Do NOT implement or plan Stage 11 now.
+
+Stage 10 only.

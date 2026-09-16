@@ -958,3 +958,142 @@ without a new approved brief.
      framing and the payroll firewall.
   5. Whether the receipt email should later include the metrics digest
      (deliberately excluded in the MVP; the portal is authoritative).
+
+## 42. Stage 9 — Staff Training — IMPLEMENTED (approved brief; defaults recorded)
+
+- **Status:** ✅ Implemented (Stage 9). One course — **FinFam Staff
+  Foundations** (`staff-foundations@1.0`) — six lessons, source-controlled
+  in `src/config/training/`, persisted Staff progress in
+  `staff_training_enrollments` / `staff_training_lesson_progress`
+  (migration `20260916130316_staff_training`, purely additive).
+- **Approved MVP defaults recorded here for the business:**
+  1. **Content authority** — only statements derivable from approved
+     material (onboarding Section 7, FSOW orientation, Agreement
+     principles, implemented Daily Reporting definitions) were used.
+     Lesson 5 imports `DAILY_REPORT_CATEGORIES` and the self-reported
+     notice by reference, so Training cannot drift from the reporting
+     form. Everything a statement would have needed new policy for was
+     left out (see open items below).
+  2. **Required Training** — displayed as an organisational label with
+     the approved non-blocking wording ("Training does not block your
+     other Staff Portal tools in this release"). Nothing in Training
+     technically gates any other portal tool; only Training itself
+     requires completed onboarding (403 FORBIDDEN otherwise).
+  3. **No knowledge check** — Stage 9 ships read-and-complete only: all
+     six lessons completed → course completed. No questions, scores,
+     pass marks, retakes or certificates exist (no approved question
+     bank; the recruitment Assessment is not repurposed).
+  4. **No training notifications** — no `TRAINING_AVAILABLE` /
+     `TRAINING_COMPLETED` types were added; zero NotificationDelivery
+     rows are created by Training (pinned by tests).
+  5. **Enrollment/versioning** — enrollment is lazy (first course open,
+     race-safe create-or-get); `courseVersion` is pinned at first open.
+     A staff member's LATEST enrollment for a course is the one shown/
+     reopened — a completed 1.0 stays reviewable as written, and a
+     future 2.0 can only ever be a separate enrollment through an
+     explicit future flow. No automatic retraining logic exists.
+  6. **Sequential completion** — Lesson 1 current, 2–6 locked; the
+     server enforces the order against the pinned content (skip-ahead
+     = 422); progress rows are append-only; final-lesson completion
+     latches `completedAt` exactly once under concurrency (verified
+     with 4-way races).
+  7. **Payroll firewall** — no ₦650, no commission/payroll/bonus/
+     earnings arithmetic anywhere in Training content or APIs (pinned
+     by tests). Daily Reports remain self-reported accountability data.
+- **Open items for the business (none block the MVP):**
+  1. **Knowledge check** — whether Staff Training should eventually add
+     a quiz; this requires an APPROVED question bank, approved answers,
+     an approved pass mark and an approved retake policy. The existing
+     Recruitment Assessment must NOT be repurposed.
+  2. **Certification** — whether completion should ever produce a
+     certificate (MVP: the PostgreSQL completion record is sufficient).
+  3. **Video training** — whether any approved training videos will be
+     produced; none exist, none are hosted.
+  4. **Future course versions / retraining** — whether a 2.0 (or a
+     periodic refresher) becomes mandatory, and what that flow looks
+     like. Architecture supports a separate 2.0 enrollment; policy is
+     open.
+  5. **Role-specific / additional courses** — the registry is
+     structurally capable of multiple courses; assignment and targeting
+     policy (and any admin course-authoring workflow) are future
+     business decisions.
+  6. **Publication notifications** — a future NEW-course publication
+     event may justify `TRAINING_AVAILABLE`; the MVP's single
+     always-available course does not.
+  7. **Training ↔ performance relationship** — whether training
+     completion ever becomes an input to performance/targets (Stage 11
+     domain); currently completion changes no employment state.
+  8. **Content owner sign-off** — the six lessons were authored strictly
+     from approved sources; formal business sign-off of the final copy
+     remains an out-of-band process and may adjust wording without
+     schema/API changes (a meaning-bearing change would bump the course
+     version).
+
+## 43. Stage 10 — Staff Resources & Identity Card — IMPLEMENTED (approved brief; defaults recorded)
+
+- **Status:** ✅ Implemented (Stage 10). Two derived, presentation-only
+  capabilities: the Staff Resources library (`/staff/resources`, rebuilt
+  from the source-controlled registry `src/config/staff-resources.ts`)
+  and the printable Staff Identity Card (`/staff/id-card`, fully derived
+  from the session chain). **Zero Prisma changes, zero APIs, zero
+  notifications, zero nav items, zero new dependencies** — nothing about
+  either capability is persisted.
+
+### Implemented defaults (approved)
+
+1. **Registry + availability model** — categories in approved order
+   (Marketing Resources, Customer Education Materials, Approved Marketing
+   Guidelines, Reporting Instructions, Training Resources) with four
+   states: `available` / `in_portal` / `channel` / `pending`. Approved
+   mapping: Reporting Instructions → `/staff/reports` ("Open Daily
+   Reports"), Training Resources → `/staff/training` ("Open Staff
+   Training"); three categories honestly `pending`; the FinFam Staff
+   Communication Group is a channel reference, never a link.
+2. **No fake downloads** — ZERO `available` entries exist, so zero
+   download actions render (structurally impossible + test-pinned). The
+   secure-file contract (Staff-only file outside `/public`, streamed via
+   an authenticated registry-keyed route) is documented but NOT built —
+   no dead routes. When the first real file lands, the Onboarding
+   "not downloadable" copy MUST be revisited with a version bump.
+3. **ID card** — fully derived (no `StaffIdentityCard` table): full name,
+   Staff ID `FF-STF-NNNN`, "Remote Staff" + "FinFam Growth Ambassador" as
+   separate facts, Activated date (`Staff.activatedAt`), card label,
+   template version "1.0". NO photo (the platform stores no photograph),
+   NO QR, NO signature, NO expiry. Sensitive fields (NIN/BVN/bank/
+   address/next-of-kin/candidate/appointment reference/email/phone/
+   account/session identifiers) are excluded and test-pinned against the
+   card face.
+4. **Branding** — the in-product brand treatment (green tile + wordmark);
+   `public/logo.svg` is NOT used (unconfirmed, unused, animated).
+5. **Print** — the appointment print architecture reused verbatim; the
+   printed page contains the card only, at 85.6mm × 54mm proportions
+   (not a manufacturing spec).
+6. **Entry points / gating** — Profile section + Home identity card CTA;
+   nav unchanged (7 items). Page-level self-gating `redirect` added to
+   BOTH pages (this runtime renders the page in parallel with the layout,
+   so a page must never emit content for a missing session). Suspension
+   behaviour = the existing session nullification.
+7. **Home integration** — the Staff Resources card is derived from the
+   registry (`getStaffResourcesHomeSummary()`); the Staff Identity card
+   gained the single "View Staff ID Card" action. The old
+   `STAFF_RESOURCES_PENDING_NOTICE` copy is no longer rendered anywhere
+   (the constant remains in `src/config/staff-portal.ts` only for the
+   onboarding-content parity test).
+
+### Open business items (unchanged ownership; do not invent answers)
+
+1. **Approved resource files** — which real files exist, their
+   classification (Staff-only vs public), and download vs view-only.
+2. **Resource update ownership + version-history retention policy.**
+3. **Official FinFam logo** — confirmation + print-safe asset (blocks
+   any change to the card's branding treatment).
+4. **Staff photo policy** — capture, storage, privacy and card usage
+   (explicitly NOT built; the card ships photo-less).
+5. **Final physical card production specification** (stock, bleed, PVC).
+6. **Whether "FinFam Growth Ambassador" remains printed alongside
+   "Remote Staff"** (currently yes, per the approved field list).
+7. **QR verification** — only with a full public-verification model
+   (endpoint, public data, enumeration resistance, revocation, privacy).
+8. **Signature policy** (whose approved signature asset — none exists).
+9. **Server-generated PDF** (currently browser Print/Save-as-PDF only).
+10. **Admin-managed resource publishing** — Stage 11+ domain.

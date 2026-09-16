@@ -588,6 +588,138 @@ The portal home shows one **Daily Reporting** card with today's three
 states (Not started → Start / Draft → Continue / Submitted → View, with
 the Africa/Lagos submission time).
 
+## Staff Training (Stage 9)
+
+The Staff Platform's ongoing learning module: **FinFam Staff Foundations**
+(`staff-foundations@1.0`) — six lessons that help activated and onboarded
+Staff perform their role correctly, professionally, consistently and
+safely. Course **content is source-controlled**
+(`src/config/training/`); the database stores **progress only**. There is
+no course CMS and no database-authored content.
+
+### Rules (all server-enforced in `src/server/services/staff-training.ts`)
+
+- **Content authority** — every statement derives from already-approved
+  material (onboarding Section 7, FSOW orientation, the Responsibility &
+  Reward Agreement's principles, the implemented Daily Reporting
+  definitions). Lesson 5 imports `DAILY_REPORT_CATEGORIES` and the
+  self-reported notice **by reference**, so Training can never drift from
+  the real reporting form. No ₦650, no commission/payroll/bonus/earnings
+  arithmetic, no prospect scripts, no escalation contacts, no quiz, no
+  certificate — pinned by tests.
+- **Eligibility** — ACTIVE session + APPROVED_STAFF + onboarding
+  COMPLETED → else `403 FORBIDDEN` (the existing Stage 8 code, never a
+  new error type). Daily Report history is deliberately NOT a
+  requirement: Training and reporting are fully decoupled.
+- **Non-blocking** — "Required Training" is an organisational label with
+  the visible notice *"Training does not block your other Staff Portal
+  tools in this release."* Nothing in Training ever gates Daily
+  Reporting, Appointment, Resources, Profile or the portal home.
+- **Enrollment** — LAZY and race-safe. The overview page/API is strictly
+  read-only ("Not started" comes from the absence of progress); opening
+  `/staff/training/[courseId]` create-or-gets the enrollment (the ONE
+  approved GET side effect) with the P2002 → re-read-winner pattern, so
+  concurrent first opens produce exactly ONE row. `courseVersion` is
+  **pinned** at first open; a future 2.0 can only coexist as a separate
+  enrollment — 1.0 completion is never silently rewritten, and no
+  automatic retraining exists.
+- **Progression** — sequential first completion, enforced server-side
+  against the pinned content: Lesson 1 current, 2–6 locked; skip-ahead
+  and unknown lessons are `422`. Progress rows are append-only (no
+  "uncomplete"). Completing the final lesson latches `completedAt`
+  **exactly once** (conditional `completedAt = null` → set); every
+  concurrent/retry call converges on the same final state.
+- **Review** — the course stays open after completion: every lesson
+  remains readable and review performs **zero writes**. Completion
+  changes NO employment state (no CandidateStatus, no Staff/Account
+  change, no StageEvent) and queues **zero notifications** (§45 — no
+  `TRAINING_*` email types exist).
+- **Identity** — session-only (Session → StaffAccount → Staff). No
+  staffId/email/reference/accountId/enrollmentId is accepted from the
+  browser; unknown course ids (including recruitment references) are
+  plain `404`s; there is no `/training/[reference]` route.
+- **Boundaries** — Lesson 5 links to `/staff/reports` and Lesson 4 to
+  `/staff/resources` where appropriate; Training never embeds or
+  duplicates another module, hosts no assets, and teaches no
+  report→earnings path (Stage 10 owns that domain).
+
+### Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/staff/training` | Course overview (read-only; three states per §37) |
+| `/staff/training/[courseId]` | Course/lesson reader; `?lesson=<id>` reviews completed lessons |
+
+APIs: `GET /api/staff/training` (read-only overview), `GET
+/api/staff/training/[courseId]` (course detail; lazily enrolls), `POST
+/api/staff/training/[courseId]/lessons` (body `{ lessonId }` — exactly
+one field; the server derives everything else). The portal nav gains
+**Training** (after Daily Reports) and the portal home gains a
+**Staff Training** card with the three approved states.
+
+## Staff Resources & Identity Card (Stage 10)
+
+Two derived, presentation-only capabilities — **ZERO Prisma changes, ZERO
+APIs, ZERO notifications, ZERO nav items, ZERO new dependencies**. The
+database stores nothing for this module.
+
+### Staff Resources (`/staff/resources`)
+
+- **Source-controlled registry** (`src/config/staff-resources.ts`) — the
+  single source of truth for categories, entries and availability. No
+  Resource tables; no admin CMS (Stage 11+ owns that decision).
+- **Availability model** — `available` (a real file exists; **currently
+  ZERO entries**), `in_portal` (real portal destination), `channel`
+  (provided through the approved staff communication channel), `pending`
+  (FinFam has not yet supplied it).
+- **No fake downloads (hard rule)** — with zero file-backed entries the
+  page can never render a download action; availability is honest text.
+  Approved mapping: Reporting Instructions → `/staff/reports` ("Open
+  Daily Reports"), Training Resources → `/staff/training` ("Open Staff
+  Training"); Marketing Resources, Customer Education Materials and
+  Approved Marketing Guidelines are honestly pending; the FinFam Staff
+  Communication Group is a channel reference, never a fabricated link.
+- **Secure-file contract (documented, NOT built)** — when the first real
+  Staff-only file arrives it stays OUTSIDE `/public` and streams through
+  an authenticated, registry-keyed route; until then no such route exists.
+  The Onboarding "not downloadable" copy stays truthful and unchanged.
+- **Home integration** — the portal-home Staff Resources card is derived
+  from the registry (`getStaffResourcesHomeSummary()`); no fake counts.
+
+### Staff Identity Card (`/staff/id-card`)
+
+- **Fully derived** from Session → StaffAccount → Staff → Candidate — no
+  `StaffIdentityCard` row, no serial, no expiry, no revocation state
+  (suspension already nullifies sessions, so the card is inaccessible
+  immediately). Query parameters (`?staffId=`) are never read; the page
+  self-gates with `redirect("/staff/login")` so it never emits content
+  without a verified session.
+- **Fields** — full name, Staff ID (`FF-STF-NNNN`), appointment
+  designation ("Remote Staff") and operational role ("FinFam Growth
+  Ambassador") as separate facts, Activated date, card label, template
+  version (`STAFF_ID_CARD_TEMPLATE_VERSION = "1.0"`, presentation-only).
+  NO photo (the platform stores none), NO QR, NO signature, and never
+  NIN/BVN/bank/address/next-of-kin/candidate/appointment reference,
+  email, phone or account/session identifiers — pinned by tests.
+- **Branding** — the established in-product treatment only (green brand
+  tile + wordmark, Manrope, flat surfaces). `public/logo.svg` is
+  unconfirmed and is not used on the card until FinFam supplies an
+  official print-safe logo.
+- **Print / Save as PDF** — reuses the appointment print architecture
+  (`window.print()`, `print:hidden` chrome): the printed page contains
+  THE ID CARD ONLY at true ID-card proportions (85.6mm × 54mm screen/print
+  proportions; NOT a manufacturing specification). No PDF package, no
+  canvas, no new dependency.
+- **Entry points** — Profile ("Staff ID Card" section) and the portal-home
+  Staff Identity card ("View Staff ID Card"). The top nav is deliberately
+  unchanged (7 items).
+
+Tests: `tests/staff-resources.test.ts` + `tests/staff-id-card.test.ts`
+(registry pins, honest-availability rendering, no-fake-downloads, absent
+APIs, session/suspension gating, card fields, sensitive-field exclusions,
+query-manipulation immunity, cross-staff isolation, Home/Profile
+integration, ZERO-database-write integrity).
+
 ## Environment variables
 
 | Variable                    | Required | Purpose                                        |
@@ -636,26 +768,34 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
 
 ## Next phase
 
-**Stages 1–8 are complete.** All six recruitment stages (Application →
-Orientation → Assessment → Agreement → Appointment → Activation), the
-staff-side Onboarding state, the Mailjet transactional notification
-service, **Stage 7 — Staff Portal Foundation, Onboarding & Resumption**
-(secure accounts, email-OTP login, DB-backed sessions, onboarding-first
-portal — see above), and **Stage 8 — Daily Reporting & Accountability**
-(one self-reported report per Staff member per Africa/Lagos day, DRAFT →
-SUBMITTED, exactly-once receipt email — see above) are implemented and
-verified.
+**Stages 1–9 plus Stage 10 are complete.** All six recruitment stages
+(Application → Orientation → Assessment → Agreement → Appointment →
+Activation), the staff-side Onboarding state, the Mailjet transactional
+notification service, **Stage 7 — Staff Portal Foundation, Onboarding &
+Resumption** (secure accounts, email-OTP login, DB-backed sessions,
+onboarding-first portal — see above), **Stage 8 — Daily Reporting &
+Accountability** (one self-reported report per Staff member per
+Africa/Lagos day, DRAFT → SUBMITTED, exactly-once receipt email — see
+above), **Stage 9 — Staff Training** (FinFam Staff Foundations `1.0`, six
+source-controlled lessons, lazy version-pinned enrollments, sequential
+completion with an exactly-once course latch — see above) and **Stage
+10 — Staff Resources & Identity Card** (source-controlled resource
+registry with honest availability; fully derived, printable Staff ID
+card — see above) are implemented and verified.
 
-Any further product work — supervisor review of reports, prospect/member
-tracking (person-level records), analytics/target dashboards, performance
-scoring, earnings, commission, payroll, ID-card generator, admin console —
-belongs to the **FinFam Staff Platform / Operations roadmap** and must go
-through its own planning phase before implementation. **Do not start
-building any of it automatically.** Note the standing Stage 8 boundaries:
-report data never feeds compensation, and no Stage 8 model stores any
-person-level member/prospect record.
+The Member Growth / Earnings and Performance / Targets modules were
+**removed from the current project**: the portal has no authoritative
+FinFam member/account database or API from which financial or performance
+facts could be safely verified. They are not planned and must not be
+restored by default.
+
+The next planned module is **Stage 11 — Admin / Supervisor Operations**.
+It must go through its own planning phase before implementation. **Do
+not start building it (or any other module) automatically.**
 
 Business decisions still outstanding (official onboarding WhatsApp number,
-canonical role title portal-wide, identity-verification hardening, resource
-assets) are tracked in
+canonical role title portal-wide, identity-verification hardening,
+approved resource files, official logo, staff photo policy, physical card
+specification, training knowledge-check policy, future course-version
+policy) are tracked in
 [docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md).

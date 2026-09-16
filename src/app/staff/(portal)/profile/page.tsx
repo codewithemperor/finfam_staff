@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { format } from "date-fns";
 
+import { ButtonLink } from "@/components/ui/button-link";
 import { STAFF_PORTAL_OPERATIONAL_ROLE } from "@/config/staff-portal";
 import { getStaffSession } from "@/lib/auth/session";
 
@@ -89,6 +90,30 @@ export default async function StaffProfilePage() {
             </dd>
           </div>
         </dl>
+
+        {/* Staff ID Card entry point (Stage 10, brief §30) — a short
+            explanation and the action only. Profile stays read-only; no
+            Staff data is duplicated or made editable. */}
+        <section
+          aria-labelledby="profile-id-card"
+          className="mt-6 rounded-lg border border-border bg-surface p-6"
+        >
+          <h2
+            id="profile-id-card"
+            className="text-sm font-semibold text-foreground"
+          >
+            Staff ID Card
+          </h2>
+          <p className="mt-2 max-w-[60ch] text-sm leading-6 text-muted-foreground">
+            A printable identity representation generated from your verified
+            Staff Portal records — the same identity shown above.
+          </p>
+          <div className="mt-4">
+            <ButtonLink href="/staff/id-card" variant="outline" size="sm">
+              View Staff ID Card
+            </ButtonLink>
+          </div>
+        </section>
 
         <p className="mt-6 max-w-[60ch] text-sm leading-6 text-muted-foreground">
           Security: signing in uses a secure 6-digit code sent to your login

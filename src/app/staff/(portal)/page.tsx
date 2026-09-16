@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 
 import { ButtonLink } from "@/components/ui/button-link";
-import { STAFF_RESOURCES_PENDING_NOTICE } from "@/config/staff-portal";
 import { getStaffSession } from "@/lib/auth/session";
 import { formatLagosTimeLabel } from "@/lib/dates/lagos";
 import { getStaffPortalHome } from "@/server/services/staff-portal";
@@ -162,6 +161,13 @@ export default async function StaffHomePage() {
               </dd>
             </div>
           </dl>
+          {/* Stage 10 (brief §31): the identity card entry point — uses the
+              SAME Staff ID already shown here; no second identity summary. */}
+          <div className="mt-5">
+            <ButtonLink href="/staff/id-card" variant="outline" size="sm">
+              View Staff ID Card
+            </ButtonLink>
+          </div>
         </section>
 
         {/* Appointment + Onboarding */}
@@ -247,7 +253,71 @@ export default async function StaffHomePage() {
       </div>
 
       <div className="mt-8 grid gap-8 md:grid-cols-2 md:gap-10">
-        {/* Staff Resources */}
+        {/* Staff Training — ongoing learning (Stage 9, brief §38). The card
+            shows real persisted progress in the three approved states; no
+            scores, no percentages beyond "N of M lessons completed". */}
+        <section
+          aria-labelledby="portal-training"
+          className="rounded-lg border border-border bg-surface p-6"
+        >
+          <h2 id="portal-training" className="text-sm font-semibold text-foreground">
+            Staff Training
+          </h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {home.training.title}
+            {home.training.required ? " — Required Training." : ""}
+          </p>
+          <p className="mt-1.5 text-sm font-semibold text-foreground">
+            {home.training.state === "NOT_STARTED" && (
+              <>
+                Not started
+                <span className="sr-only"> — training not started.</span>
+              </>
+            )}
+            {home.training.state === "IN_PROGRESS" && (
+              <>
+                <span className="tabular-nums">
+                  {home.training.completedLessons} of {home.training.totalLessons}
+                </span>{" "}
+                lessons completed
+                <span className="sr-only">
+                  {" "}
+                  — training in progress: {home.training.completedLessons} of{" "}
+                  {home.training.totalLessons} lessons completed.
+                </span>
+              </>
+            )}
+            {home.training.state === "COMPLETED" && (
+              <>
+                Completed
+                {home.training.completedAt
+                  ? ` ${format(new Date(home.training.completedAt), "d MMMM yyyy")}`
+                  : ""}
+                <span className="sr-only"> — training completed.</span>
+              </>
+            )}
+          </p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Training does not block your other Staff Portal tools in this
+            release.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <ButtonLink
+              href={`/staff/training/${home.training.courseId}`}
+              size="sm"
+            >
+              {home.training.state === "NOT_STARTED" && "Start Training"}
+              {home.training.state === "IN_PROGRESS" && "Continue Training"}
+              {home.training.state === "COMPLETED" && "Review Training"}
+            </ButtonLink>
+            <ButtonLink href="/staff/training" variant="ghost" size="sm">
+              Training overview
+            </ButtonLink>
+          </div>
+        </section>
+
+        {/* Staff Resources (Stage 10, brief §10) — derived from the
+            registry, never a hard-coded availability flag; no fake count. */}
         <section
           aria-labelledby="portal-resources"
           className="rounded-lg border border-border bg-surface p-6"
@@ -258,12 +328,34 @@ export default async function StaffHomePage() {
           >
             Staff Resources
           </h2>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            {STAFF_RESOURCES_PENDING_NOTICE}
+          {home.resources.inPortal.length > 0 ? (
+            <ul className="mt-4 space-y-2">
+              {home.resources.inPortal.map((resource) => (
+                <li
+                  key={resource.href}
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm"
+                >
+                  <span className="font-semibold text-foreground">
+                    {resource.title}
+                  </span>
+                  <span className="text-muted-foreground">
+                    Available in your portal
+                    <span className="sr-only"> — {resource.title}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">
+              No resources are available in the portal yet.
+            </p>
+          )}
+          <p className="mt-3 max-w-[52ch] text-sm leading-6 text-muted-foreground">
+            {home.resources.remainingNote}
           </p>
           <div className="mt-4">
             <ButtonLink href="/staff/resources" variant="ghost" size="sm">
-              See resource categories
+              View Staff Resources
             </ButtonLink>
           </div>
         </section>

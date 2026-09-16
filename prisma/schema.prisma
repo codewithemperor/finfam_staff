@@ -17,10 +17,13 @@
 //
 // Staff Platform (post-recruitment, ongoing): Stage 7 added the
 // authenticated Staff Portal (StaffAccount/StaffLoginCode/StaffSession —
-// email-OTP auth, DB-backed sessions) and Stage 8 adds Daily Reporting &
+// email-OTP auth, DB-backed sessions), Stage 8 adds Daily Reporting &
 // Accountability (DailyReport — one self-reported activity report per
 // Staff member per Africa/Lagos reporting date, see
-// src/server/services/daily-reports.ts). Neither module touches the
+// src/server/services/daily-reports.ts) and Stage 9 adds Staff Training
+// (StaffTrainingEnrollment/StaffTrainingLessonProgress — source-controlled
+// course content with persisted, version-pinned Staff progress, see
+// src/server/services/staff-training.ts). None of these modules touch the
 // recruitment state machine.
 //
 // Cross-cutting platform service: NotificationDelivery (brief
@@ -527,6 +530,11 @@ model Staff {
   /// (unique [staffId, reportDate]); owned exclusively via the session.
   reports DailyReport[]
 
+  /// Staff Training enrollments (Stage 9) — one per course version at most
+  /// (unique [staffId, courseId, courseVersion]); owned exclusively via
+  /// the session.
+  trainingEnrollments StaffTrainingEnrollment[]
+
   @@map("staff")
 }
 
@@ -756,4 +764,77 @@ model StaffOnboardingStep {
   @@unique([onboardingId, stepId])
   @@index([onboardingId])
   @@map("staff_onboarding_steps")
+}
+
+/// Staff Training enrollment (Stage 9) — one Staff member's progress
+/// through ONE version of ONE course. An ongoing STAFF PLATFORM module
+/// that adds NO recruitment state: no CandidateStatus, no RecruitmentStage,
+/// no StageEvent, and no Staff identity change of any kind (completion
+/// never touches Staff, StaffAccount, Candidate, appointment, onboarding
+/// or Daily Reports — src/server/services/staff-training.ts).
+///
+/// Course CONTENT is source-controlled (src/config/training/, brief §2/§3):
+/// this row stores PROGRESS ONLY — there is no course CMS and no
+/// database-authored content. `courseVersion` is PINNED at first open, so
+/// a future course version can only coexist as a separate enrollment and
+/// never silently rewrites a 1.0 completion (brief §23/§50).
+///
+/// Enrollment is LAZY (brief §24): the overview page/API never creates a
+/// row — opening /staff/training/[courseId] create-or-gets it. The unique
+/// [staffId, courseId, courseVersion] constraint is the concurrency
+/// backstop: the P2002 loser re-reads the winner, so concurrent first
+/// opens produce exactly ONE enrollment.
+///
+/// Training state is derived, not stored as an enum: NOT_STARTED /
+/// IN_PROGRESS derive from the lesson-progress rows, COMPLETED from
+/// `completedAt`. The exactly-once completion latch is
+/// `completedAt = null` → set (conditional updateMany inside the final
+/// lesson's transaction, brief §28).
+model StaffTrainingEnrollment {
+  id            String    @id @default(cuid())
+  /// Owning Staff row — resolved from the authenticated session chain,
+  /// NEVER from client input (brief §18).
+  staffId       String
+  staff         Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  /// Stable course id from src/config/training (e.g. "staff-foundations").
+  courseId      String
+  /// Course content version PINNED at first open (e.g. "1.0"). Immutable.
+  courseVersion String
+  /// When the Staff member first opened the course (lazy entry).
+  startedAt     DateTime
+  /// Course completion instant. Null until all lessons are complete; the
+  /// conditional latch stamps it exactly once. Never cleared.
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  /// Append-only lesson completion facts, in lesson order.
+  lessons StaffTrainingLessonProgress[]
+
+  /// One enrollment per Staff member per course version — the race-safe
+  /// create-or-get backstop.
+  @@unique([staffId, courseId, courseVersion])
+  @@index([staffId, courseId])
+  @@map("staff_training_enrollments")
+}
+
+/// Completion fact for ONE lesson of ONE training enrollment (Stage 9).
+/// Append-only: one row per completed lesson per enrollment (enforced by
+/// the unique constraint); rows are never edited or deleted, and there is
+/// deliberately NO "uncomplete lesson" action (brief §21). Lesson order is
+/// enforced server-side against the pinned course content — sequential
+/// first completion, never trusted from the browser.
+model StaffTrainingLessonProgress {
+  id           String                  @id @default(cuid())
+  enrollmentId String
+  enrollment   StaffTrainingEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  /// Stable lesson id from the pinned course content
+  /// (src/config/training/staff-foundations.ts).
+  lessonId     String
+  completedAt  DateTime                @default(now())
+
+  /// One completion fact per lesson per enrollment.
+  @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId])
+  @@map("staff_training_lesson_progress")
 }

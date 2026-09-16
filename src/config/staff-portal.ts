@@ -10,10 +10,12 @@
 export const STAFF_PORTAL_OPERATIONAL_ROLE = "FinFam Growth Ambassador";
 
 /** Portal navigation — real destinations only (brief §21; Stage 8 adds the
- * Daily Reports destination — the one ongoing operational action). */
+ * Daily Reports destination; Stage 9 adds Training after Daily Reports —
+ * brief §36: no Stage 10+ links). */
 export const STAFF_PORTAL_NAV = [
   { href: "/staff", label: "Home" },
   { href: "/staff/reports", label: "Daily Reports" },
+  { href: "/staff/training", label: "Training" },
   { href: "/staff/appointment", label: "My Appointment" },
   { href: "/staff/onboarding", label: "Onboarding" },
   { href: "/staff/resources", label: "Resources" },
