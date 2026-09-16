@@ -1,0 +1,1751 @@
+     1→# FINFAM STAFF PLATFORM
+     2→
+     3→# STAGE 11 — ADMIN / SUPERVISOR OPERATIONS
+     4→
+     5→## PLANNING ONLY
+     6→
+     7→Stage 10 — **Staff Resources & Identity Card** is complete and verified.
+     8→
+     9→Current platform:
+    10→
+    11→```text
+    12→Recruitment
+    13→✓ Application
+    14→✓ Orientation
+    15→✓ Assessment
+    16→✓ Agreement
+    17→✓ Appointment
+    18→✓ Staff Activation
+    19→
+    20→Staff Platform
+    21→✓ Staff Account / OTP / Sessions
+    22→✓ Onboarding & Resumption
+    23→✓ Daily Reporting & Accountability
+    24→✓ Staff Training
+    25→✓ Staff Resources & Identity Card
+    26→
+    27→NEXT
+    28→→ Admin / Supervisor Operations
+    29→```
+    30→
+    31→The previously considered Member Growth / Earnings and Performance / Targets modules remain:
+    32→
+    33→# REMOVED FROM THE CURRENT PROJECT
+    34→
+    35→because there is no authoritative FinFam member/account database or API.
+    36→
+    37→Do NOT restore them.
+    38→
+    39→This task is:
+    40→
+    41→# PLANNING ONLY
+    42→
+    43→Do NOT implement Stage 11.
+    44→
+    45→Do NOT create migrations.
+    46→
+    47→Do NOT create admin accounts.
+    48→
+    49→Do NOT build admin pages.
+    50→
+    51→Do NOT add new permissions.
+    52→
+    53→Inspect the current codebase thoroughly and produce the complete Stage 11 implementation plan.
+    54→
+    55→Then STOP.
+    56→
+    57→---
+    58→
+    59→# 1. PURPOSE
+    60→
+    61→Stage 11 should give authorized FinFam management personnel a secure operational interface for managing the Staff Platform that already exists.
+    62→
+    63→Potential responsibilities include:
+    64→
+    65→* viewing Staff records
+    66→* viewing onboarding status
+    67→* viewing Staff Training progress
+    68→* viewing Daily Reports
+    69→* viewing Appointment/Staff identity information
+    70→* suspending/reactivating Staff Portal access
+    71→* managing Staff Resources in the future
+    72→* correcting operational records only where policy permits
+    73→* maintaining an auditable record of privileged actions
+    74→
+    75→This is NOT:
+    76→
+    77→* recruitment processing
+    78→* member CRM
+    79→* earnings/payroll
+    80→* performance scoring
+    81→* target ranking
+    82→* authoritative member verification
+    83→* financial administration
+    84→
+    85→---
+    86→
+    87→# 2. INSPECT CURRENT ARCHITECTURE FIRST
+    88→
+    89→Inspect:
+    90→
+    91→* Prisma schema
+    92→* Candidate
+    93→* Staff
+    94→* StaffAccount
+    95→* StaffSession
+    96→* StaffLoginCode
+    97→* StaffOnboarding
+    98→* StaffTrainingEnrollment
+    99→* StaffTrainingLessonProgress
+   100→* DailyReport
+   101→* Appointment
+   102→* StageEvent
+   103→* NotificationDelivery
+   104→* all Staff auth/session services
+   105→* Staff Portal
+   106→* Stage 10 resources registry
+   107→* Stage 10 ID card
+   108→* existing API envelope
+   109→* AppError/error codes
+   110→* OTP implementation
+   111→* notification stack
+   112→* test helpers
+   113→* README
+   114→* CONTENT-QUESTIONS
+   115→* worklog
+   116→
+   117→Determine exactly what privileged/admin infrastructure already exists.
+   118→
+   119→Do not assume there is an Admin model or role.
+   120→
+   121→---
+   122→
+   123→# 3. FIRST CRITICAL QUESTION — ADMIN IDENTITY
+   124→
+   125→The plan must determine:
+   126→
+   127→# WHO IS AN ADMIN / SUPERVISOR?
+   128→
+   129→Do NOT reuse ordinary Staff authorization automatically.
+   130→
+   131→Evaluate:
+   132→
+   133→## Option A — Separate AdminAccount
+   134→
+   135→Dedicated management identity with independent authorization.
+   136→
+   137→## Option B — StaffAccount with management role
+   138→
+   139→Existing StaffAccount gains role/permission information.
+   140→
+   141→## Option C — static environment allowlist
+   142→
+   143→Email allowlist or similar temporary mechanism.
+   144→
+   145→Strong preference:
+   146→
+   147→# Avoid environment allowlists as the permanent architecture.
+   148→
+   149→Recommend the safest architecture after inspecting the project.
+   150→
+   151→---
+   152→
+   153→# 4. AUTHENTICATION VS AUTHORIZATION
+   154→
+   155→Keep these distinct.
+   156→
+   157→Authentication:
+   158→
+   159→> Who are you?
+   160→
+   161→Authorization:
+   162→
+   163→> What are you allowed to do?
+   164→
+   165→Even if Admin uses the same email OTP mechanism, privileged authorization must be explicit.
+   166→
+   167→Do NOT treat:
+   168→
+   169→```text
+   170→having a StaffAccount
+   171→```
+   172→
+   173→as equivalent to:
+   174→
+   175→```text
+   176→having admin authority
+   177→```
+   178→
+   179→---
+   180→
+   181→# 5. ADMIN ROUTE BOUNDARY
+   182→
+   183→Plan a dedicated namespace such as:
+   184→
+   185→```text
+   186→/admin
+   187→```
+   188→
+   189→Potential:
+   190→
+   191→```text
+   192→/admin/login
+   193→/admin
+   194→/admin/staff
+   195→/admin/staff/[staffId-or-id]
+   196→/admin/reports
+   197→/admin/resources
+   198→```
+   199→
+   200→Do not mix management pages into:
+   201→
+   202→```text
+   203→/staff/*
+   204→```
+   205→
+   206→unless architecture strongly requires it.
+   207→
+   208→Staff-facing and management-facing experiences should remain clearly separated.
+   209→
+   210→---
+   211→
+   212→# 6. ADMIN AUTH GUARD
+   213→
+   214→Planning must define one shared server-side guard, conceptually:
+   215→
+   216→```text
+   217→requireAdminSession()
+   218→```
+   219→
+   220→or:
+   221→
+   222→```text
+   223→requireManagementSession()
+   224→```
+   225→
+   226→Every management page/API must use it.
+   227→
+   228→Do NOT rely on hidden navigation.
+   229→
+   230→Unauthorized users must not access Admin routes by URL guessing.
+   231→
+   232→---
+   233→
+   234→# 7. ADMIN SESSION SECURITY
+   235→
+   236→Evaluate whether Admin can safely reuse the current OTP/session mechanics.
+   237→
+   238→If reused:
+   239→
+   240→* keep separate cookie/session scope if needed
+   241→* prevent ordinary Staff session from satisfying Admin routes
+   242→* preserve anti-enumeration
+   243→* preserve OTP hashing
+   244→* preserve rate limits
+   245→* preserve account suspension/disable rules
+   246→
+   247→Do not duplicate authentication code unnecessarily.
+   248→
+   249→But do not compromise authorization separation merely to reuse code.
+   250→
+   251→---
+   252→
+   253→# 8. ROLES / PERMISSIONS
+   254→
+   255→Evaluate whether Stage 11 needs:
+   256→
+   257→### Single role
+   258→
+   259→```text
+   260→ADMIN
+   261→```
+   262→
+   263→or:
+   264→
+   265→### Multiple roles
+   266→
+   267→```text
+   268→ADMIN
+   269→SUPERVISOR
+   270→```
+   271→
+   272→or fine-grained permissions.
+   273→
+   274→Recommended MVP direction:
+   275→
+   276→# keep authorization small.
+   277→
+   278→Do not build enterprise RBAC unless actual business roles require it.
+   279→
+   280→Possible distinction:
+   281→
+   282→## Supervisor
+   283→
+   284→Read Staff operational information.
+   285→
+   286→## Admin
+   287→
+   288→May perform privileged changes such as suspension/reactivation.
+   289→
+   290→But do not invent this split if FinFam has not defined it.
+   291→
+   292→Flag as a business question.
+   293→
+   294→---
+   295→
+   296→# 9. ADMIN DASHBOARD
+   297→
+   298→Do NOT build a generic analytics dashboard.
+   299→
+   300→The Admin home should focus on operational work.
+   301→
+   302→Potential sections:
+   303→
+   304→* Staff directory
+   305→* recently activated Staff
+   306→* Daily Reports requiring review/attention if such review is approved
+   307→* account access status
+   308→* Staff training status
+   309→* resource-management entry point if supported
+   310→
+   311→No:
+   312→
+   313→* fake KPIs
+   314→* performance leaderboard
+   315→* target charts
+   316→* earnings numbers
+   317→* sales analytics
+   318→
+   319→---
+   320→
+   321→# 10. STAFF DIRECTORY
+   322→
+   323→Plan a secure Staff directory.
+   324→
+   325→Potential columns:
+   326→
+   327→* Staff ID
+   328→* full name
+   329→* email
+   330→* designation
+   331→* operational role
+   332→* activation date
+   333→* account status
+   334→* onboarding status
+   335→* training status
+   336→
+   337→Do NOT expose:
+   338→
+   339→* candidate secrets
+   340→* authentication hashes
+   341→* OTP codes
+   342→* session tokens
+   343→
+   344→Use pagination from day one.
+   345→
+   346→---
+   347→
+   348→# 11. STAFF SEARCH
+   349→
+   350→Evaluate useful minimum filters:
+   351→
+   352→* Staff ID
+   353→* full name
+   354→* email
+   355→* ACTIVE / SUSPENDED
+   356→* onboarding status
+   357→
+   358→Avoid overbuilding advanced filtering.
+   359→
+   360→Search should be server-side.
+   361→
+   362→Do not expose arbitrary Prisma filtering from the browser.
+   363→
+   364→---
+   365→
+   366→# 12. STAFF DETAIL PAGE
+   367→
+   368→Potential:
+   369→
+   370→```text
+   371→/admin/staff/[id]
+   372→```
+   373→
+   374→May show:
+   375→
+   376→## Identity
+   377→
+   378→* Staff ID
+   379→* name
+   380→* email
+   381→* phone if operationally justified
+   382→* designation
+   383→* operational role
+   384→* activated date
+   385→
+   386→## Appointment
+   387→
+   388→* appointment reference
+   389→* issued date
+   390→* designation
+   391→
+   392→## Onboarding
+   393→
+   394→* started/completed
+   395→* current state
+   396→
+   397→## Training
+   398→
+   399→* not started/in progress/completed
+   400→* course version
+   401→* completion date
+   402→
+   403→## Daily Reporting
+   404→
+   405→* recent reports
+   406→* submitted/draft state
+   407→* report date
+   408→* submitted timestamp
+   409→
+   410→## Account Access
+   411→
+   412→* ACTIVE/SUSPENDED
+   413→
+   414→Do not turn Staff Detail into a CRM profile.
+   415→
+   416→---
+   417→
+   418→# 13. DAILY REPORT VISIBILITY
+   419→
+   420→Stage 8 Daily Reports are:
+   421→
+   422→# STAFF SELF-REPORTED ACTIVITY
+   423→
+   424→Admin/Supervisor views must preserve that wording.
+   425→
+   426→Never relabel Daily Reports as:
+   427→
+   428→* verified performance
+   429→* confirmed member growth
+   430→* payroll data
+   431→
+   432→Management may review them operationally.
+   433→
+   434→They remain self-reported.
+   435→
+   436→---
+   437→
+   438→# 14. DAILY REPORT MANAGEMENT
+   439→
+   440→Determine whether Admin/Supervisor should be:
+   441→
+   442→### Read-only
+   443→
+   444→or allowed to:
+   445→
+   446→* annotate
+   447→* request correction
+   448→* unlock/amend
+   449→
+   450→Recommended MVP:
+   451→
+   452→# READ-ONLY.
+   453→
+   454→Reason:
+   455→
+   456→Stage 8 intentionally made submitted reports immutable.
+   457→
+   458→Do not quietly add an admin edit path that destroys that guarantee.
+   459→
+   460→If corrections are required, plan a separate explicit amendment model rather than modifying submitted data invisibly.
+   461→
+   462→---
+   463→
+   464→# 15. REPORT CORRECTIONS
+   465→
+   466→If FinFam requires corrections later, evaluate:
+   467→
+   468→```text
+   469→DailyReportAmendment
+   470→```
+   471→
+   472→or another append-only mechanism.
+   473→
+   474→Potential facts:
+   475→
+   476→* report id
+   477→* requested by
+   478→* reason
+   479→* previous values
+   480→* corrected values
+   481→* changed at
+   482→
+   483→But do NOT automatically include this in MVP.
+   484→
+   485→Flag whether correction authority is actually required.
+   486→
+   487→---
+   488→
+   489→# 16. STAFF ACCOUNT SUSPENSION
+   490→
+   491→This is the strongest confirmed management action already supported structurally.
+   492→
+   493→Current:
+   494→
+   495→```text
+   496→StaffAccountStatus
+   497→ACTIVE
+   498→SUSPENDED
+   499→```
+   500→
+   501→Stage 11 may expose controlled suspension/reactivation.
+   502→
+   503→Planning must define:
+   504→
+   505→* who can suspend
+   506→* who can reactivate
+   507→* reason required?
+   508→* immediate session revocation?
+   509→* notification?
+   510→* audit trail
+   511→* self-suspension prevention for admin identity if relevant
+   512→
+   513→---
+   514→
+   515→# 17. SUSPENSION MUST REVOKE ACCESS
+   516→
+   517→When Staff is suspended:
+   518→
+   519→* existing Staff sessions should stop resolving
+   520→* ideally active sessions should be explicitly revoked immediately
+   521→* login remains blocked
+   522→* `/staff/*` inaccessible
+   523→* Staff ID card inaccessible
+   524→* Daily Reports inaccessible
+   525→* Training inaccessible
+   526→
+   527→Inspect whether current session resolution alone is sufficient or whether session rows should also be revoked.
+   528→
+   529→Recommend the cleanest approach.
+   530→
+   531→---
+   532→
+   533→# 18. SUSPENSION REASON
+   534→
+   535→Strongly consider requiring:
+   536→
+   537→```text
+   538→reason
+   539→```
+   540→
+   541→for management suspension.
+   542→
+   543→Do not use a vague toggle with no accountability.
+   544→
+   545→Potential categories should NOT be invented unless FinFam defines them.
+   546→
+   547→Plain-text reason with length limit may be safer initially.
+   548→
+   549→---
+   550→
+   551→# 19. ACCOUNT REACTIVATION
+   552→
+   553→Reactivation should be explicit.
+   554→
+   555→It must NOT:
+   556→
+   557→* recreate Staff
+   558→* change Staff ID
+   559→* re-run activation
+   560→* alter Appointment
+   561→* reset onboarding
+   562→* reset Training
+   563→* delete Daily Reports
+   564→
+   565→It only restores StaffAccount access.
+   566→
+   567→---
+   568→
+   569→# 20. PRIVILEGED ACTION AUDIT LOG
+   570→
+   571→Stage 11 introduces management writes.
+   572→
+   573→Therefore strongly evaluate adding:
+   574→
+   575→# AdminAuditEvent
+   576→
+   577→or equivalent.
+   578→
+   579→At minimum preserve:
+   580→
+   581→* actor
+   582→* action
+   583→* target type
+   584→* target id
+   585→* timestamp
+   586→* reason/context
+   587→* structured metadata where useful
+   588→
+   589→Examples:
+   590→
+   591→```text
+   592→STAFF_SUSPENDED
+   593→STAFF_REACTIVATED
+   594→RESOURCE_PUBLISHED
+   595→RESOURCE_RETIRED
+   596→```
+   597→
+   598→Do not log secrets.
+   599→
+   600→---
+   601→
+   602→# 21. WHY AUDIT LOG IS IMPORTANT
+   603→
+   604→Management actions must answer:
+   605→
+   606→> Who changed this?
+   607→
+   608→> When?
+   609→
+   610→> Why?
+   611→
+   612→Do not rely only on `updatedAt`.
+   613→
+   614→Especially for:
+   615→
+   616→* suspension
+   617→* reactivation
+   618→* future resource publishing
+   619→* future report corrections
+   620→
+   621→---
+   622→
+   623→# 22. ADMIN ACTION IDEMPOTENCY
+   624→
+   625→Plan safe semantics.
+   626→
+   627→Examples:
+   628→
+   629→Suspending already-suspended Staff:
+   630→
+   631→* should not create duplicate state changes
+   632→* may return current state
+   633→
+   634→Reactivating already-active Staff:
+   635→
+   636→* same principle
+   637→
+   638→Audit events should distinguish real state transition from harmless retries.
+   639→
+   640→---
+   641→
+   642→# 23. ADMIN CANNOT ALTER STAFF ID
+   643→
+   644→Staff ID remains immutable.
+   645→
+   646→Do NOT create:
+   647→
+   648→```text
+   649→Edit Staff ID
+   650→```
+   651→
+   652→Do not allow management UI to change:
+   653→
+   654→```text
+   655→FF-STF-NNNN
+   656→```
+   657→
+   658→---
+   659→
+   660→# 24. ADMIN CANNOT EDIT HISTORICAL APPOINTMENT
+   661→
+   662→Appointment records are immutable/versioned.
+   663→
+   664→Admin may view them.
+   665→
+   666→Do NOT add:
+   667→
+   668→* edit appointment reference
+   669→* change issued date
+   670→* change historical compensation copy
+   671→
+   672→Any future HR amendment would require its own versioned process.
+   673→
+   674→---
+   675→
+   676→# 25. ADMIN AND ONBOARDING
+   677→
+   678→Admin/Supervisor may view:
+   679→
+   680→* whether onboarding started
+   681→* progress
+   682→* completion date
+   683→
+   684→Do NOT allow arbitrary:
+   685→
+   686→```text
+   687→Mark onboarding complete
+   688→```
+   689→
+   690→unless a documented emergency/admin override policy exists.
+   691→
+   692→Recommended:
+   693→
+   694→# read-only.
+   695→
+   696→---
+   697→
+   698→# 26. ADMIN AND TRAINING
+   699→
+   700→Admin/Supervisor may view:
+   701→
+   702→* course version
+   703→* progress
+   704→* completion state
+   705→* completed date
+   706→
+   707→Do NOT let management manually mark lessons/course complete.
+   708→
+   709→Training progress should continue to represent the Staff member's own completion actions.
+   710→
+   711→---
+   712→
+   713→# 27. RESOURCE MANAGEMENT
+   714→
+   715→Stage 10 currently has:
+   716→
+   717→# source-controlled Staff Resources
+   718→
+   719→with no real file uploads.
+   720→
+   721→Stage 11 should evaluate whether Admin resource publishing belongs now.
+   722→
+   723→But do NOT assume it must.
+   724→
+   725→If FinFam still has no actual resource files or storage backend, an upload CMS may still be premature.
+   726→
+   727→Compare:
+   728→
+   729→### Option A
+   730→
+   731→Keep code-managed resources.
+   732→
+   733→### Option B
+   734→
+   735→Introduce Admin-managed resource metadata + protected file storage.
+   736→
+   737→### Option C
+   738→
+   739→Hybrid: keep registry now, plan upload later.
+   740→
+   741→Recommend based on actual available storage/assets.
+   742→
+   743→---
+   744→
+   745→# 28. IF RESOURCE UPLOAD IS PROPOSED
+   746→
+   747→Planning must define:
+   748→
+   749→* storage backend
+   750→* file size limits
+   751→* MIME allowlist
+   752→* filename sanitation
+   753→* antivirus/malware posture
+   754→* Staff-only download authorization
+   755→* versioning
+   756→* replacement
+   757→* retirement
+   758→* who may publish
+   759→* audit events
+   760→* onboarding copy changes once files are downloadable
+   761→
+   762→Do NOT implement resource upload without answering these.
+   763→
+   764→---
+   765→
+   766→# 29. NO PUBLIC INTERNAL FILES
+   767→
+   768→Internal Staff resources must not be placed in `/public`.
+   769→
+   770→If Stage 11 introduces files:
+   771→
+   772→```text
+   773→Admin upload
+   774→→ protected storage
+   775→→ authenticated resource download
+   776→```
+   777→
+   778→not:
+   779→
+   780→```text
+   781→/public/resources/file.pdf
+   782→```
+   783→
+   784→for confidential Staff material.
+   785→
+   786→---
+   787→
+   788→# 30. STAFF PROFILE CORRECTIONS
+   789→
+   790→Evaluate whether management should edit Staff personal information.
+   791→
+   792→Current Profile is intentionally read-only.
+   793→
+   794→Do NOT automatically add editing for:
+   795→
+   796→* name
+   797→* email
+   798→* phone
+   799→* Staff role
+   800→
+   801→These may have recruitment/auth implications.
+   802→
+   803→If correction functionality is required, each editable field needs:
+   804→
+   805→* authority
+   806→* validation
+   807→* audit
+   808→* downstream impact analysis
+   809→
+   810→Recommended MVP:
+   811→
+   812→# no general profile editing.
+   813→
+   814→---
+   815→
+   816→# 31. EMAIL CHANGE IS SECURITY-SENSITIVE
+   817→
+   818→The Staff login identity uses email.
+   819→
+   820→Therefore changing Staff email is not ordinary profile editing.
+   821→
+   822→Do NOT include it casually.
+   823→
+   824→If future Admin email change is needed, plan:
+   825→
+   826→* verification
+   827→* account/login impact
+   828→* notification
+   829→* session revocation
+   830→* audit
+   831→
+   832→Keep out unless explicitly approved.
+   833→
+   834→---
+   835→
+   836→# 32. ADMIN STAFF CREATION
+   837→
+   838→Do NOT allow Admin to manually create Staff.
+   839→
+   840→Staff creation must remain:
+   841→
+   842→```text
+   843→Recruitment
+   844→→ Appointment
+   845→→ Activation
+   846→→ Staff
+   847→```
+   848→
+   849→No bypass.
+   850→
+   851→No:
+   852→
+   853→```text
+   854→Add Staff
+   855→```
+   856→
+   857→button.
+   858→
+   859→---
+   860→
+   861→# 33. ADMIN CANDIDATE APPROVAL
+   862→
+   863→Do NOT create manual recruitment approval.
+   864→
+   865→Current recruitment automation remains intact.
+   866→
+   867→Stage 11 starts from already activated Staff.
+   868→
+   869→---
+   870→
+   871→# 34. ADMIN NOTIFICATIONS
+   872→
+   873→Evaluate only event-driven operational notifications.
+   874→
+   875→Potential:
+   876→
+   877→```text
+   878→STAFF_ACCOUNT_SUSPENDED
+   879→STAFF_ACCOUNT_REACTIVATED
+   880→```
+   881→
+   882→But do not add them automatically.
+   883→
+   884→Need business decision:
+   885→
+   886→* should Staff receive email when access changes?
+   887→* what wording?
+   888→* who provides support contact?
+   889→
+   890→Avoid admin-action email spam.
+   891→
+   892→---
+   893→
+   894→# 35. ADMIN UI INFORMATION ARCHITECTURE
+   895→
+   896→Potential top-level Admin navigation:
+   897→
+   898→```text
+   899→Overview
+   900→Staff
+   901→Daily Reports
+   902→Resources
+   903→Audit Log
+   904→```
+   905→
+   906→Only include destinations that actually exist.
+   907→
+   908→Do NOT add:
+   909→
+   910→* Earnings
+   911→* Performance
+   912→* Targets
+   913→* Members
+   914→* Analytics
+   915→
+   916→---
+   917→
+   918→# 36. DAILY REPORT ADMIN LIST
+   919→
+   920→Potential:
+   921→
+   922→```text
+   923→/admin/reports
+   924→```
+   925→
+   926→Use:
+   927→
+   928→* date
+   929→* Staff ID
+   930→* Staff name
+   931→* report status
+   932→* submittedAt
+   933→
+   934→Optional filters:
+   935→
+   936→* date/month
+   937→* Staff
+   938→* status
+   939→
+   940→Do not create charts.
+   941→
+   942→Do not call it performance analytics.
+   943→
+   944→---
+   945→
+   946→# 37. DRAFT REPORT VISIBILITY
+   947→
+   948→Determine whether management should see:
+   949→
+   950→* drafts
+   951→* submitted only
+   952→* both
+   953→
+   954→Drafts are incomplete Staff work.
+   955→
+   956→Recommended privacy/operational question:
+   957→
+   958→# Should supervisors see drafts before submission?
+   959→
+   960→Do not assume yes.
+   961→
+   962→---
+   963→
+   964→# 38. ADMIN VIEW OF TRAINING
+   965→
+   966→A Staff detail page may show Training status.
+   967→
+   968→A separate:
+   969→
+   970→```text
+   971→/admin/training
+   972→```
+   973→
+   974→page is probably unnecessary for MVP unless management needs bulk completion monitoring.
+   975→
+   976→Avoid creating pages just because the data exists.
+   977→
+   978→---
+   979→
+   980→# 39. ADMIN VIEW OF RESOURCES
+   981→
+   982→If resources remain code-managed:
+   983→
+   984→Admin Resources may simply be omitted.
+   985→
+   986→If publishing is implemented:
+   987→
+   988→then `/admin/resources` becomes justified.
+   989→
+   990→Do not build an empty Admin Resources page.
+   991→
+   992→---
+   993→
+   994→# 40. SUPERVISOR SCOPING
+   995→
+   996→Critical business question:
+   997→
+   998→Does a Supervisor manage:
+   999→
+  1000→* all Staff
+  1001→* assigned Staff only
+  1002→* region/state subset
+  1003→* team subset
+  1004→
+  1005→No team/region hierarchy currently exists.
+  1006→
+  1007→Do NOT invent:
+  1008→
+  1009→```text
+  1010→Supervisor → assigned team
+  1011→```
+  1012→
+  1013→unless FinFam defines it.
+  1014→
+  1015→If there is no scoping model, recommend:
+  1016→
+  1017→# one Admin role with global Staff visibility for MVP
+  1018→
+  1019→rather than fake Supervisor semantics.
+  1020→
+  1021→---
+  1022→
+  1023→# 41. ADMIN DATA PRIVACY
+  1024→
+  1025→Even privileged users should only see operationally necessary data.
+  1026→
+  1027→Do not expose:
+  1028→
+  1029→* password-equivalent secrets
+  1030→* OTP hashes
+  1031→* session tokens
+  1032→* notification provider secrets
+  1033→* internal auth hashes
+  1034→* hidden applicant documents
+  1035→
+  1036→Management access is not unlimited database access.
+  1037→
+  1038→---
+  1039→
+  1040→# 42. ADMIN LIST PAGINATION
+  1041→
+  1042→Every potentially growing management list should paginate:
+  1043→
+  1044→* Staff
+  1045→* Daily Reports
+  1046→* Audit events
+  1047→* Resources if DB-managed later
+  1048→
+  1049→Recommended server pagination from first release.
+  1050→
+  1051→---
+  1052→
+  1053→# 43. ADMIN SEARCH SECURITY
+  1054→
+  1055→Search inputs must be validated.
+  1056→
+  1057→No raw SQL fragments.
+  1058→
+  1059→No dynamic field names from browser.
+  1060→
+  1061→No arbitrary sort expression.
+  1062→
+  1063→Whitelist:
+  1064→
+  1065→* search terms
+  1066→* filters
+  1067→* sort fields
+  1068→
+  1069→---
+  1070→
+  1071→# 44. ADMIN API BOUNDARY
+  1072→
+  1073→Potential:
+  1074→
+  1075→```text
+  1076→GET /api/admin/staff
+  1077→GET /api/admin/staff/[id]
+  1078→
+  1079→POST /api/admin/staff/[id]/suspend
+  1080→POST /api/admin/staff/[id]/reactivate
+  1081→
+  1082→GET /api/admin/reports
+  1083→GET /api/admin/reports/[id]
+  1084→
+  1085→GET /api/admin/audit
+  1086→```
+  1087→
+  1088→Only plan endpoints required by approved MVP.
+  1089→
+  1090→Do not create one giant management API.
+  1091→
+  1092→---
+  1093→
+  1094→# 45. STAFF ACCOUNT STATUS WRITES
+  1095→
+  1096→Suspend/reactivate actions must be server-controlled.
+  1097→
+  1098→Browser must not send:
+  1099→
+  1100→```text
+  1101→status: "SUSPENDED"
+  1102→```
+  1103→
+  1104→to a generic PATCH.
+  1105→
+  1106→Prefer intent-specific endpoints:
+  1107→
+  1108→```text
+  1109→POST .../suspend
+  1110→POST .../reactivate
+  1111→```
+  1112→
+  1113→This improves auditability and validation.
+  1114→
+  1115→---
+  1116→
+  1117→# 46. SUSPENSION TRANSACTION
+  1118→
+  1119→Consider transaction:
+  1120→
+  1121→```text
+  1122→update StaffAccount
+  1123→+ revoke active StaffSessions
+  1124→+ create AdminAuditEvent
+  1125→```
+  1126→
+  1127→atomically.
+  1128→
+  1129→If email notification is later approved:
+  1130→
+  1131→enqueue NotificationDelivery inside the same transaction and dispatch after commit.
+  1132→
+  1133→Do not send email inside the DB transaction.
+  1134→
+  1135→---
+  1136→
+  1137→# 47. ADMIN AUDIT EVENT SECURITY
+  1138→
+  1139→Audit rows should be append-only.
+  1140→
+  1141→Admin UI:
+  1142→
+  1143→# read-only.
+  1144→
+  1145→Do NOT allow:
+  1146→
+  1147→* edit audit
+  1148→* delete audit
+  1149→* clear history
+  1150→
+  1151→Retention policy may remain a business question.
+  1152→
+  1153→---
+  1154→
+  1155→# 48. AUDIT METADATA
+  1156→
+  1157→Use structured metadata conservatively.
+  1158→
+  1159→Do not dump entire records containing PII into JSON.
+  1160→
+  1161→For suspension, enough may be:
+  1162→
+  1163→```text
+  1164→previousStatus
+  1165→newStatus
+  1166→reason
+  1167→```
+  1168→
+  1169→Target Staff identity can be resolved from `targetId`.
+  1170→
+  1171→---
+  1172→
+  1173→# 49. ACTOR IDENTITY
+  1174→
+  1175→Audit event must record the privileged actor.
+  1176→
+  1177→Therefore Admin identity architecture must be resolved before management writes are implemented.
+  1178→
+  1179→Do not use:
+  1180→
+  1181→```text
+  1182→"system"
+  1183→```
+  1184→
+  1185→for human-triggered actions.
+  1186→
+  1187→---
+  1188→
+  1189→# 50. ADMIN BOOTSTRAP
+  1190→
+  1191→Planning must solve:
+  1192→
+  1193→> How is the first Admin account created?
+  1194→
+  1195→Potential:
+  1196→
+  1197→* migration/seed
+  1198→* secure CLI script
+  1199→* environment bootstrap once
+  1200→* manual DB process
+  1201→
+  1202→Recommend the safest deployable option.
+  1203→
+  1204→Do not create a public "Register Admin" route.
+  1205→
+  1206→---
+  1207→
+  1208→# 51. ADMIN ACCOUNT RECOVERY
+  1209→
+  1210→Determine:
+  1211→
+  1212→* OTP email sign-in
+  1213→* lost email
+  1214→* account suspension
+  1215→* bootstrap/recovery authority
+  1216→
+  1217→Do not create password-reset flows if Admin uses OTP.
+  1218→
+  1219→---
+  1220→
+  1221→# 52. ADMIN LOGIN UI
+  1222→
+  1223→If a separate admin identity exists:
+  1224→
+  1225→```text
+  1226→/admin/login
+  1227→```
+  1228→
+  1229→should be deliberately different from Staff login destination.
+  1230→
+  1231→Neutral anti-enumeration still applies.
+  1232→
+  1233→Do not reveal:
+  1234→
+  1235→> This email is not an administrator.
+  1236→
+  1237→Use neutral responses.
+  1238→
+  1239→---
+  1240→
+  1241→# 53. ADMIN COOKIE
+  1242→
+  1243→If Admin auth is separate, evaluate a separate cookie such as:
+  1244→
+  1245→```text
+  1246→ff_admin_session
+  1247→```
+  1248→
+  1249→Do not reuse `ff_staff_session` unless the authorization model makes that unambiguously safe.
+  1250→
+  1251→---
+  1252→
+  1253→# 54. CSRF / SESSION SECURITY
+  1254→
+  1255→Maintain current protections and evaluate stronger requirements for privileged writes.
+  1256→
+  1257→At minimum:
+  1258→
+  1259→* HttpOnly
+  1260→* Secure in production
+  1261→* SameSite
+  1262→* JSON-only action endpoints
+  1263→* origin/same-site checks if architecture supports them
+  1264→
+  1265→Do not weaken the existing Staff posture.
+  1266→
+  1267→---
+  1268→
+  1269→# 55. ADMIN ACCESSIBILITY
+  1270→
+  1271→Admin pages must be fully keyboard usable.
+  1272→
+  1273→Tables/lists need:
+  1274→
+  1275→* proper headings
+  1276→* table headers where actual tables are used
+  1277→* accessible filters
+  1278→* visible focus
+  1279→* modal/dialog focus management
+  1280→* status not color-only
+  1281→
+  1282→Suspension confirmation must clearly identify:
+  1283→
+  1284→* Staff
+  1285→* Staff ID
+  1286→* consequence
+  1287→
+  1288→---
+  1289→
+  1290→# 56. SUSPENSION UX
+  1291→
+  1292→This is consequential.
+  1293→
+  1294→Use a focused confirmation dialog.
+  1295→
+  1296→Require:
+  1297→
+  1298→* reason
+  1299→* explicit Suspend Staff action
+  1300→
+  1301→Explain:
+  1302→
+  1303→> This immediately removes Staff Portal access.
+  1304→
+  1305→Do not add scary decorative UI.
+  1306→
+  1307→---
+  1308→
+  1309→# 57. REACTIVATION UX
+  1310→
+  1311→Similar but simpler.
+  1312→
+  1313→Show:
+  1314→
+  1315→* Staff identity
+  1316→* current status
+  1317→* Restore Staff Portal Access
+  1318→
+  1319→Potential reason/note should be evaluated.
+  1320→
+  1321→Audit it.
+  1322→
+  1323→---
+  1324→
+  1325→# 58. NO DELETE STAFF
+  1326→
+  1327→Do NOT create:
+  1328→
+  1329→```text
+  1330→Delete Staff
+  1331→```
+  1332→
+  1333→Staff records have recruitment, appointment, reporting, and training history.
+  1334→
+  1335→Suspension is access control.
+  1336→
+  1337→Deletion would destroy history.
+  1338→
+  1339→---
+  1340→
+  1341→# 59. NO DELETE REPORTS
+  1342→
+  1343→Do NOT allow Admin to delete submitted Daily Reports in MVP.
+  1344→
+  1345→Historical accountability data should remain.
+  1346→
+  1347→---
+  1348→
+  1349→# 60. HOME STAFF STATUS
+  1350→
+  1351→Staff-facing portal should not gain Admin controls.
+  1352→
+  1353→If suspended:
+  1354→
+  1355→they are simply unable to resolve a valid session.
+  1356→
+  1357→Do not leak suspension-management details through public/login surfaces.
+  1358→
+  1359→---
+  1360→
+  1361→# 61. TEST MATRIX — ADMIN AUTH
+  1362→
+  1363→Plan:
+  1364→
+  1365→* unknown email
+  1366→* valid admin
+  1367→* ordinary Staff attempting Admin login/access
+  1368→* expired Admin session
+  1369→* revoked Admin session
+  1370→* unauthorized `/admin`
+  1371→* Admin logout
+  1372→* concurrent OTP verification if OTP architecture reused
+  1373→* suspended/disabled Admin if such state exists
+  1374→
+  1375→---
+  1376→
+  1377→# 62. TEST MATRIX — STAFF DIRECTORY
+  1378→
+  1379→* list
+  1380→* pagination
+  1381→* search by Staff ID
+  1382→* search by name
+  1383→* search by email if approved
+  1384→* account-status filter
+  1385→* onboarding-status display
+  1386→* training-status display
+  1387→* Staff A/B correctness
+  1388→* no secrets in API response
+  1389→
+  1390→---
+  1391→
+  1392→# 63. TEST MATRIX — SUSPENSION
+  1393→
+  1394→Verify:
+  1395→
+  1396→* Admin can suspend ACTIVE Staff
+  1397→* reason required
+  1398→* account becomes SUSPENDED
+  1399→* active sessions revoked/inoperable
+  1400→* Staff cannot login
+  1401→* `/staff` inaccessible
+  1402→* ID Card inaccessible
+  1403→* Daily Reports inaccessible
+  1404→* Training inaccessible
+  1405→* Staff historical rows untouched
+  1406→* one audit event
+  1407→* duplicate suspend idempotent/safe
+  1408→
+  1409→---
+  1410→
+  1411→# 64. TEST MATRIX — REACTIVATION
+  1412→
+  1413→Verify:
+  1414→
+  1415→* Admin can reactivate SUSPENDED Staff
+  1416→* StaffAccount becomes ACTIVE
+  1417→* historical Staff state unchanged
+  1418→* Staff ID unchanged
+  1419→* onboarding unchanged
+  1420→* Training unchanged
+  1421→* reports unchanged
+  1422→* Staff can sign in again
+  1423→* audit event written
+  1424→* duplicate reactivation safe
+  1425→
+  1426→---
+  1427→
+  1428→# 65. TEST MATRIX — DAILY REPORT ADMIN VIEW
+  1429→
+  1430→If included:
+  1431→
+  1432→* submitted reports visible according to approved policy
+  1433→* drafts visibility according to approved policy
+  1434→* Staff identity correct
+  1435→* self-reported notice present
+  1436→* no editing
+  1437→* cross-record correctness
+  1438→* pagination/filtering
+  1439→* no payroll/performance terminology
+  1440→
+  1441→---
+  1442→
+  1443→# 66. TEST MATRIX — AUDIT
+  1444→
+  1445→* one event per real state transition
+  1446→* actor recorded
+  1447→* target recorded
+  1448→* timestamp
+  1449→* reason
+  1450→* duplicate retry does not create false transition event
+  1451→* audit immutable
+  1452→* pagination
+  1453→* privileged access only
+  1454→
+  1455→---
+  1456→
+  1457→# 67. RESPONSIVE
+  1458→
+  1459→Verify:
+  1460→
+  1461→```text
+  1462→375
+  1463→768
+  1464→1024
+  1465→1440
+  1466→```
+  1467→
+  1468→Admin UI may prioritize desktop productivity, but mobile must remain functional.
+  1469→
+  1470→At 375:
+  1471→
+  1472→* Staff lists may become stacked rows instead of unusable wide tables
+  1473→* filters remain usable
+  1474→* suspension dialog fits
+  1475→* no horizontal overflow
+  1476→
+  1477→Desktop:
+  1478→
+  1479→* use real table/list density where justified
+  1480→* avoid decorative dashboard cards
+  1481→
+  1482→---
+  1483→
+  1484→# 68. PERFORMANCE
+  1485→
+  1486→Admin lists can grow significantly.
+  1487→
+  1488→Plan:
+  1489→
+  1490→* indexed search fields
+  1491→* pagination
+  1492→* targeted includes/selects
+  1493→* no loading all Daily Reports
+  1494→* no N+1 per Staff status
+  1495→
+  1496→Do not prematurely add analytics infrastructure.
+  1497→
+  1498→---
+  1499→
+  1500→# 69. DATABASE MODEL OPTIONS
+  1501→
+  1502→Potential new models may include:
+  1503→
+  1504→```text
+  1505→AdminAccount
+  1506→AdminLoginCode
+  1507→AdminSession
+  1508→AdminAuditEvent
+  1509→```
+  1510→
+  1511→or a smaller model if Admin reuses Staff auth safely.
+  1512→
+  1513→Do not finalize before inspecting current auth abstractions.
+  1514→
+  1515→If multiple management roles are approved, consider:
+  1516→
+  1517→```text
+  1518→AdminRole
+  1519→```
+  1520→
+  1521→or permissions.
+  1522→
+  1523→Avoid overengineering.
+  1524→
+  1525→---
+  1526→
+  1527→# 70. RESOURCE ADMIN DECISION
+  1528→
+  1529→The planning report must explicitly answer:
+  1530→
+  1531→# Is Admin resource publishing ready to build now?
+  1532→
+  1533→Given Stage 10 currently has:
+  1534→
+  1535→* zero real downloadable files
+  1536→* no file-storage backend
+  1537→* source-controlled registry
+  1538→
+  1539→Strong default:
+  1540→
+  1541→# Keep resource publishing OUT of Stage 11 MVP unless actual files/storage requirements now exist.
+  1542→
+  1543→Admin can be useful without a resource CMS.
+  1544→
+  1545→---
+  1546→
+  1547→# 71. RECOMMENDED STAGE 11 MVP
+  1548→
+  1549→If architecture/business findings support it, the smallest valuable Stage 11 may be:
+  1550→
+  1551→1. secure Admin authentication
+  1552→2. Admin Staff directory
+  1553→3. Staff detail page
+  1554→4. read-only onboarding/training status
+  1555→5. read-only submitted Daily Reports
+  1556→6. StaffAccount suspend/reactivate
+  1557→7. privileged action audit log
+  1558→
+  1559→Potentially NO resource CMS yet.
+  1560→
+  1561→Evaluate this strongly.
+  1562→
+  1563→---
+  1564→
+  1565→# 72. BUSINESS QUESTIONS
+  1566→
+  1567→Explicitly resolve/flag:
+  1568→
+  1569→1. Who should have Admin access initially?
+  1570→2. Are Admins existing Staff or separate management users?
+  1571→3. Do we need distinct Supervisor and Admin roles?
+  1572→4. If Supervisor exists, which Staff may they see?
+  1573→5. Can management view draft Daily Reports or submitted only?
+  1574→6. Can management request report corrections?
+  1575→7. Can management directly edit submitted reports?
+  1576→8. Who can suspend Staff?
+  1577→9. Who can reactivate Staff?
+  1578→10. Is a suspension reason mandatory?
+  1579→11. Should suspension email the Staff member?
+  1580→12. Should reactivation email the Staff member?
+  1581→13. Should suspension immediately revoke all active sessions?
+  1582→14. Can Admin edit Staff name?
+  1583→15. Can Admin edit Staff email?
+  1584→16. Can Admin edit phone?
+  1585→17. Can Admin change designation/role?
+  1586→18. Can Admin override onboarding?
+  1587→19. Can Admin override Training completion?
+  1588→20. Do Admins need appointment-document access?
+  1589→21. Do Admins need ID-card preview?
+  1590→22. Do Admins need full Daily Report history?
+  1591→23. How long should Admin audit events be retained?
+  1592→24. Who can view the audit log?
+  1593→25. How is the first Admin bootstrapped?
+  1594→26. What happens if the only Admin loses access?
+  1595→27. Do we have actual Staff resource files/storage now?
+  1596→28. Should Admin resource publishing be postponed?
+  1597→29. Is there a legal/privacy requirement around management access to Staff data?
+  1598→30. Are there future termination/resignation states, or is SUSPENDED sufficient for now?
+  1599→
+  1600→Do not invent answers.
+  1601→
+  1602→---
+  1603→
+  1604→# 73. EXPECTED PLANNING DELIVERABLES
+  1605→
+  1606→Return:
+  1607→
+  1608→1. Current architecture findings
+  1609→2. Stage 11 scope
+  1610→3. Admin identity options
+  1611→4. Recommended Admin authentication architecture
+  1612→5. Admin session architecture
+  1613→6. Admin authorization/role model
+  1614→7. First-admin bootstrap
+  1615→8. Route structure
+  1616→9. Admin navigation
+  1617→10. Staff directory
+  1618→11. Staff search/filtering
+  1619→12. Staff detail
+  1620→13. Onboarding visibility
+  1621→14. Training visibility
+  1622→15. Daily Report visibility
+  1623→16. Draft-report policy recommendation
+  1624→17. Suspension architecture
+  1625→18. Reactivation architecture
+  1626→19. session-revocation behavior
+  1627→20. Audit-log architecture
+  1628→21. Admin APIs
+  1629→22. Resource-publishing decision
+  1630→23. Staff-profile editing decision
+  1631→24. Notification recommendation
+  1632→25. Database-model recommendation
+  1633→26. Security/privacy
+  1634→27. Idempotency/concurrency
+  1635→28. Responsive UX
+  1636→29. Accessibility
+  1637→30. Performance/pagination
+  1638→31. Test matrix
+  1639→32. Business questions
+  1640→33. Expected files
+  1641→34. Files not to rebuild
+  1642→35. Risks
+  1643→36. Implementation sequence
+  1644→
+  1645→---
+  1646→
+  1647→# 74. FILES NOT TO REBUILD
+  1648→
+  1649→Do NOT rebuild:
+  1650→
+  1651→* recruitment pipeline
+  1652→* Orientation
+  1653→* Assessment
+  1654→* Agreement
+  1655→* Appointment
+  1656→* Staff Activation
+  1657→* Staff Portal auth
+  1658→* Onboarding
+  1659→* Daily Reporting
+  1660→* Staff Training
+  1661→* Staff Resources
+  1662→* Staff ID Card
+  1663→* Mailjet provider/outbox
+  1664→* Staff Portal shell
+  1665→
+  1666→Reuse proven primitives where safe.
+  1667→
+  1668→Stage 11 is additive.
+  1669→
+  1670→---
+  1671→
+  1672→# 75. RISKS
+  1673→
+  1674→Explicitly assess:
+  1675→
+  1676→* ordinary Staff accidentally gaining Admin access
+  1677→* Admin session/auth duplication
+  1678→* weak first-admin bootstrap
+  1679→* management actions without audit
+  1680→* accidental Staff deletion
+  1681→* Admin editing immutable historical records
+  1682→* hidden modification of submitted Daily Reports
+  1683→* suspension not revoking active sessions
+  1684→* overexposure of Staff PII
+  1685→* Supervisor scope not defined
+  1686→* resource CMS without storage/security
+  1687→* privilege escalation
+  1688→* CSRF on privileged actions
+  1689→* audit-log tampering
+  1690→* scope creep into HRIS
+  1691→* scope creep into Performance/Earnings
+  1692→* huge unpaginated lists
+  1693→* future termination/resignation requirements
+  1694→
+  1695→---
+  1696→
+  1697→# 76. FINAL GATE
+  1698→
+  1699→End exactly with:
+  1700→
+  1701→## Ready for implementation
+  1702→
+  1703→List only architecture/product decisions safe enough to implement.
+  1704→
+  1705→If Admin identity/authority is unresolved, explicitly state what is blocked.
+  1706→
+  1707→## Requires business confirmation
+  1708→
+  1709→List unresolved:
+  1710→
+  1711→* who is Admin
+  1712→* roles/scope
+  1713→* suspension authority
+  1714→* report visibility
+  1715→* edit/correction authority
+  1716→* audit access
+  1717→* resource publishing
+  1718→* Staff profile-edit permissions
+  1719→
+  1720→## Proposed implementation order
+  1721→
+  1722→Give the dependency-safe sequence.
+  1723→
+  1724→Then STOP.
+  1725→
+  1726→Do NOT implement Stage 11.
+  1727→
+  1728→Do NOT create Admin users.
+  1729→
+  1730→Do NOT create migrations.
+  1731→
+  1732→Do NOT build Admin routes.
+  1733→
+  1734→Do NOT build a Resource CMS.
+  1735→
+  1736→Do NOT restore Earnings/Performance.
+  1737→
+  1738→---
+  1739→
+  1740→# 77. PROJECT BOUNDARY AFTER STAGE 11
+  1741→
+  1742→Stage 11 is currently the final planned Staff Platform module.
+  1743→
+  1744→After Stage 11:
+  1745→
+  1746→# STOP AND REVIEW THE ENTIRE PLATFORM.
+  1747→
+  1748→Do not invent Stage 12 automatically.
+  1749→
+  1750→Any later module should come from a real operational requirement, not roadmap inflation.
+  1751→
