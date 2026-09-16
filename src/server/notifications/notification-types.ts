@@ -16,6 +16,11 @@ import type { NotificationType } from "@prisma/client";
  *
  * Deliberately absent: keys for page views, orientation sections, onboarding
  * steps or any other small step — those would be notification spam (§7/§8).
+ *
+ * Stage 8 adds DAILY_REPORT_SUBMITTED — a concise receipt per SUBMITTED
+ * report (dedupeKey per report id). There is deliberately NO
+ * DAILY_REPORT_REMINDER: no deadline/overdue policy has been confirmed and
+ * a recurring reminder without one would be spam.
  */
 export type { NotificationType };
 
@@ -90,6 +95,14 @@ export interface StaffLoginCodePayload extends NotificationRecipient {
   expiresAt: string;
 }
 
+export interface DailyReportSubmittedPayload extends NotificationRecipient {
+  staffId: string;
+  /** "YYYY-MM-DD" Africa/Lagos calendar date the reported work occurred. */
+  reportDate: string;
+  /** ISO instant the report was finalised (the submission latch). */
+  submittedAt: string;
+}
+
 /**
  * Payload contract per notification key. Templates render strictly from
  * these payloads — they never read the database themselves.
@@ -106,6 +119,7 @@ export type NotificationPayloadMap = {
   ONBOARDING_COMPLETED: OnboardingCompletedPayload;
   STAFF_ACCOUNT_CREATED: StaffAccountCreatedPayload;
   STAFF_LOGIN_CODE: StaffLoginCodePayload;
+  DAILY_REPORT_SUBMITTED: DailyReportSubmittedPayload;
 };
 
 /**

@@ -1,11 +1,13 @@
 import "server-only";
 
-import { format } from "date-fns";
-
 import {
   type NotificationPayloadMap,
   type NotificationTypeId,
 } from "./notification-types";
+import {
+  formatLagosDateLabel,
+  formatLagosDateTimeLabel,
+} from "@/lib/dates/lagos";
 
 /**
  * Code-owned transactional email templates (brief §17/§18).
@@ -20,11 +22,12 @@ import {
  * marketing hype. Transactional email, not a newsletter.
  *
  * All payload strings are HTML-escaped in the HTML part (names are user
- * input); the text part is plain by construction.
+ * input); the text part is plain by construction. Date labels are rendered
+ * through the Africa/Lagos helpers — never the host machine's timezone.
  */
 
 /** Version stored on every NotificationDelivery row at enqueue time. */
-export const NOTIFICATION_TEMPLATE_VERSION = "2.0";
+export const NOTIFICATION_TEMPLATE_VERSION = "2.1";
 
 /** FinFam accent green — single source: src/app/globals.css --accent. */
 const ACCENT = "#0c7a43";
@@ -51,10 +54,6 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function formatDate(iso: string): string {
-  return format(new Date(iso), "d MMMM yyyy");
 }
 
 function firstName(fullName: string): string {
@@ -327,6 +326,27 @@ const RENDERERS: NotificationRenderers = {
       ],
       callout: { label: "Login code", value: payload.loginCode },
       link: { label: "Open the Staff Portal sign-in", path: "/staff/login" },
+      baseUrl,
+      referenceNumber: payload.referenceNumber,
+    }),
+
+  DAILY_REPORT_SUBMITTED: (payload, { baseUrl, name }) =>
+    // Stage 8 receipt (approved §25): a durable, concise confirmation that
+    // the daily report was accepted — report date + received-when. NO
+    // metrics digest (the portal is the authoritative view), and never a
+    // reminder (no deadline policy exists).
+    render({
+      subject: "Your FinFam daily report has been received",
+      heading: `${name}, your daily report has been received.`,
+      paragraphs: [
+        `Your daily activity report for <strong>${escapeHtml(formatLagosDateLabel(payload.reportDate))}</strong> was received on ${escapeHtml(formatLagosDateTimeLabel(new Date(payload.submittedAt)))} (Africa/Lagos).`,
+        "Thank you for reporting your activity accurately. You can review your submitted reports in the Staff Portal at any time.",
+      ],
+      callout: {
+        label: "Report date",
+        value: formatLagosDateLabel(payload.reportDate),
+      },
+      link: { label: "Open Daily Reports", path: "/staff/reports" },
       baseUrl,
       referenceNumber: payload.referenceNumber,
     }),

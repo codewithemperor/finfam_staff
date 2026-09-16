@@ -11,6 +11,7 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "UNAUTHORIZED"
+  | "FORBIDDEN"
   | "RATE_LIMITED"
   | "INTERNAL";
 

@@ -15,6 +15,14 @@
 // and NO RecruitmentStage value — APPROVED_STAFF remains the terminal
 // recruitment status, and StageEvent stays recruitment-only.
 //
+// Staff Platform (post-recruitment, ongoing): Stage 7 added the
+// authenticated Staff Portal (StaffAccount/StaffLoginCode/StaffSession —
+// email-OTP auth, DB-backed sessions) and Stage 8 adds Daily Reporting &
+// Accountability (DailyReport — one self-reported activity report per
+// Staff member per Africa/Lagos reporting date, see
+// src/server/services/daily-reports.ts). Neither module touches the
+// recruitment state machine.
+//
 // Cross-cutting platform service: NotificationDelivery (brief
 // "notification_service") records transactional email intents for
 // lifecycle events via the central notification service
@@ -113,6 +121,14 @@ enum NotificationType {
   /// a failed delivery is terminal for that code and the user requests a
   /// fresh one. Codes themselves are stored hashed on staff_login_codes.
   STAFF_LOGIN_CODE
+
+  /// Daily-report receipt (Stage 8). Queued inside the ONE submission
+  /// transaction that wins the DRAFT → SUBMITTED latch, keyed
+  /// "DAILY_REPORT_SUBMITTED:<reportId>" — exactly once per submitted
+  /// report. A concise transactional receipt (report date + received
+  /// confirmation), NOT a metrics digest and never a reminder — no
+  /// DAILY_REPORT_REMINDER exists until a deadline policy is confirmed.
+  DAILY_REPORT_SUBMITTED
 }
 
 /// Status of a Staff Portal account (Stage 7). SUSPENDED exists so future
@@ -122,6 +138,81 @@ enum NotificationType {
 enum StaffAccountStatus {
   ACTIVE
   SUSPENDED
+}
+
+/// Lifecycle of one daily activity report (Stage 8). Deliberately the
+/// SMALLEST useful lifecycle: DRAFT (being written, freely editable) →
+/// SUBMITTED (final, read-only permanently in the Staff MVP). There is
+/// deliberately no REVIEWED/APPROVED/REJECTED/FLAGGED — no supervisor
+/// workflow exists, and inventing one would be speculative.
+enum DailyReportStatus {
+  DRAFT
+  SUBMITTED
+}
+
+/// One Staff member's reported activity for ONE reporting date (Stage 8 —
+/// Daily Reporting & Accountability, an ongoing STAFF PLATFORM module that
+/// adds NO recruitment state: no CandidateStatus, no RecruitmentStage, no
+/// StageEvent). Flat typed columns carry the nine approved daily metrics
+/// (the four categories taught by the onboarding "accountability" step) —
+/// not a JSON blob and not metric rows — because the set is small, fixed
+/// and individually validated/displayed. `@@unique([staffId, reportDate])`
+/// is the one-report-per-staff-per-date rule and the concurrency backstop:
+/// create-or-get races lose the P2002 and re-read the winner.
+///
+/// Facts kept separate on purpose (brief §4): `reportDate` is the calendar
+/// date the reported work occurred (Africa/Lagos — stored as that calendar
+/// DATE, see src/lib/dates/lagos.ts), while `submittedAt` is the server
+/// instant the report was finalised; createdAt/updatedAt are row
+/// bookkeeping and never stand in for the activity date.
+///
+/// The data is STAFF SELF-REPORTED (brief §22): it is accountability/
+/// activity data only — never presented as independently verified, never
+/// used for compensation (no ₦650 payroll path exists anywhere), and it
+/// contains NO person-level member/prospect records (that is a future
+/// module). `version` pins the report-schema interpretation at creation.
+model DailyReport {
+  id      String            @id @default(cuid())
+  /// Owning Staff row — resolved from the authenticated session chain,
+  /// NEVER from client input (brief §31/§32).
+  staffId String
+  staff   Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  /// Calendar date the reported work occurred (Africa/Lagos). Stored as
+  /// that DATE (UTC midnight of the Lagos date, src/lib/dates/lagos.ts).
+  reportDate DateTime        @db.Date
+  /// Report-schema version pinned at creation ("1.0",
+  /// src/config/daily-report.ts). Immutable.
+  version String
+  status  DailyReportStatus @default(DRAFT)
+
+  // ── Prospects ─────────────────────────────────────────────────────────
+  individualsContacted Int @default(0)
+  groupsApproached     Int @default(0)
+  followUpActivities   Int @default(0)
+  // ── Member Growth ─────────────────────────────────────────────────────
+  newRegistrations          Int @default(0)
+  establishedMembersCreated Int @default(0)
+  // ── Savings Activities ────────────────────────────────────────────────
+  firstDepositsAchieved Int @default(0)
+  savingsGoalsActivated Int @default(0)
+  // ── Community Activities ──────────────────────────────────────────────
+  memberEngagement Int @default(0)
+  connectionsBuilt Int @default(0)
+
+  /// Optional plain-text context the counts cannot capture. Trimmed,
+  /// max 1000 chars, server-validated. Plain text only — never PII.
+  activitySummary String?
+
+  /// Server finalisation instant. Null while DRAFT; the one-way latch
+  /// (status DRAFT → SUBMITTED via a conditional update) stamps it exactly
+  /// once, so repeated/concurrent submits yield ONE timestamp.
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  /// One Staff member + one activity date = one report.
+  @@unique([staffId, reportDate])
+  @@map("daily_reports")
 }
 
 /// A person going through the FinFam recruitment journey.
@@ -431,6 +522,10 @@ model Staff {
   /// (src/server/services/staff-accounts.ts), so an activation can never
   /// exist without its portal account.
   account StaffAccount?
+
+  /// Daily activity reports (Stage 8) — one per reporting date at most
+  /// (unique [staffId, reportDate]); owned exclusively via the session.
+  reports DailyReport[]
 
   @@map("staff")
 }
