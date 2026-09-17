@@ -1098,6 +1098,65 @@ without a new approved brief.
 9. **Server-generated PDF** (currently browser Print/Save-as-PDF only).
 10. **Admin-managed resource publishing** — Stage 11+ domain.
 
+## Consolidated classification (production-readiness remediation, 2026-09)
+
+The platform review + remediation triaged every open business item into
+three actionable groups. Nothing below was silently resolved — every line
+points at the original section that holds the full context. Application-side
+safeguards implemented by the remediation are noted inline; items that need
+real infrastructure or business ownership are marked EXTERNAL / BUSINESS.
+
+### 🚨 LAUNCH BLOCKERS
+
+| Item | Type | Notes / where |
+| --- | --- | --- |
+| Mailjet sender validated + real Staff & Admin OTP delivered | EXTERNAL ACTION REQUIRED | §37 — code cannot validate a sender; without it nobody can log in. Exact steps in RUNBOOK-DEPLOYMENT.md |
+| Real backup/PITR policy + a performed restore test | EXTERNAL ACTION REQUIRED | Not codeable; contract in RUNBOOK-OPERATIONS.md. The truthful production verdict stays "READY WITH EXTERNAL ACTIONS" until done |
+| Production PostgreSQL provisioned (TLS, least-privilege role, `prisma migrate deploy`) | EXTERNAL ACTION REQUIRED | RUNBOOK-DEPLOYMENT.md; the bundled local Postgres is dev infrastructure only |
+| Edge/WAF request throttling in front of the app | EXTERNAL ACTION REQUIRED | The app-level DB limiter (remediation §14) is damping, not DDoS defence; limits recommended in the runbook |
+| Monitoring/observability (uptime, 5xx rate, DB, Mailjet failures, notification FAILED count, auth rate-limit anomalies) | EXTERNAL ACTION REQUIRED | RUNBOOK-OPERATIONS.md minimum set; no dashboard was invented inside FinFam |
+| Support contact channels | BUSINESS INPUT REQUIRED | §3 — the footer now renders a real address only from `SUPPORT_CONTACT_EMAIL`; the `.example` placeholder can never ship |
+| Agreement v1.1 final business/legal sign-off | BUSINESS DECISION REQUIRED | §18 — wording untouched by the remediation; ₦650 wording remains authoritative per approved material |
+| Official onboarding WhatsApp number | BUSINESS INPUT REQUIRED | §33 — config-only change (`ONBOARDING_WHATSAPP_NUMBER`) once supplied; honest pending copy ships today |
+
+### ⚙️ OPERATIONAL DECISIONS (defaults are live and honest; changes are config/content edits)
+
+| Item | Default in force | Where |
+| --- | --- | --- |
+| Canonical role title portal-wide | "Remote Staff" on letters; generic "Staff Member" elsewhere | §4, §21 |
+| Assessment retry cap / unanswered rule / insight visibility / randomization | Retakes allowed (config-driven); unanswered allowed; insights withheld; not randomized | §6–§9 |
+| Reference recovery verification strength | Exact 3-field match, rate-limited (5/10 min), neutral responses | §11 + remediation §15 |
+| Identity model for consequential actions | Reference-only retained (accepted); OTP hardening recommended later | §13, §19, §31 |
+| Reference expiration | None implemented | §14 |
+| Decline & reversal policy | Accept-only portal | §16 |
+| Agreement re-acceptance for future versions | Not specified; v1.0/v1.1 kept per acceptance | §17 |
+| Appointment format/date/signatory/assets/email/ack | MVP defaults implemented; historicals immutable | §22–§27 |
+| **Legacy reference-onboarding door** | **KEPT** (the ONBOARDING_STARTED email links there — a live workflow) + rate-limited (30/10 min); retiring the unauthenticated write path in favour of the Staff Portal is an explicit business decision | NEW — remediation §16 |
+| Admin access list, break-glass recovery, audit retention, report visibility/correction authority, Supervisor scoping | One ADMIN role; bootstrap refuses suspended reactivation; no break-glass invented; audit append-only | §45 |
+| Resources & ID card assets | List-only until real files exist; card deferred | §35 |
+| ₦500 cashback claim | Unconfirmed; encoded nowhere | §10 |
+
+### 🔮 FUTURE ENHANCEMENTS (not needed at launch)
+
+| Item | Where |
+| --- | --- |
+| Official vision/mission wording (content polish) | §5 |
+| Completed-stage history depth | §12 |
+| December 2026 confirmation requirements (future rule — do NOT build early) | §20, §28 |
+| Post-onboarding portal evolution | §36 |
+| Bounce/delivery webhooks beyond "Mailjet accepted" semantics | §38 |
+
+---
+
+## 44. Numbering note — section was skipped in error during Stage 11
+
+Section 44 was accidentally skipped when §45 (Stage 11 — Admin Operations)
+was appended; no content was lost. The number is left vacant deliberately:
+all later documents (README, runbooks, briefs) cross-reference the existing
+section numbers, and renumbering would break them.
+
+---
+
 ## 45. Stage 11 — Admin Operations — IMPLEMENTED (approved brief; defaults recorded)
 
 **Implemented (approved brief §1–§70):** a structurally separate admin

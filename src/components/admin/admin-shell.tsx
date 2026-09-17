@@ -1,6 +1,7 @@
+import { AdminNav } from "@/components/admin/admin-nav";
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteFooter } from "@/components/layout/site-footer";
-import { AdminNav } from "@/components/admin/admin-nav";
+import { SkipLink } from "@/components/layout/skip-link";
 
 /**
  * FinFam Admin console shell (Stage 11): its own header + navigation over
@@ -19,6 +20,7 @@ export function AdminShell({
 }) {
   return (
     <div className="flex min-h-[100dvh] flex-col">
+      <SkipLink />
       <header className="border-b border-border bg-background print:hidden">
         <PageContainer>
           <AdminNav adminEmail={adminEmail} />

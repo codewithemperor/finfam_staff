@@ -8,6 +8,7 @@ import { lagosDateISOFromUtcMidnight } from "@/lib/dates/lagos";
 import { ASSESSMENT_POLICY } from "@/server/assessment-content";
 
 import {
+  type DerivableNotificationTypeId,
   type NotificationPayloadMap,
   type NotificationTypeId,
   type NotificationRuntimeConfig,
@@ -16,6 +17,7 @@ import {
   entityIdFromDedupeKey,
   getNotificationConfig,
   isDeliveryActive,
+  isOneShotNotificationType,
 } from "./notification-types";
 import {
   NOTIFICATION_TEMPLATE_VERSION,
@@ -220,8 +222,14 @@ export async function sendNotification(
   try {
     // One-shot payloads arrive from memory (never stored); everything else
     // is re-derived from immutable snapshot rows so retries stay faithful.
-    const payload =
-      payloadOverride ?? (await deriveNotificationPayload(row.type, row.dedupeKey));
+    // (Remediation §11: the one-shot partition is type-level — a one-shot
+    // row without its in-memory payload is PAYLOAD_UNAVAILABLE by the same
+    // runtime path as before, but the compiler now proves derive can never
+    // be asked to re-derive a plaintext OTP.)
+    const payload = payloadOverride ??
+      (isOneShotNotificationType(row.type)
+        ? null
+        : await deriveNotificationPayload(row.type, row.dedupeKey));
     if (!payload) {
       await markFailed(
         deliveryId,
@@ -388,16 +396,22 @@ type PayloadCandidate = {
 };
 
 /**
- * Re-derive the typed payload for a queued row from immutable snapshot
- * rows (staff/appointment/agreement/attempt rows are immutable by schema
- * design), so retries render faithful content without storing bodies or
- * payloads (§9). Returns null when the source record is gone or — for the
- * RESERVED Stage 7 type — when no provisioning model exists yet.
+ * Re-derive the typed payload for a queued DERIVABLE row from immutable
+ * snapshot rows (staff/appointment/agreement/attempt rows are immutable by
+ * schema design), so retries render faithful content without storing bodies
+ * or payloads (§9). Returns null when the source record is gone.
+ *
+ * Remediation §11: the parameter type EXCLUDES the one-shot OTP types
+ * (STAFF_LOGIN_CODE / ADMIN_LOGIN_CODE) — their plaintext payload is never
+ * persisted, so no derivation logic could honestly exist for them. The
+ * compiler proves this switch stays exhaustive over exactly the derivable
+ * types; adding a new NotificationType forces a case here (or a deliberate
+ * addition to ONE_SHOT_NOTIFICATION_TYPES).
  */
 async function deriveNotificationPayload(
-  type: NotificationType,
+  type: DerivableNotificationTypeId,
   dedupeKey: string,
-): Promise<NotificationPayloadMap[NotificationTypeId] | null> {
+): Promise<NotificationPayloadMap[DerivableNotificationTypeId] | null> {
   const entityId = entityIdFromDedupeKey(type, dedupeKey);
 
   switch (type) {
@@ -594,12 +608,5 @@ async function deriveNotificationPayload(
         submittedAt: report.submittedAt.toISOString(),
       };
     }
-
-    case "STAFF_LOGIN_CODE":
-      // ONE-SHOT (Stage 7, brief §10): the plaintext OTP is deliberately
-      // never persisted, so a queued row can never be re-derived. Rows of
-      // this type are dispatched once from memory by the auth service; a
-      // lost/failed delivery stays dead and the user requests a new code.
-      return null;
   }
 }

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { apiFail, apiOk, readJsonBody } from "@/lib/api/response";
 import { AppError, GENERIC_ERROR_MESSAGE, validationError } from "@/lib/errors";
+import { logServerError } from "@/lib/log";
 import { getFieldErrors } from "@/lib/validation/application";
 import { adminVerifyCodeSchema } from "@/lib/validation/admin";
 import {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof AppError) {
       return apiFail(error.code, error.message, error.status, error.fields);
     }
-    console.error("[api] Unhandled error:", error);
+    logServerError("api/admin/auth/verify", error);
     return apiFail("INTERNAL", GENERIC_ERROR_MESSAGE, 500);
   }
 }

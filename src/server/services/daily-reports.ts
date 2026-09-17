@@ -272,6 +272,14 @@ export async function createOrGetDailyReport(
  * Full-replace save of a DRAFT. Foreign ids are 404; submitted reports
  * are 409 (read-only permanently — no edit, no reopen). Drafts are never
  * deleted; values may simply be revised (zeros included).
+ *
+ * Concurrency (production-readiness remediation §8): the save is a SINGLE
+ * conditional write — `status: "DRAFT"` is part of the WHERE clause, so a
+ * report submitted between a caller's read and its write can never be
+ * modified. The old check-then-update pattern could lose that race and
+ * mutate metrics of an already-SUBMITTED report; `updateMany` makes the
+ * submitted-immutability rule atomic with the write itself. count === 0
+ * re-reads the owned row and answers 404 (not owned) or 409 (submitted).
  */
 export async function saveDailyReportDraft(
   session: StaffSessionContext,
@@ -280,18 +288,12 @@ export async function saveDailyReportDraft(
 ): Promise<DailyReportView> {
   await ensureReportingEligibility(session);
 
-  const existing = await db.dailyReport.findFirst({
-    where: { id: reportId, staffId: session.staff.rowId },
-  });
-  if (!existing) {
-    throw notFoundError("We couldn't find that report.");
-  }
-  if (existing.status !== "DRAFT") {
-    throw conflictError("Submitted reports can no longer be changed.");
-  }
-
-  const updated = await db.dailyReport.update({
-    where: { id: existing.id },
+  const latched = await db.dailyReport.updateMany({
+    where: {
+      id: reportId,
+      staffId: session.staff.rowId,
+      status: "DRAFT",
+    },
     data: {
       individualsContacted: input.individualsContacted,
       groupsApproached: input.groupsApproached,
@@ -306,7 +308,24 @@ export async function saveDailyReportDraft(
     },
   });
 
-  return toReportView(updated);
+  if (latched.count === 1) {
+    const saved = await db.dailyReport.findUniqueOrThrow({
+      where: { id: reportId },
+    });
+    return toReportView(saved);
+  }
+
+  // count === 0: either the report is not owned by this session (404 —
+  // existence is never disclosed) or it is no longer a DRAFT. Re-read the
+  // owned row to distinguish; a SUBMITTED report is NEVER reopened or
+  // mutated by this path.
+  const existing = await db.dailyReport.findFirst({
+    where: { id: reportId, staffId: session.staff.rowId },
+  });
+  if (!existing) {
+    throw notFoundError("We couldn't find that report.");
+  }
+  throw conflictError("Submitted reports can no longer be changed.");
 }
 
 /* -------------------------------------------------------------------------

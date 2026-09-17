@@ -361,12 +361,9 @@ describe("admin verify security properties (§54)", () => {
       "old code",
     );
     const ok = expectOk<{ next: string }>(
-      await (async () => {
-        const r = await adminRawRequest("POST", "/api/admin/auth/verify", {
-          body: { email, code: second.devCode! },
-        });
-        return { status: r.status, body: r.body };
-      })() as Promise<{ status: number; body: { ok: boolean; data?: { next: string } } }>,
+      await adminRawRequest<{ next: string }>("POST", "/api/admin/auth/verify", {
+        body: { email, code: second.devCode! },
+      }),
       200,
       "new code",
     );

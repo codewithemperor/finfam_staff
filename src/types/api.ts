@@ -30,6 +30,12 @@ export interface ApiErrorBody {
     code: ApiErrorCode;
     message: string;
     fields?: ApiFieldErrors;
+    /**
+     * Correlation id for unexpected 500s (production-readiness remediation
+     * §21): lets support grep the server log for the exact failure. The
+     * response message itself remains generic — this id exposes nothing.
+     */
+    reference?: string;
   };
 }
 

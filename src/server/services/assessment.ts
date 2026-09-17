@@ -427,8 +427,13 @@ export async function submitAssessment(
   let deliveryId: string | null = null;
 
   await db.$transaction(async (tx) => {
-    await tx.assessmentAttempt.update({
-      where: { id: activeAttempt.id },
+    // Concurrency latch (production-readiness remediation §24): the
+    // submittedAt = null predicate makes finalisation a conditional write,
+    // so exactly ONE concurrent submit wins. The loser commits no changes —
+    // no duplicate StageEvent, no duplicate candidate status write — and
+    // still returns the same persisted result via the final view read.
+    const latched = await tx.assessmentAttempt.updateMany({
+      where: { id: activeAttempt.id, submittedAt: null },
       data: {
         submittedAt: now,
         correctCount: outcome.correctCount,
@@ -438,6 +443,10 @@ export async function submitAssessment(
         passed: outcome.passed,
       },
     });
+    if (latched.count !== 1) {
+      deliveryId = null;
+      return;
+    }
 
     await tx.candidate.update({
       where: { id: candidate.id },

@@ -228,6 +228,10 @@ model DailyReport {
   /// Stage 11 admin console: month/day filtering across ALL staff on
   /// /admin/reports cannot use the staff-prefixed unique above.
   @@index([reportDate])
+  /// Production-readiness remediation (§17): /admin/reports filters
+  /// `status = SUBMITTED` (equality) and ranges/orders on reportDate
+  /// (src/server/services/admin-reports.ts). Composite serves both.
+  @@index([status, reportDate])
   @@map("daily_reports")
 }
 
@@ -548,6 +552,10 @@ model Staff {
   /// the session.
   trainingEnrollments StaffTrainingEnrollment[]
 
+  /// Production-readiness remediation (§17): the admin staff directory
+  /// lists ALL staff ordered by activation, newest first
+  /// (orderBy activatedAt desc, src/server/services/admin-directory.ts).
+  @@index([activatedAt])
   @@map("staff")
 }
 
@@ -758,6 +766,11 @@ model NotificationDelivery {
 
   @@index([status])
   @@index([candidateId])
+  /// Production-readiness remediation (§17): the retry worker polls
+  /// status IN (PENDING, FAILED) ordered oldest-first
+  /// (retryPendingNotifications, src/server/notifications/
+  /// notification-service.ts). Composite serves the inequality+order.
+  @@index([status, createdAt])
   @@map("notification_deliveries")
 }
 
@@ -985,4 +998,27 @@ model AdminAuditEvent {
   @@index([createdAt])
   @@index([actorId, createdAt])
   @@map("admin_audit_events")
+}
+
+/// Sliding-window rate-limit event for UNAUTHENTICATED public mutation /
+/// recovery endpoints (production-readiness remediation §14/§15):
+/// POST /api/applications, POST /api/recruitment/recover-reference and the
+/// legacy reference-gated onboarding writes. Pattern mirrors the OTP
+/// request-window limiter (DB count over a rolling window → 429) so abuse
+/// damping behaves identically across instances behind one database.
+///
+/// Privacy: the client identity is stored ONLY as
+/// sha256("<bucket>:<client ip>") — the table can never be read back as an
+/// IP log. Rows are pruned opportunistically (older than the window) on
+/// every enforcement call; there is deliberately no other retention.
+model RateLimitEvent {
+  id     String   @id @default(cuid())
+  /// Logical endpoint group, e.g. "applications", "recruitment-recovery".
+  bucket String
+  /// sha256 hex of "<bucket>:<client ip>". Never a raw IP or email.
+  clientKey String
+  createdAt DateTime @default(now())
+
+  @@index([bucket, clientKey, createdAt])
+  @@map("rate_limit_events")
 }

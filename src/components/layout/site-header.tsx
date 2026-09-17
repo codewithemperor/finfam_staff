@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import { PageContainer } from "@/components/layout/page-container";
+import { SiteNavLinks } from "@/components/layout/site-nav-links";
 import { ButtonLink } from "@/components/ui/button-link";
-import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,20 +36,7 @@ export function SiteHeader({ className }: { className?: string }) {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-5">
-            <nav aria-label="Main navigation">
-              <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-5">
-                {siteConfig.nav.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="whitespace-nowrap rounded-md text-[13px] font-medium text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:text-sm"
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+            <SiteNavLinks />
 
             <ButtonLink
               href="/apply"

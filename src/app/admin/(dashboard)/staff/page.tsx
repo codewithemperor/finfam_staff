@@ -81,7 +81,10 @@ export default async function AdminStaffDirectoryPage({
     typeof params.page === "string"
       ? Number.parseInt(params.page, 10)
       : undefined;
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page =
+    typeof rawPage === "number" && Number.isFinite(rawPage) && rawPage > 0
+      ? rawPage
+      : 1;
 
   const directory = await listStaffDirectory({ q: q || undefined, status, page });
 

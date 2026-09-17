@@ -9,7 +9,7 @@
  * caller).
  */
 import { db } from "@/lib/db";
-import { apiRequest, expectOk, BASE_URL } from "./api";
+import { apiRequest, expectOk, BASE_URL, type ApiEnvelope } from "./api";
 import { fetchRaw } from "./journey";
 
 export const ADMIN_TEST_EMAIL_PREFIX = "admin-test-";
@@ -66,14 +66,9 @@ export function runBootstrap(args: string[]): BootstrapResult {
       env: process.env,
     },
   );
-  const stdoutOf = (): string =>
-    typeof proc.stdout === "function"
-      ? proc.stdout().toString()
-      : Buffer.from(proc.stdout as unknown as Uint8Array).toString();
-  const stderrOf = (): string =>
-    typeof proc.stderr === "function"
-      ? proc.stderr().toString()
-      : Buffer.from(proc.stderr as unknown as Uint8Array).toString();
+  // Bun.spawnSync returns the captured output as Buffers.
+  const stdoutOf = (): string => proc.stdout.toString();
+  const stderrOf = (): string => proc.stderr.toString();
   return {
     exitCode: proc.exitCode ?? 1,
     stdout: stdoutOf(),
@@ -144,17 +139,19 @@ export async function loginAsAdmin(
   return { cookie: `ff_admin_session=${match[1]}`, setCookie };
 }
 
-export interface AdminRawResult {
+export interface AdminRawResult<T = unknown> {
   status: number;
-  body: unknown;
+  body: ApiEnvelope<T>;
   setCookie: string | null;
 }
 
 /**
  * Raw request with ARBITRARY headers — needed for the same-origin tests
- * (Origin/Referer manipulation at the HTTP boundary, brief §61).
+ * (Origin/Referer manipulation at the HTTP boundary, brief §61). Generic
+ * like apiRequest: the parsed body is the shared API envelope (non-JSON
+ * responses throw, mirroring apiRequest).
  */
-export async function adminRawRequest(
+export async function adminRawRequest<T = unknown>(
   method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT",
   path: string,
   opts: {
@@ -162,7 +159,7 @@ export async function adminRawRequest(
     cookie?: string;
     headers?: Record<string, string>;
   } = {},
-): Promise<AdminRawResult> {
+): Promise<AdminRawResult<T>> {
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: {
@@ -173,15 +170,17 @@ export async function adminRawRequest(
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
     signal: AbortSignal.timeout(20_000),
   });
-  let parsed: unknown = null;
+  let parsed: unknown;
   try {
     parsed = await response.json();
   } catch {
-    parsed = null;
+    throw new Error(
+      `${method} ${path} → ${response.status}: response was not JSON`,
+    );
   }
   return {
     status: response.status,
-    body: parsed,
+    body: parsed as ApiEnvelope<T>,
     setCookie: response.headers.get("set-cookie"),
   };
 }

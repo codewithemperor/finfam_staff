@@ -463,7 +463,7 @@ describe("admin daily reports (submitted only, read-only)", () => {
       const result = await adminRawRequest(
         method,
         `/api/admin/reports/${submittedReportId}`,
-        { cookie: adminCookie, body: method === "GET" ? undefined : {} },
+        { cookie: adminCookie, body: {} },
       );
       expect(result.status).toBe(405);
     }
@@ -537,11 +537,15 @@ describe("same-origin verification (fail closed)", () => {
 
   it("the trusted APP_BASE_URL origin passes for an authenticated admin", async () => {
     const data = expectOk<{ accountStatus: string; transitioned: boolean }>(
-      await adminRawRequest("POST", suspendPath(), {
-        cookie: adminCookie,
-        body: { reason: "same-origin verification check" },
-        headers: { origin: ORIGIN_OK },
-      }).then((r) => ({ status: r.status, body: r.body })),
+      await adminRawRequest<{ accountStatus: string; transitioned: boolean }>(
+        "POST",
+        suspendPath(),
+        {
+          cookie: adminCookie,
+          body: { reason: "same-origin verification check" },
+          headers: { origin: ORIGIN_OK },
+        },
+      ),
       200,
       "trusted origin",
     );
@@ -585,11 +589,15 @@ describe("suspension and reactivation lifecycle", () => {
     );
 
     const data = expectOk<{ accountStatus: string; transitioned: boolean }>(
-      await adminRawRequest("POST", `/api/admin/staff/${staffA.staffRowId}/suspend`, {
-        cookie: adminCookie,
-        body: { reason: "Lifecycle test: verified suspension with reason." },
-        headers: { origin: ORIGIN_OK },
-      }).then((r) => ({ status: r.status, body: r.body })),
+      await adminRawRequest<{ accountStatus: string; transitioned: boolean }>(
+        "POST",
+        `/api/admin/staff/${staffA.staffRowId}/suspend`,
+        {
+          cookie: adminCookie,
+          body: { reason: "Lifecycle test: verified suspension with reason." },
+          headers: { origin: ORIGIN_OK },
+        },
+      ),
       200,
       "suspend A",
     );
@@ -742,11 +750,15 @@ describe("suspension and reactivation lifecycle", () => {
     expect(oldSession!.revokedAt).not.toBeNull();
 
     const data = expectOk<{ accountStatus: string; transitioned: boolean }>(
-      await adminRawRequest("POST", `/api/admin/staff/${staffA.staffRowId}/reactivate`, {
-        cookie: adminCookie,
-        body: { note: "Lifecycle test complete." },
-        headers: { origin: ORIGIN_OK },
-      }).then((r) => ({ status: r.status, body: r.body })),
+      await adminRawRequest<{ accountStatus: string; transitioned: boolean }>(
+        "POST",
+        `/api/admin/staff/${staffA.staffRowId}/reactivate`,
+        {
+          cookie: adminCookie,
+          body: { note: "Lifecycle test complete." },
+          headers: { origin: ORIGIN_OK },
+        },
+      ),
       200,
       "reactivate A",
     );

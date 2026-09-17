@@ -1,6 +1,7 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SkipLink } from "@/components/layout/skip-link";
 import { cn } from "@/lib/utils";
 
 interface PageShellProps {
@@ -27,6 +28,7 @@ interface PageShellProps {
 export function PageShell({ children, size = "default", className }: PageShellProps) {
   return (
     <div className="flex min-h-[100dvh] flex-col">
+      <SkipLink />
       <SiteHeader />
       <main id="main-content" className={cn("flex-1", className)}>
         <PageContainer size={size}>

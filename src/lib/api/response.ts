@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { ApiErrorCode, ApiFieldErrors, ApiSuccessBody } from "@/types/api";
 import { AppError, GENERIC_ERROR_MESSAGE } from "@/lib/errors";
+import { logServerError } from "@/lib/log";
 
 /**
  * Server-side helpers that give every route handler the same response shape.
@@ -18,9 +19,19 @@ export function apiFail(
   message: string,
   status: number,
   fields?: ApiFieldErrors,
+  /** Optional correlation id from logServerError (safe to expose). */
+  reference?: string,
 ) {
   return NextResponse.json(
-    { ok: false, error: { code, message, ...(fields ? { fields } : {}) } },
+    {
+      ok: false,
+      error: {
+        code,
+        message,
+        ...(fields ? { fields } : {}),
+        ...(reference ? { reference } : {}),
+      },
+    },
     { status },
   );
 }
@@ -41,9 +52,13 @@ export async function handleApiRequest<TData>(
       return apiFail(error.code, error.message, error.status, error.fields);
     }
 
-    // Unexpected error — log for developers, never expose internals.
-    console.error("[api] Unhandled error:", error);
-    return apiFail("INTERNAL", GENERIC_ERROR_MESSAGE, 500);
+    // Unexpected error — log it SAFELY (correlation id, error class, one-
+    // line sanitized message; never a raw Error object, stack, request
+    // body, or credential — §21 logging hygiene) and answer the generic
+    // 500 envelope. The id lets an operator grep the server log without
+    // exposing internals to the client.
+    const errorId = logServerError("api", error);
+    return apiFail("INTERNAL", GENERIC_ERROR_MESSAGE, 500, undefined, errorId);
   }
 }
 

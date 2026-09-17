@@ -2,6 +2,8 @@ import "server-only";
 
 import type { NotificationType } from "@prisma/client";
 
+import { resolveAppBaseUrl } from "@/server/config/production";
+
 /**
  * Stable lifecycle notification keys — brief §7.
  *
@@ -138,16 +140,40 @@ export type NotificationPayloadMap = {
 };
 
 /**
- * One-shot notification types (Stage 7, brief §10): their payload contains
- * short-lived secret material (the plaintext OTP) that is deliberately NOT
- * stored anywhere, so it can never be re-derived for a retry. They are
- * dispatched exactly once from memory; a failed delivery is terminal for
- * that code and the user requests a fresh one.
+ * One-shot notification types (Stage 7/11, briefs §10; remediation §11):
+ * their payload contains short-lived secret material (the plaintext OTP)
+ * that is deliberately NOT stored anywhere, so it can never be re-derived
+ * for a retry. They are dispatched exactly once from memory; a failed
+ * delivery is terminal for that code and the user requests a fresh one.
+ *
+ * The partition is a TYPE-LEVEL fact, not just a runtime array: `exclude`
+ * it from every derivation switch so the compiler itself proves that no
+ * code path ever tries to re-derive a plaintext OTP from the database.
  */
-export const ONE_SHOT_NOTIFICATION_TYPES: readonly NotificationTypeId[] = [
+export const ONE_SHOT_NOTIFICATION_TYPES = [
   "STAFF_LOGIN_CODE",
   "ADMIN_LOGIN_CODE",
 ] as const;
+
+export type OneShotNotificationTypeId =
+  (typeof ONE_SHOT_NOTIFICATION_TYPES)[number];
+
+/** Type guard: true only for the one-shot (non-derivable) OTP types. */
+export function isOneShotNotificationType(
+  type: NotificationType,
+): type is OneShotNotificationTypeId {
+  return (ONE_SHOT_NOTIFICATION_TYPES as readonly string[]).includes(type);
+}
+
+/**
+ * Types whose payload CAN be faithfully re-derived from immutable snapshot
+ * rows (see deriveNotificationPayload). Exhaustiveness over this union is
+ * compiler-checked in every derivation switch.
+ */
+export type DerivableNotificationTypeId = Exclude<
+  NotificationTypeId,
+  OneShotNotificationTypeId
+>;
 
 /** Per-type delivery-attempt budget overrides (§10: one attempt per OTP). */
 export const MAX_ATTEMPTS_OVERRIDES: Partial<Record<NotificationTypeId, number>> = {
@@ -215,9 +241,12 @@ export function getNotificationConfig(): NotificationRuntimeConfig {
       apiKey.length > 0 && secretKey.length > 0 && fromEmail.length > 0,
     maxAttempts: readIntEnv("NOTIFICATIONS_MAX_ATTEMPTS", 3),
     sendTimeoutMs: readIntEnv("NOTIFICATIONS_SEND_TIMEOUT_MS", 10_000),
-    baseUrl: (
-      process.env.APP_BASE_URL?.trim() || "http://127.0.0.1:3000"
-    ).replace(/\/+$/, ""),
+    // Single source of truth for link-building origin (remediation §19):
+    // development keeps the documented http://127.0.0.1:3000 fallback;
+    // PRODUCTION throws ProductionConfigError when APP_BASE_URL is
+    // missing/invalid/non-HTTPS, so a misconfigured deploy can never
+    // silently email links pointing at localhost.
+    baseUrl: resolveAppBaseUrl(),
   };
 }
 

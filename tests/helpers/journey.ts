@@ -19,6 +19,7 @@ import {
   BASE_URL,
   expectOk,
   REFERENCE_PATTERN,
+  type ApiEnvelope,
 } from "./api";
 import { db, uniqueEmail } from "./db";
 import { loadAnswerKey } from "./answer-key";
@@ -132,13 +133,14 @@ export async function driveToActivation(
   return { email, referenceNumber: reference, staffId: activated.staff.staffId };
 }
 
-/** Raw fetch that also returns the Set-Cookie header (for cookie capture). */
-export async function fetchRaw(
-  method: "GET" | "POST",
+/** Raw fetch that also returns the Set-Cookie header (for cookie capture).
+ * Generic like apiRequest: the parsed body is the shared API envelope. */
+export async function fetchRaw<T = unknown>(
+  method: "GET" | "POST" | "PATCH",
   path: string,
   body?: unknown,
   cookie?: string,
-): Promise<{ status: number; body: unknown; setCookie: string | null }> {
+): Promise<{ status: number; body: ApiEnvelope<T>; setCookie: string | null }> {
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: {
@@ -150,15 +152,17 @@ export async function fetchRaw(
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(20_000),
   });
-  let parsed: unknown = null;
+  let parsed: unknown;
   try {
     parsed = await response.json();
   } catch {
-    parsed = null;
+    throw new Error(
+      `${method} ${path} → ${response.status}: response was not JSON`,
+    );
   }
   return {
     status: response.status,
-    body: parsed,
+    body: parsed as ApiEnvelope<T>,
     setCookie: response.headers.get("set-cookie"),
   };
 }

@@ -70,7 +70,7 @@ export function StaffNav({ staffId }: { staffId: string }) {
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "whitespace-nowrap rounded-md text-[13px] font-medium underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:text-sm",
+                      "inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-1 text-[13px] font-medium underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:min-h-9 sm:text-sm",
                       isActive
                         ? "font-semibold text-primary"
                         : "text-foreground",
@@ -95,7 +95,7 @@ export function StaffNav({ staffId }: { staffId: string }) {
             type="button"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="whitespace-nowrap rounded-md border border-border px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:opacity-60 sm:text-sm"
+            className="inline-flex min-h-11 items-center whitespace-nowrap rounded-md border border-border px-3 text-[13px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:opacity-60 sm:min-h-9 sm:text-sm"
           >
             {loggingOut ? "Signing out…" : "Sign out"}
           </button>

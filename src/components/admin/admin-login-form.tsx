@@ -32,8 +32,10 @@ import { ApiClientError, apiFetch } from "@/lib/api/client";
  *
  * Accessibility: labelled email + code fields, the code input uses
  * autocomplete="one-time-code" + inputMode="numeric", errors are announced
- * via role="alert", focus moves to the code field on step change, and the
- * resend action carries a visible 60-second cooldown.
+ * via role="alert", the step-change/status notice is announced through an
+ * aria-live="polite" region (remediation §25), focus moves to the code
+ * field on step change, and the resend action carries a visible 60-second
+ * cooldown.
  */
 export function AdminLoginForm() {
   const router = useRouter();
@@ -164,7 +166,9 @@ export function AdminLoginForm() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
+      {/* Step-change/status region: announced politely by screen readers
+       * when the code step appears (remediation §25). */}
+      <div aria-live="polite">
         <p className="text-sm leading-6 text-foreground">{notice}</p>
         {devCode && (
           <p

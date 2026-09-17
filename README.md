@@ -9,7 +9,9 @@ Automated Interview Assessment (`/assessment`), Stage 3 — Responsibility &
 Reward Agreement (`/agreement`), Stage 4 — Provisional Appointment
 (`/appointment`), Stage 5 — Staff Activation (`/activation`), plus the
 staff-side Stage 6 — Staff Onboarding (`/onboarding`). The recruitment +
-onboarding MVP is complete — see [Next phase](#next-phase).
+onboarding MVP is complete, the platform has been through a full
+production-readiness review, and the resulting hardening/remediation task
+is complete — see [Production readiness](#production-readiness-post-stage-11).
 
 ---
 
@@ -76,70 +78,87 @@ Connection string (from `.env`): `postgresql://postgres@127.0.0.1:5432/finfam?sc
 
 ---
 
+## Testing
+
+The automated suite drives the REAL dev server over HTTP (`bun test` with
+`--conditions react-server`; every suite is end-to-end — no HTTP mocking):
+
+```bash
+bun run dev        # terminal 1 (or the keep-alive watchdog)
+bun run test       # terminal 2 — full suite (~2.5–3 min)
+bun run lint       # ESLint (must be clean)
+bunx tsc --noEmit  # TypeScript (must be clean; builds fail on errors too —
+                   # the former typescript.ignoreBuildErrors override is gone)
+```
+
+Current baseline after the production-readiness remediation: **301 tests /
+0 failures across 14 files**, ~1968 assertions, lint clean, typecheck clean,
+13/13 fresh-database migrations, zero schema drift. Suites: recruitment
+journey (`flow`, `outcomes`, `validation`), notifications, staff auth/accounts,
+portal, daily reports, training, resources, ID card, admin auth, admin
+operations, and `security-hardening` (CSRF/origin matrix, public-route rate
+limits, journey payload leak protection, dev-OTP-echo-off, one-shot type
+partition, and the Daily Report draft-vs-submit concurrency race).
+
+---
+
 ## Project structure
 
-```
+```text
 src/
   app/
-    page.tsx                     Welcome / open role landing
-    apply/page.tsx               Application form (form conventions exemplar)
-    status/page.tsx              Candidate status lookup
-    orientation/
-      page.tsx                   FSOW entry (reference-number lookup)
-      [reference]/page.tsx       Orientation overview (list + progress rail)
-      [reference]/[section]/     Section content pages (8, sequential)
-      loading.tsx, error.tsx     Segment-level loading/error convention
-    loading.tsx                  Route-level loading convention
-    error.tsx                    Route-level error convention
-    not-found.tsx                404 convention
+    page.tsx, apply/, continue/, continue/recover/,   Recruitment portal
+    application/[reference]/, status/                 (one continuous journey)
+    orientation/, assessment/, agreement/,            Recruitment stages
+    appointment/, activation/, onboarding/
+    staff/login/, staff/(portal)/{onboarding,reports,training,resources,
+      profile,appointment,id-card}                    Staff Portal (cookie-gated)
+    admin/login/, admin/(dashboard)/{staff,reports,audit}   Admin console (separate identity)
     api/
-      applications/route.ts      POST — submit an application
-      candidates/[reference]/    GET  — candidate status by reference number
-      orientation/
-        [reference]/route.ts           GET  — orientation state
-        [reference]/sections/route.ts  POST — mark a section as read
-        [reference]/complete/route.ts  POST — complete the workshop
-      health/route.ts            GET  — liveness + database connectivity
+      applications/                                  POST applications (+ rate limit)
+      recruitment/recover-reference/                 POST reference recovery (+ rate limit)
+      journey/, candidates/, orientation/, assessment/, agreement/,
+      appointment/, activation/, onboarding/         Reference-gated reads/writes
+      staff/auth/*, staff/{me,onboarding,reports,training}   Session-gated Staff APIs
+      admin/auth/*, admin/staff/*, admin/reports/, admin/audit/   Admin APIs (guard + origin)
+      health/                                        Liveness + masked config summary
   components/
-    layout/                      PageShell, SiteHeader, SiteFooter,
-                                 PageContainer, PageHeader
-    recruitment/                 RecruitmentProgress, StatusBadge, StatusLookup
-    orientation/                 SectionList, ProgressCard, Content,
-                                 SectionReadFooter, CompleteOrientationButton,
-                                 OrientationEntryForm, NotFoundPanel
-    forms/                       ApplyForm (form conventions exemplar)
-    ui/                          ButtonLink (button-styled link)
-    providers.tsx                Client providers (Toast.Provider)
-  config/
-    site.ts                      Site name, nav, support contact
-    recruitment.ts               Stages, status definitions, status→stage mapping
-    content.ts                   Landing-page content (placeholders flagged)
-    orientation.ts               FSOW section content (single source of truth)
+    layout/            PageShell, SiteHeader(+SiteNavLinks), SkipLink, SiteFooter
+    recruitment/       RecruitmentProgress, StatusBadge, forms
+    orientation/ assessment/ agreement/ appointment/ activation/ onboarding/
+    staff/ admin/      Portal + console shells, navs, forms, actions
+    id-card/ reports/ training/
+    ui/                shadcn/ui primitives + ButtonLink
+  config/              Site, recruitment, orientation, assessment, agreement,
+                       appointment, activation, onboarding, staff-portal,
+                       staff-resources, staff-id-card, training, daily-report,
+                       admin content (single source of truth)
   lib/
-    db.ts                        Server-only Prisma client
-    errors.ts                    AppError + factories
-    reference.ts                 Reference number generation/validation
-    orientation.ts               Pure orientation state helpers (config + state)
-    api/response.ts              Server response envelope helpers
-    api/client.ts                Client fetch helper (ApiClientError)
-    validation/application.ts    Shared zod schema (authoritative on server)
-    validation/orientation.ts    Shared zod schemas for orientation actions
-    utils.ts                     cn() class merge
-  server/services/               Business logic (applications, candidates,
-                                 orientation)
-  types/                         Shared API + recruitment domain types
+    db.ts errors.ts reference.ts log.ts rate-limit.ts utils.ts
+    auth/{session,admin-session,hash}.ts
+    api/{response,client}.ts
+    validation/        Shared zod schemas (application, orientation, assessment,
+                       agreement, activation, onboarding, staff-auth, admin,
+                       daily-report, staff-training, recovery)
+    dates/lagos.ts     Africa/Lagos calendar helpers
+  server/
+    config/production.ts   Fail-fast production config validation (server-only)
+    services/          Business logic for every module (the only Prisma callers)
+    notifications/     notification-types/-templates/-service, providers/mailjet
+    assessment-content.ts   Server-only answer key + scoring policy
+  instrumentation.ts   Startup hook: assertProductionConfig() (fail-fast)
+  types/               Shared API + domain types
 prisma/
-  schema.prisma                  Candidate, Application, StageEvent,
-                                 Orientation, OrientationSection (+ enums)
-  migrations/                    Prisma migration history
+  schema.prisma        26 models / 10 enums (candidates, staff platform, admin)
+  migrations/          Additive-only migration history (13 migrations)
 scripts/
-  postgres.sh                    Local PostgreSQL control (start/stop/status)
-  dev.sh, prisma.sh              .env-aware process wrappers
+  postgres.sh dev.sh prisma.sh test.sh           .env-aware process wrappers
+  bootstrap-admin.ts(.sh) backfill-staff-accounts.ts(.sh)   Ops CLIs
+tests/
+  bun.test flow suites driving the REAL dev server over HTTP + helpers/
 docs/
-  DESIGN-SYSTEM.md               Tokens, components, UX conventions
-  CONTENT-QUESTIONS.md           Business content awaiting confirmation
-```
-
+  DESIGN-SYSTEM.md CONTENT-QUESTIONS.md RUNBOOK-DEPLOYMENT.md
+  RUNBOOK-OPERATIONS.md
 **Data flow rule:** UI → API route handler → service (`src/server/services`)
 → Prisma → PostgreSQL. UI components never import Prisma, and client code
 never imports `src/lib/db.ts` or anything under `src/server/`. Server
@@ -214,12 +233,13 @@ not before.
   creates the one `StaffOnboarding` row (startedAt, pinned version,
   resume step) — race-safe via the unique constraint. Opening NEVER
   completes a step and NEVER completes onboarding.
-- The seven steps (`welcome → communication → resources → engagement →
-  reporting → standards → ready`) are sequential and server-enforced:
+- The eight steps (`intro → communication → verification → resources →
+  orientation → assignment → accountability → ready`, content v2.1) are
+  sequential and server-enforced:
   skip-ahead/unknown steps → 422 (naming the required step); re-completing
   a step is idempotent; completed steps may be re-read read-only
   (`?step=<id>`); future steps are never rendered.
-- Completion is explicit and exactly once: all six review steps + the
+- Completion is explicit and exactly once: all seven review steps + the
   literal acknowledgement + the current version. The final `ready` step is
   recorded by the acknowledgement itself in the same transaction as the
   conditional `completedAt` latch — repeated or concurrent completions
@@ -423,9 +443,12 @@ wire format; no SDK dependency).
 Lifecycle keys: `APPLICATION_RECEIVED`, `ORIENTATION_COMPLETED`,
 `ASSESSMENT_PASSED`, `ASSESSMENT_FAILED` (attempt-keyed),
 `AGREEMENT_ACCEPTED`, `APPOINTMENT_ISSUED`, `STAFF_ACTIVATED`,
-`ONBOARDING_STARTED` (once, at lazy entry), `ONBOARDING_COMPLETED`.
-`STAFF_ACCOUNT_CREATED` is RESERVED for Stage 7 — the type and template
-exist, nothing triggers it, and no Staff Portal is advertised in any email.
+`STAFF_ACCOUNT_CREATED` (queued exactly once by Staff Account provisioning —
+live activation and the idempotent backfill share the same core),
+`ONBOARDING_STARTED` (once, at lazy entry), `ONBOARDING_COMPLETED`,
+`DAILY_REPORT_SUBMITTED` (one receipt per submitted report), and the
+one-shot OTP types `STAFF_LOGIN_CODE` / `ADMIN_LOGIN_CODE` (payload
+memory-only, never stored, never re-derived — one attempt, no retry).
 No email is sent for page views, orientation sections or onboarding steps.
 
 Delivery semantics — `SENT` means **Mailjet accepted the send request**;
@@ -847,9 +870,22 @@ audit semantics, same-origin enforcement at the HTTP boundary).
 | `DAILY_REPORT_BACKDATE_LIMIT_DAYS` | no | How many past Africa/Lagos days a report may cover (default `7`; `0` = today only) |
 | `ADMIN_SESSION_TTL_HOURS` | no      | Admin console session duration in hours (default `12`; absolute, no sliding renewal) |
 | `ADMIN_AUTH_DEV_CODE_ECHO` | no      | **DEV/TEST ONLY** — echoes the ADMIN OTP in the API response when `true`. **MUST be `false` in production.** Default `false` |
+| `ALLOW_INSECURE_APP_BASE_URL` | no | Production escape hatch for isolated test deployments without TLS: allows a missing/non-HTTPS `APP_BASE_URL` with a loud warning. Never set in real production |
+| `APPLICATION_RATE_LIMIT_MAX` / `_WINDOW_MS` | no | Public applications endpoint limiter (default `5` / 10 min) |
+| `RECOVERY_RATE_LIMIT_MAX` / `_WINDOW_MS` | no | Reference-recovery limiter (default `5` / 10 min) |
+| `ONBOARDING_REFERENCE_RATE_LIMIT_MAX` / `_WINDOW_MS` | no | Legacy reference-onboarding write limiter (default `30` / 10 min) |
+| `SUPPORT_CONTACT_EMAIL` | no | Real support inbox for the site footer. Unset = safe pending copy (the `.example` placeholder never ships) |
 
 Copy `.env.example` → `.env` and adjust. Rules:
 
+- **`.env` is git-ignored and local-only** (an earlier decision to track it
+  was reversed during the production-readiness remediation). Production
+  secrets are injected via the platform secret manager / environment — never
+  committed. `.env.example` is the only tracked template.
+- Production fail-fast (`src/instrumentation.ts` → `assertProductionConfig`):
+  in production the app REFUSES TO START when dev OTP echo is on,
+  `APP_BASE_URL` is missing/non-HTTPS, `DATABASE_URL` is missing, or
+  notifications are enabled without Mailjet credentials.
 - Only truly public values may use the `NEXT_PUBLIC_` prefix (currently none).
 - Never log candidate PII; never put PII in URLs. The reference number is a
   lookup key the candidate already holds — it is the one exception.
@@ -875,18 +911,72 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
   (e.g. orientation overview: section list + progress rail from `md` up;
   section pages: content + “In this section” rail from `lg` up).
 
-## Platform review gate (post-Stage 11)
+## Production readiness (post-Stage 11)
 
-**Stages 1–10 plus Stage 11 are complete.** All six recruitment stages
-(Application → Orientation → Assessment → Agreement → Appointment →
+**Stages 1–11 are complete, the full platform review is complete, and the
+resulting production-readiness remediation is complete.** All six recruitment
+stages (Application → Orientation → Assessment → Agreement → Appointment →
 Activation), the staff-side Onboarding state, the Mailjet transactional
 notification service, Stage 7 — Staff Portal, Stage 8 — Daily Reporting,
 Stage 9 — Staff Training, Stage 10 — Staff Resources & Identity Card and
-**Stage 11 — Admin Operations** (separate admin identity, email-OTP
-console access, Staff directory/detail, submitted-only report visibility,
-transactional suspension/reactivation with session revocation, and the
-append-only privileged-action audit log — see above) are implemented and
-verified.
+**Stage 11 — Admin Operations** are implemented and verified. There is
+**NO Stage 12** — feature-roadmap expansion is paused; the next phase of this
+project is production operations/deployment, not another feature stage.
+
+What the remediation hardened (all verified by tests and/or live probes):
+
+- **Production config fail-fast** — `src/server/config/production.ts` +
+  `src/instrumentation.ts`: production refuses to start with dev OTP echo
+  on, a missing/non-HTTPS `APP_BASE_URL`, a missing `DATABASE_URL`, or
+  notifications enabled without Mailjet credentials. `/api/health` reports
+  a masked config summary. Notification links fail safely instead of ever
+  emitting `http://127.0.0.1:3000` in production.
+- **`.env` is local-only again** — untracked and re-ignored; `.env.example`
+  is the tracked template; production secrets live in the secret manager.
+- **Daily Report immutability is race-proof** — draft saves are a single
+  conditional write (`status = DRAFT` in the WHERE), proven by a six-round
+  concurrent PATCH-vs-submit regression.
+- **Canonical-origin CSRF checks** — admin suspend/reactivate validate
+  Origin/Referer against the configured `APP_BASE_URL` in production (the
+  forwarded request Host is no longer trusted); regression tests pin the
+  full matrix including "a Staff cookie can never authorize an Admin
+  mutation".
+- **Public-route rate limiting** — DB-backed sliding-window limiters
+  (mirroring the OTP limiter) on `POST /api/applications`,
+  `POST /api/recruitment/recover-reference` and the legacy reference-onboarding
+  writes; client IPs are only ever stored as sha256 hashes. Edge/WAF
+  throttling remains an EXTERNAL deployment requirement (see the runbook).
+- **Concurrency latches** — assessment submit and orientation completion
+  use conditional writes so concurrent callers can never produce duplicate
+  StageEvents; orientation section completion handles the unique-constraint
+  race idempotently.
+- **TypeScript is a real gate again** — the `ignoreBuildErrors` override is
+  removed; `tsc --noEmit` and production builds are clean.
+- **One-shot notification types are type-level** — `STAFF_LOGIN_CODE` /
+  `ADMIN_LOGIN_CODE` are excluded from payload derivation at compile time;
+  no plaintext OTP is ever persisted or re-derived.
+- **Safe logging** — unexpected server errors log a structured line
+  (correlation id, error class, sanitized one-line message); no raw Error
+  objects, stacks, or bodies.
+- **Bootstrap hardening** — the admin bootstrap reuses the console's email
+  schema, keeps `--dry-run`, refuses suspended reactivation, and requires
+  `--yes` outside development/test. CLI provisioning is documented in the
+  operations runbook (the audit model honestly cannot represent a system
+  actor).
+- **Accessibility quick wins** — skip links on all three shells,
+  `aria-current` on candidate navigation, 44px mobile touch targets for
+  nav/sign-out, and `aria-live` login step/status announcements.
+- **Honest support contact** — the footer renders a real address only when
+  `SUPPORT_CONTACT_EMAIL` is configured; the `.example` placeholder can
+  never ship to production users.
+
+**Still EXTERNAL to the codebase (must be in place before real launch; see
+[docs/RUNBOOK-DEPLOYMENT.md](docs/RUNBOOK-DEPLOYMENT.md)):** provisioned
+production PostgreSQL with TLS + least-privilege role, real
+backup/PITR + a performed restore test, a validated Mailjet sender with real
+delivered Staff and Admin OTPs, edge/WAF request throttling, external
+monitoring/observability, and named operational owners. Until those exist
+the truthful verdict is **READY WITH EXTERNAL ACTIONS**.
 
 The Member Growth / Earnings and Performance / Targets modules were
 **removed from the current project**: the portal has no authoritative
@@ -894,20 +984,13 @@ FinFam member/account database or API from which financial or performance
 facts could be safely verified. They are not planned and must not be
 restored by default.
 
-**The roadmap now stops for a platform-level review** (approved Stage 11
-brief §70): security, permissions, production configuration, Mailjet
-sender configuration, Admin bootstrap/runbook, operational ownership,
-data/privacy boundaries, outstanding content questions, migration
-history, backup/recovery posture and deployment readiness. **Do not
-propose or build another stage automatically** — any later module must
-come from a real operational requirement identified by that review.
-
 Business decisions still outstanding (official onboarding WhatsApp
 number, canonical role title portal-wide, identity-verification
 hardening, approved resource files, official logo, staff photo policy,
 physical card specification, training knowledge-check policy, future
 course-version policy, admin access list, Supervisor role/scoping,
 draft-report visibility for management, report correction authority,
-access-change email policy, audit retention, admin break-glass recovery)
-are tracked in
+access-change email policy, audit retention, admin break-glass recovery,
+the support inbox, Agreement v1.1 legal sign-off) are tracked — grouped
+into LAUNCH BLOCKERS / OPERATIONAL DECISIONS / FUTURE ENHANCEMENTS — in
 [docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md).

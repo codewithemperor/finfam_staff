@@ -55,7 +55,10 @@ export default async function AdminReportsPage({
     typeof params.page === "string"
       ? Number.parseInt(params.page, 10)
       : undefined;
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page =
+    typeof rawPage === "number" && Number.isFinite(rawPage) && rawPage > 0
+      ? rawPage
+      : 1;
 
   const month = /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : undefined;
 

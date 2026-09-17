@@ -1,5 +1,6 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { SkipLink } from "@/components/layout/skip-link";
 import { StaffNav } from "@/components/staff/staff-nav";
 
 /**
@@ -18,6 +19,7 @@ export function StaffShell({
 }) {
   return (
     <div className="flex min-h-[100dvh] flex-col">
+      <SkipLink />
       <header className="border-b border-border bg-background print:hidden">
         <PageContainer>
           <StaffNav staffId={staffId} />

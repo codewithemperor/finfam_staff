@@ -38,7 +38,10 @@ export default async function AdminAuditPage({
     typeof params.page === "string"
       ? Number.parseInt(params.page, 10)
       : undefined;
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page =
+    typeof rawPage === "number" && Number.isFinite(rawPage) && rawPage > 0
+      ? rawPage
+      : 1;
 
   const audit = await listAdminAuditEvents({ page });
 

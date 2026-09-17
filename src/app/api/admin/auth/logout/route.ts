@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 
 import { apiFail, apiOk } from "@/lib/api/response";
 import { AppError, GENERIC_ERROR_MESSAGE } from "@/lib/errors";
+import { logServerError } from "@/lib/log";
 import {
   ADMIN_SESSION_COOKIE,
   adminSessionClearOptions,
@@ -36,7 +37,7 @@ export async function POST() {
     if (error instanceof AppError) {
       return apiFail(error.code, error.message, error.status, error.fields);
     }
-    console.error("[api] Unhandled error:", error);
+    logServerError("api/admin/auth/logout", error);
     return apiFail("INTERNAL", GENERIC_ERROR_MESSAGE, 500);
   }
 }

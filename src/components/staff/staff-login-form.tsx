@@ -25,10 +25,12 @@ import { ApiClientError, apiFetch } from "@/lib/api/client";
  * complete without a real inbox — production MUST run with the flag false
  * (then no code is ever shown in the browser).
  *
- * Accessibility (brief §50): labelled email + code fields, the code input
- * uses autocomplete="one-time-code" + inputMode="numeric", errors are
- * announced via role="alert", focus moves to the code field on step
- * change, and the resend action carries a visible 60-second cooldown.
+ * Accessibility (brief §50; production-readiness remediation §25): labelled
+ * email + code fields, the code input uses autocomplete="one-time-code" +
+ * inputMode="numeric", errors are announced via role="alert", the step
+ * change / status notice is announced through an aria-live="polite" region,
+ * focus moves to the code field on step change, and the resend action
+ * carries a visible 60-second cooldown.
  */
 export function StaffLoginForm() {
   const router = useRouter();
@@ -157,7 +159,9 @@ export function StaffLoginForm() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
+      {/* Step-change/status region: announced politely by screen readers
+       * when the code step appears (remediation §25). */}
+      <div aria-live="polite">
         <p className="text-sm leading-6 text-foreground">{notice}</p>
         {devCode && (
           <p
@@ -218,7 +222,7 @@ export function StaffLoginForm() {
           type="button"
           onClick={handleResend}
           disabled={resendSeconds > 0 || requesting}
-          className="rounded-md font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:font-normal disabled:text-muted-foreground disabled:no-underline"
+          className="inline-flex min-h-11 items-center rounded-md font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:font-normal disabled:text-muted-foreground disabled:no-underline sm:min-h-9"
         >
           {resendSeconds > 0
             ? `Resend code available in ${resendSeconds}s`

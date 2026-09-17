@@ -1,4 +1,5 @@
 import { ORIENTATION_SECTIONS, getOrientationSection } from "@/config/orientation";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
 import { buildDedupeKey } from "@/server/notifications/notification-types";
@@ -160,45 +161,59 @@ export async function completeOrientationSection(
     );
   }
 
-  await db.$transaction(async (tx) => {
-    const orientation = await tx.orientation.upsert({
-      where: { candidateId: candidate.id },
-      create: { candidateId: candidate.id },
-      update: {},
-      select: { id: true },
-    });
-
-    await tx.orientationSection.create({
-      data: { orientationId: orientation.id, sectionId: section.id },
-    });
-
-    const remainingIds = new Set(completedIds);
-    remainingIds.add(section.id);
-    const nextSection = ORIENTATION_SECTIONS.find(
-      (s) => !remainingIds.has(s.id),
-    );
-
-    await tx.orientation.update({
-      where: { id: orientation.id },
-      data: { currentSectionId: nextSection?.id ?? section.id },
-    });
-
-    // First section completed → the candidate has started orientation.
-    if (candidate.status === "APPLICANT") {
-      await tx.candidate.update({
-        where: { id: candidate.id },
-        data: { status: "ORIENTATION_PENDING" },
+  try {
+    await db.$transaction(async (tx) => {
+      const orientation = await tx.orientation.upsert({
+        where: { candidateId: candidate.id },
+        create: { candidateId: candidate.id },
+        update: {},
+        select: { id: true },
       });
-      await tx.stageEvent.create({
-        data: {
-          candidateId: candidate.id,
-          stage: "ORIENTATION",
-          type: "ENTERED",
-          description: "Started the Staff Orientation Workshop",
-        },
+
+      await tx.orientationSection.create({
+        data: { orientationId: orientation.id, sectionId: section.id },
       });
+
+      const remainingIds = new Set(completedIds);
+      remainingIds.add(section.id);
+      const nextSection = ORIENTATION_SECTIONS.find(
+        (s) => !remainingIds.has(s.id),
+      );
+
+      await tx.orientation.update({
+        where: { id: orientation.id },
+        data: { currentSectionId: nextSection?.id ?? section.id },
+      });
+
+      // First section completed → the candidate has started orientation.
+      if (candidate.status === "APPLICANT") {
+        await tx.candidate.update({
+          where: { id: candidate.id },
+          data: { status: "ORIENTATION_PENDING" },
+        });
+        await tx.stageEvent.create({
+          data: {
+            candidateId: candidate.id,
+            stage: "ORIENTATION",
+            type: "ENTERED",
+            description: "Started the Staff Orientation Workshop",
+          },
+        });
+      }
+    });
+  } catch (error) {
+    // Concurrency (production-readiness remediation §24): a parallel request
+    // recording the SAME section hits the unique [orientationId, sectionId]
+    // constraint. The outcome is identical to an idempotent repeat — return
+    // the winner's persisted view instead of a transient 500.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return getOrientationView(reference);
     }
-  });
+    throw error;
+  }
 
   return getOrientationView(reference);
 }
@@ -243,8 +258,13 @@ export async function completeOrientation(
   // happens only after the commit, fire-and-forget (§12/§16).
   let deliveryId: string | null = null;
   await db.$transaction(async (tx) => {
-    await tx.orientation.update({
-      where: { candidateId: candidate.id },
+    // Concurrency latch (production-readiness remediation §24): the
+    // completedAt = null predicate makes completion a conditional write —
+    // exactly ONE concurrent complete wins and records the COMPLETED
+    // StageEvent + queued notification. The loser commits no changes and
+    // simply re-reads the same completed view below (idempotent).
+    const latched = await tx.orientation.updateMany({
+      where: { candidateId: candidate.id, completedAt: null },
       data: {
         completedAt: now,
         acknowledgedAt: now,
@@ -253,6 +273,10 @@ export async function completeOrientation(
           ORIENTATION_SECTIONS[ORIENTATION_SECTIONS.length - 1].id,
       },
     });
+    if (latched.count !== 1) {
+      deliveryId = null;
+      return;
+    }
 
     // Only advance the status when the candidate is actually at the
     // orientation stage — never downgrade a later status.
