@@ -30,9 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files. NOTE (explicit owner decision, post-Stage-11 review): `.env` is
+# intentionally TRACKED so the sandbox/deployment picks up runtime config.
+# This is safe ONLY because the committed `.env` contains no secrets
+# (Mailjet keys empty, dev OTP echo on). If you ever put real credentials in
+# `.env`, remove it from version control again before production.
 .env*
 !.env.example
+!.env
 
 # vercel
 .vercel

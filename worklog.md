@@ -608,3 +608,128 @@ Stage Summary:
 - Stage 11 MVP implemented exactly within the approved boundary: separate AdminAccount domain, OTP console, directory/detail reads, submitted-only report visibility, transactional suspend/reactivate with session revocation, append-only audit log. Zero migrations beyond admin_operations; zero changes to Staff auth/session/reporting/training/resources/ID-card behavior; the only touched shared code is the additive notification registry (v2.2) + one-shot batch-retry exclusion.
 - Verified: 283/283 tests, lint clean, browser E2E end-to-end (login → directory → suspend → lockout → reactivate → audit), responsive 375–1440, secret-exclusion assertions, cross-domain cookie isolation both ways.
 - Open business items recorded with defaults in docs/CONTENT-QUESTIONS.md §45. Per approved brief §69/§70: STOP — no Stage 12, no scope expansion; platform-level review is next.
+---
+Task ID: R-a
+Agent: Explore (R-a auth/session/OTP reviewer)
+Task: Post-Stage-11 security review — staff/admin auth chains, OTP policy, session cookies, admin privilege boundaries, bootstrap script (read-only).
+
+Work Log:
+- Read worklog.md (Stages 1–11) + full source of staff-auth.ts, admin-auth.ts, lib/auth/{session,admin-session,hash}.ts, validation/{staff-auth,admin}.ts, admin-account-actions.ts, admin-audit.ts, request-origin.ts.
+- Read all 10 /api/admin route files + 3 staff auth routes end-to-end; enumerated HTTP methods by grep (GET/POST only; no PATCH/DELETE on admin); confirmed requireAdminSession is the first DB-touching statement in every guarded route.
+- Read both login pages + both login forms; verified all 6 admin dashboard pages and 11 staff portal pages self-gate on get*Session() in addition to the guarded layouts.
+- Traced cookie lifecycle: only 4 cookies.set call-sites (2 login, 2 logout); identical HttpOnly/SameSite=Lax/Path=/ posture, Secure gated on NODE_ENV; traced token lookup to staff_sessions/admin_sessions by unique tokenHash.
+- Verified hashing at rest (sha256Hex of OTP and session token; plaintext never persisted — enqueueNotification writes no payload column; one-shot payload memory-only; STAFF_LOGIN_CODE derive returns null) and the consume-latch/attempt-budget/resend-cooldown/window-limit constants for both domains.
+- Verified suspension semantics end-to-end (request/verify/resolve re-check ACTIVE; suspend transaction revokes all live staff sessions; bootstrap refuses suspended admins) and audit actor derivation (session-only; zod accepts reason/note only).
+- Read scripts/bootstrap-admin.ts + .sh, package.json scripts, .env and .env.example; grepped all console.* in src (none in auth services; no OTP/token in any log path) and both ff_* cookie names repo-wide.
+- Cross-checked tests/admin-auth.test.ts isolation suite (staff↔admin cookie cross-use → 401 both ways) and anti-enumeration/cooldown tests.
+- Produced findings F1–F9 (0 BLOCKER, 0 HIGH, 1 MEDIUM, 4 LOW, 3 ACCEPTED-DOCUMENTED) with file:line evidence; no files modified; no server/test/HTTP activity.
+
+Stage Summary:
+- Auth architecture is sound and launch-ready pending one checklist item: sandbox .env currently ships STAFF_AUTH_DEV_CODE_ECHO=true and ADMIN_AUTH_DEV_CODE_ECHO=true — both MUST be false/unset in production (strict "true" compare means unset is safe; echo is never logged or persisted). Staff and admin domains are structurally separate (tables, cookies, resolvers) with test-proven cross-domain rejection; OTPs and session tokens are hash-only at rest; all OTP controls (6-digit CSPRNG, 10-min expiry, single-use latch, 5-attempt atomic budget, 60s cooldown, 5/15-min window, latest-only) are present and equivalent in BOTH domains; suspended accounts are locked out of request/verify/existing-session on both surfaces; logout revokes DB rows; actor identity is server-session-derived; admin writes are intent-specific with fail-closed same-origin; all 10 admin API routes guard before DB access; bootstrap is idempotent/refuses-suspended/touches-nothing-but-adminAccount and prints no secrets. Follow-ups (non-blocking): IP-level throttle on request-code, NODE_ENV-independent Secure-cookie hardening, bootstrap --yes guard + future ADMIN_CREATED audit action, align bootstrap email regex with zod.
+
+---
+Task ID: R-b
+Agent: Explore (R-b API/validation/CSRF reviewer)
+Task: Post-Stage-11 security review of the full API surface — authorization, CSRF, input validation, error handling (read-only).
+
+Work Log:
+- Skimmed worklog.md (Stages 1–11 context); enumerated all 43 route files under src/app/api via Glob; grepped every exported handler to pin the method map (20 GET / 24 POST / 1 PATCH / 0 PUT·DELETE).
+- Read response.ts, errors.ts, types/api.ts, request-origin.ts, session.ts, admin-session.ts in full (envelope, AppError mapping, cookie flags, fail-closed origin policy).
+- Read all 11 validators — bounds, enums, strictness; read every route.ts fully; verified guard order, Zod usage, and server-derived identity in each.
+- Read admin services (account-actions, directory, reports, audit) for transaction atomicity, idempotency latches, PII-select allowlists.
+- Read staff-auth/admin-auth services (OTP limits, hashed storage, single-use latches, session resolution) plus candidates/journey/assessment/onboarding/daily-reports services for anti-enumeration and ownership scoping.
+- Grepped repo-wide for $queryRaw, JSON.parse, redirect(), dangerouslySetInnerHTML; confirmed the two $queryRaw uses are parameterized constants; confirmed no middleware.ts / global API error handler.
+- Checked .env (dev OTP echo ON, APP_BASE_URL localhost) and .env.example docs; verified identical NOT_FOUND strings across all reference services.
+- Verified suspend/reactivate guards (auth → origin → zod), conditional-latch idempotency, transaction contents, and no second audit event on no-op.
+
+Stage Summary:
+- 43 routes / 45 handlers inventoried; all mutations session/reference-scoped with zero client-supplied identity fields; admin reads are session-gated, GET-only, and select-allowlisted (no phone/NIN/bank/hash leaks).
+- CSRF: assertSameOrigin on exactly suspend+reactivate, fail-closed (missing/malformed/mismatched Origin/Referer → 403), invoked after auth; staff mutations rely on SameSite=Lax + JSON-parse fail-closed (documented §41 deferral; residual same-site-subdomain gap noted).
+- Validation: Zod v4 everywhere with explicit bounds (int 0–999, 0–3, 1–500, capped pages); no arrays accepted; chunk/NaN/1.5 bypasses rejected; no raw-query or redirect user-input vectors. Errors: uniform envelope; 500s generic; Zod/Prisma internals never serialized.
+- Anti-enumeration: byte-identical 404 messages across reference routes, neutral recovery/OTP responses, draft≡missing admin 404.
+- Findings: no code blockers; 1 HIGH launch-blocker is ops config (STAFF/ADMIN_AUTH_DEV_CODE_ECHO=true in tracked .env returns OTPs in responses) + MEDIUMs: request-host-derived trusted origin, missing public-route rate limits, staff endpoints without origin check; LOWs: stale accountStatus under race, non-strict schemas, enum-cast style.
+
+---
+Task ID: R-c
+Agent: Explore (R-c schema/migrations/concurrency reviewer)
+Task: Post-Stage-11 read-only platform review — schema integrity, 12-migration chain, concurrency/idempotency, daily-report payroll firewall, audit log.
+
+Work Log:
+- Read worklog.md tail (Stage 11 summary); globbed prisma/migrations → confirmed exactly 12 migration.sql in chronological order + migration_lock.toml (postgresql).
+- Read all 988 lines of prisma/schema.prisma: catalogued 26 models, 10 enums, every unique/FK/onDelete/index/default; verified all six 1:1 relations use unique FKs.
+- Read all 12 migration.sql in order: confirmed additive-only (no DROP/destructive ALTER), 3× additive `ALTER TYPE NotificationType ADD VALUE`, 2 idempotent singleton-seed INSERTs; cross-checked every @@index/@@unique against CREATE INDEX statements — all present, names/FK names convention-consistent.
+- Read src/lib/db.ts and all 13 service files plus staff-auth.ts and admin-auth.ts; mapped each write to its concurrency mechanism (conditional latch / unique backstop / sequence UPDATE…RETURNING).
+- Found the one real race: saveDailyReportDraft is a non-conditional update after a check-then-write → can mutate a SUBMITTED report in a concurrent-submit window; also flagged unconditional submit/completion paths in assessment.ts and orientation.ts (duplicate StageEvents) and the missing P2002 catch in orientation section completion.
+- Ran repo-wide payroll-firewall grep (650/earnings/commission/salary/payroll/payout/bonus/multiplication patterns): zero money arithmetic in code; only static letter copy (agreement.ts/appointment.ts), firewall comments, and test pins; confirmed admin-reports/admin-audit are read-only.
+- Grepped src+scripts+tests for .delete/.deleteMany: app code has zero deletion paths (tests only); traced full candidate cascade graph and the single RESTRICT (admin_audit_events.actorId).
+- Verified suspend/reactivate single-transaction (status latch + session revocation + audit), both OTP consumedAt conditional latches, staff-ID/appointment-reference atomic sequence allocation, audit append-only with no TTL job, and hot-query indexes (3 missing composite/order-by indexes at INFO level).
+
+Stage Summary:
+- Migrations and schema are fully consistent and additive; DB-level integrity is strong (one-report-per-day IS a DB unique constraint; sequences are atomic; audit is create-only with RESTRICT actor). All Stage-11 concurrency claims verified accurate against code.
+- 4 actionable findings, none launch-blocking: (1) MEDIUM — make DailyReport draft save a status-conditional updateMany; (2-3) LOW — conditional latches for assessment submit / orientation complete to prevent duplicate StageEvents; (4) LOW — catch P2002 in orientation section completion; plus INFO-level index additions (staff.activatedAt, status+reportDate, status+createdAt).
+- Payroll firewall confirmed intact end-to-end (code, content, admin UI, tests). No files modified; no prisma/dev/test/DB commands run.
+
+---
+Task ID: R-d
+Agent: Explore (R-d notifications/env/PII/logging reviewer)
+Task: Read-only post-Stage-11 platform review of notifications/Mailjet pipeline, environment matrix, secrets scan, logging hygiene and PII/privacy matrix.
+
+Work Log:
+- Read worklog.md for stage context; read all four notification files (notification-types/service/templates/providers/mailjet.ts) end-to-end; traced event→enqueue→dispatch for all 13 types incl. both OTP flows.
+- Read prisma/schema.prisma models + notification_service migration; confirmed NO payload column and UNIQUE dedupeKey.
+- Read staff-auth.ts + admin-auth.ts fully; quoted in-tx enqueue vs post-commit dispatch; verified one-shot budget=1 both OTP types and triple-layer stale-OTP prevention.
+- Grepped every `process.env` (src/scripts/tests) and built the complete ENV MATRIX; read .env and .env.example fully (Mailjet keys empty; dev OTP echo true, documented).
+- Grepped all `console.*` in src/ + scripts/; audited each hit; verified dev.log has suppressed-mode lines with deliveryId only and zero OTP/PII.
+- Ran secrets scans (AKTP, api?key, secret, password, Bearer, BEGIN PRIVATE KEY, sk-, long hex/base64, @@0., postgres://) repo-wide; checked .gitignore coverage; used git ls-files/status to prove tool-results/, upload/, report.*, db/custom.db and .env are git-tracked.
+- Read PII surfaces: candidates.ts, journey.ts, applications.ts, appointment.ts, staff-portal.ts, admin-directory.ts, admin/staff/[id] route+page, staff profile page, tests/helpers/*, bootstrap-admin.ts, ensure-db.ts, request-origin.ts; confirmed NIN/BVN/bank/next-of-kin are never collected.
+
+Stage Summary:
+- Notification pipeline is sound: no payload ever persisted (OTP plaintext memory-only for BOTH staff and admin codes), dedupeKey unique with idempotent P2002 skip, one-shot attempt budget=1 with batch-retry exclusion, dispatch strictly post-commit fire-and-forget so Mailjet failure can never roll back business state.
+- No secret material found anywhere; .env committed by documented owner decision with empty Mailjet keys but dev OTP echo ON — the pre-prod gate (echo flags false + untrack .env) is the only launch blocker.
+- Repo hygiene gaps: tool-results/ tracked & not ignored (55+ internal dumps), upload/report.*/db/custom.db tracked; recommend untracking.
+- Env matrix complete: every var documented, validated parsing everywhere, only dangerous default is APP_BASE_URL localhost fallback; duplicated NOTIFICATIONS_SEND_TIMEOUT_MS parse in mailjet.ts; PORT dead.
+- PII matrix: platform collects only name/email/phone/city + staff identity + self-reported figures; no NIN/BVN/bank/next-of-kin anywhere; public reference routes expose full name + timeline by documented design (flagged as accepted risk); nothing sensitive is logged.
+
+---
+Task ID: R-e
+Agent: Explore (R-e content/docs/reference-security reviewer)
+Task: Post-Stage-11 read-only review — reference-security boundaries, training/resources/ID-card content integrity, daily-report/admin boundary wording, README/CONTENT-QUESTIONS accuracy, a11y/performance/test-coverage audit.
+
+Work Log:
+- Read worklog.md (610 lines) + full project tree; confirmed stage history and that Stage 11 is the last implemented stage before this platform review.
+- Traced every reference-gated surface: journey.ts, onboarding service/routes (reference vs staff doors), candidates/orientation/assessment/agreement/appointment/activation routes; confirmed /staff/* and /api/staff/* are cookie-gated and unreachable via reference; checked notification-templates for links/tokens.
+- Verified Training (source-controlled content, pinned versions, server-side sequencing, no quiz, zero employment/earnings side effects), Resources (zero file-backed entries, no fake downloads), ID card (session-gated, no PII, print isolation), Daily Reports (aggregate-only, all-zero valid, future/backdate enforcement server-side) with quoted self-reported notices.
+- Verified admin console: SUBMITTED-only queries, verbatim self-reported alerts on list+detail, no "verified performance" wording, read-only surfaces, audit append-only; reviewed suspend/reactivate modal for a11y.
+- Read README.md fully (913 lines) against actual files and catalogued stale claims; read CONTENT-QUESTIONS.md fully (1,165 lines) and triaged every open item; skimmed DESIGN-SYSTEM.md.
+- A11y static review of all three shells (skip link, landmarks, aria-current, toast live regions, modal focus, OTP labels, touch targets, contrast tokens); performance review of admin-directory/reports/audit, journey.ts, staff-portal.ts against prisma indexes; enumerated test suites' describe blocks for security coverage.
+- Produced findings with file:line evidence. No files modified; no dev server/tests/HTTP run.
+
+Stage Summary:
+- Reference model holds for recruitment; the ONE exception is the legacy onboarding reference door: unauthenticated GET-with-side-effect (creates StaffOnboarding + ONBOARDING_STARTED email) and unauthenticated step/complete writes, plus staffId/appointmentReference exposure — documented as accepted (§31/§40-9) but the top pre-public hardening item; reference recovery has no rate limit.
+- Training/Resources/ID-card/Daily-report/Admin boundaries all verified clean (content firewall, no fake downloads, no card PII, aggregate-only self-reported reports, SUBMITTED-only admin views, verbatim notices, no payroll/earnings paths).
+- Docs: README has 4 stale/contradictory items (scaffold-era structure tree, seven-steps vs shipped v2.1 eight steps, STAFF_ACCOUNT_CREATED "nothing triggers it", missing test-run docs); CONTENT-QUESTIONS skips §44; 5 launch-blocking clusters consolidated (Mailjet sender/OTP deliverability first), 7 operationally-important clusters, rest future.
+- A11y: no skip links (all shells), candidate nav lacks aria-current, nav/logout targets <40px, login notice not aria-live. Perf: add Staff.activatedAt index; journey loads all attempts' question/answer ids; portal home sequential reads. Test gaps: no origin/CSRF tests for staff/onboarding writes, no recovery rate-limit test, no journey-payload leak pin, no dev-echo-false test.
+- No unapproved FinFam promises found anywhere in training/orientation/agreement/notifications; ₦500 cashback correctly unencoded.
+---
+Task ID: R-0 (orchestrator)
+Agent: Z.ai Code (main orchestrator)
+Task: POST-STAGE-11 PLATFORM REVIEW — full inspection + verification audit of the FinFam Recruitment + Staff Platform (35 review categories), per the approved review brief. No new product stage; review-only.
+
+Work Log:
+- Recon: repo state, .gitignore, package.json, worklog.md (all stages), scripts, db layout. Confirmed embedded PostgreSQL stack, 12 migrations, ~43 API route files, Next 16 App Router.
+- User directive executed: `.env` ADDED to version control and REMOVED from .gitignore (`!.env` exception). `.env` header rewritten with the safety conditions (no secrets today — Mailjet keys empty; dev OTP echo ON). Both files git-staged. Security implication documented in the final report + pre-prod checklist (re-ignore before real secrets ever enter the file).
+- Re-verified test baseline: `bun run test` → **283 pass / 0 fail / 1306 expect() calls / 13 files** in 148.39s — exact match with the Stage 11 report.
+- `bun run lint` → clean (zero errors/warnings).
+- `bunx tsc --noEmit` → 5 product-code type errors (audit/reports/staff pages `rawPage` narrowing ×3, request-origin.ts null-narrowing, deriveNotificationPayload missing ADMIN_LOGIN_CODE case) + several test-file type errors + out-of-scope examples/skills errors. All 5 product-code items verified as TYPE-LEVEL ONLY (runtime fail-closed or unreachable: ADMIN_LOGIN_CODE is in ONE_SHOT_NOTIFICATION_TYPES and the caller treats any falsy payload as PAYLOAD_UNAVAILABLE). Root cause of the blind spot: `typescript.ignoreBuildErrors: true` in next.config.ts. Documented as MEDIUM (fix + re-enable typecheck); NOT fixed during review per brief §2.
+- Five parallel read-only Explore agents (R-a auth/OTP/sessions/bootstrap; R-b API surface/CSRF/validation; R-c schema/migrations/concurrency/payroll firewall; R-d notifications/env/secrets/logging/PII; R-e reference-security/content/docs/a11y/perf) — their full worklog entries are appended above (Task IDs R-a…R-e).
+- Hands-on fresh-database migration test: created `finfam_review_fresh` (0 tables) → `prisma migrate deploy` → all 12 migrations applied (27 tables / 70 indexes / 22 FKs / 6 enums) → `prisma migrate status` "up to date" → dropped. Dev DB `migrate status` also up to date.
+- Schema-drift checks: `prisma migrate diff` migrations↔schema = "No difference detected"; live DB↔schema = "No difference detected". Zero destructive operations in the chain (additive-only; 3 additive ALTER TYPE ADD VALUE; 2 idempotent seed rows).
+- Hands-on hostile probes (temporary scripts/review-probes.ts, deleted after use; logs preserved in /home/z/.cache/finfam-review/): **46 PASS / 0 FAIL**, covering: staff↔admin cross-cookie isolation (401 both ways + garbage tokens); CSRF fail-closed matrix on suspend (unauth→401 before origin; missing Origin+Referer→403; wrong origin→403; malformed→403; cross-site text/plain→403; valid Origin→200; Referer-fallback→200); real suspension (transitioned:true; existing session→401; suspended request-code neutral with NO devCode; portal page shell contains no gated content); idempotent re-suspend (transitioned:false, no second audit event); reactivation (transitioned:true; old session NOT resurrected→401; re-login works; exactly 1 suspend + 1 reactivate audit event for the target); admin SUBMITTED-only report visibility (draft absent from list + detail 404; submitted visible; no payroll/earnings/amount keys); report immutability (PATCH after SUBMITTED → 409); validation bounds (422 envelopes; metric 1000/1.5 rejected; suspend reason 1–500 enforced); method handling (405s); anti-enumeration parity (unknown≡malformed reference 404s; no email/phone in public journey payload); OTP cooldown (repeat → 429 RATE_LIMITED). Two incidental confirmations: admin 15-min code window survives restarts (DB-backed) and blocks probe runs; Next 16 serves gated-page redirects as HTTP-200 meta-refresh shells with zero gated content inside.
+- Browser E2E (agent-browser): full Admin journey (login via OTP form → dashboard with live counts 8 active/1 suspended → directory with 9 staff + statuses → staff detail read-only → Suspend dialog (reason required, disabled until valid) → status flips to Suspended → Reactivate dialog → Active → Audit Log renders actor/target/transition/reason newest-first) and full Staff journey (OTP login → portal home with real report/appointment state → reports list → training → ID card). Admin reports list + detail carry the verbatim self-reported notice; report detail is read-only with Africa/Lagos timestamps.
+- Responsive: 375/768/1024/1440 × {/, /staff, /admin/staff, /staff/reports/new, /admin/reports, /staff/training, /admin/audit} → **0px horizontal overflow in all 28 combinations**; mobile screenshots visually verified; DOM measurement confirmed no badge clipping (375px).
+- Console/runtime: no page errors (one benign HeroUI PressResponder warning); no runtime errors in dev.log across the whole review session; /api/health green throughout.
+- Secrets scan (agent R-d + spot checks): no Mailjet keys (AKTP pattern: 0 hits), no tokens/passwords/private keys anywhere; .env Mailjet keys empty; dev.log contains deliveryIds only, no OTP/PII.
+- Probe residue (documented, left in place — audit is append-only): dev DB now holds probe staff FF-STF-0172…0180, ~7 admin audit events, FF-STF-0174 left SUSPENDED (from the shell-content probe), plus their candidate/notification rows. All test-prefixed emails (flow-test-…), harmless dev fixtures.
+
+Stage Summary:
+- VERDICT: **READY WITH CONDITIONS**. The application codebase itself is coherent, secure and verified (auth/OTP/session design proven correct by code + tests + live hostile probes; migrations clean; payroll firewall intact; audit append-only; anti-enumeration consistent). The conditions are operational/configuration, not code redesign: (1) NO backup/recovery strategy exists — PRODUCTION BLOCKER; (2) Mailjet sender not validated + notifications untested in production mode — without it nobody can log in; (3) .env is now git-tracked with dev OTP echo ON — pre-prod gate: flip both echo flags false, set APP_BASE_URL, re-ignore .env; (4) no monitoring/observability wired; (5) runbooks to be operationalized. Top code follow-ups (non-blocking): DailyReport draft-save non-conditional update (MEDIUM race vs submitted-immutability), public-route rate limits, staff-endpoint origin checks, 3 indexes, tsc cleanup + ignoreBuildErrors:false, README staleness. Full 9-section report (executive summary, security findings, readiness checklist, data/privacy matrix, env matrix, migration report, test report, open business decisions, deployment + rollback runbooks, final verdict) delivered in chat.

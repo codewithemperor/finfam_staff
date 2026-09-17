@@ -1,0 +1,602 @@
+     1→# Content questions for the business owner
+     2→
+     3→The supplied FinFam recruitment material contains business rules and
+     4→financial/reward figures. Per the project ground rules, implementation must
+     5→not silently pick a version when the source material contradicts itself.
+     6→
+     7→**Status convention.** Every item below carries an explicit status. Resolved
+     8→items are kept in this document as an audit trail — they are marked with the
+     9→authoritative source that closed them, never silently deleted.
+    10→
+    11→**Reconciliation note (post-Stage 3).** The official **Provisional Letter of
+    12→Appointment** dated **September 1, 2026** (Ref: **FFL/HR/PLA/012**) was
+    13→supplied after Stage 3 shipped. It is the current authoritative business
+    14→reference for the compensation/reward information. It resolved the long
+    15→standing reward ambiguity (§1, §2, §15) and the agreement content was
+    16→version-bumped **v1.0 → v1.1** accordingly (see §10, §17, §20 below for the
+    17→open edges).
+    18→
+    19→**Stage 4 note.** The Provisional Appointment (stage 4) shipped with the
+    20→explicit MVP business defaults approved for this stage (see the "Stage 4 MVP
+    21→decisions" block below and §21–§28). Each default is documented so it can be
+    22→changed later WITHOUT affecting historical appointments: issued letters pin
+    23→their content version (`src/config/appointment.ts`, immutable registry) and
+    24→their own snapshot (name, role, reference, issue date).
+    25→
+    26→## Status index
+    27→
+    28→### ✅ RESOLVED
+    29→
+    30→| Item | Confirmed by | Where recorded |
+    31→| --- | --- | --- |
+    32→| Established Member savings threshold — **₦5,000** (₦2,000 vs ₦5,000 conflict closed) | Appointment letter (Sep 1, 2026) | §1 |
+    33→| Reward formula — **Established Members × ₦650 + applicable target bonus** | Appointment letter (Sep 1, 2026) | §2, §15 |
+    34→| Bonus tiers — 0–99 → ₦0 · 100–199 → ₦10,000 · 200+ → ₦20,000 | Appointment letter (Sep 1, 2026) | §2 |
+    35→| **Non-cumulative** bonus rule — only one tier applies per month | Appointment letter (Sep 1, 2026) | §2 |
+    36→| Monthly target — **200 Established Members** (a target, not a ceiling) | Appointment letter (Sep 1, 2026) | §2 |
+    37→| Payment timing — month end, or latest during the first week of the following month | Appointment letter (Sep 1, 2026) | §2 |
+    38→| Referral link is **tracking-only** — the link itself does not generate commissions | Appointment letter (Sep 1, 2026) | §2 |
+    39→| Privacy rule — never request a member's account balances or login details | Appointment letter (Sep 1, 2026) | §2 |
+    40→
+    41→All of the above are published in Agreement **v1.1** (`src/config/agreement.ts`).
+    42→Candidates who already accepted v1.0 keep v1.0 on their record.
+    43→
+    44→### ⚠️ PARTIALLY RESOLVED
+    45→
+    46→| Item | Confirmed | Still open | Where recorded |
+    47→| --- | --- | --- | --- |
+    48→| Annual recognition / year-end rewards | Existence + effective December 2026 | Eligibility criteria, reward details (to follow before Q4) | §20 |
+    49→| December 2026 confirmation | Appointment is provisional, subject to performance review; confirmation expected Dec 2026 | The actual confirmation requirements (recorded as a future business rule only — NOT implemented) | §20 |
+    50→| Agreement wording | All v1.1 facts are from the appointment letter | Final business/legal sign-off on the wording, incl. the new "Important conditions" section | §18 |
+    51→
+    52→### 🏷️ STAGE 4 MVP DECISIONS (explicitly approved for this stage; changeable without touching historical appointments)
+    53→
+    54→| Item | MVP decision USED in Stage 4 | Still open after Stage 4 | Where recorded |
+    55→| --- | --- | --- | --- |
+    56→| Official appointment designation | **Remote Staff** (follows the official letter; descriptive text may explain the functional role but never replaces the designation) | One canonical title portal-wide (§4) | §21 |
+    57→| Appointment reference format | **FFL/HR/PLA/NNN**, server-controlled transactional sequence, zero-padded ≥3 digits, unique/monotonic; sequence initialised at 12 so the first system-issued letter is **013** (012 = the supplied sample letter, which is NOT stored in the database) | Is the prefix permanent? Numbering scope per-letter-type vs global | §22 |
+    58→| Letter date | **`issuedAt`** — the server-issued timestamp prints as the letter date; no hard-coded dates, no separate `effectiveDate` column | Effective-date semantics for future HR policy | §23 |
+    59→| Signatory | **"Management, FinFam"** text-only closing (follows the latest official letter; named officers from older material are NOT used) | Named signatory alignment (Tosin Eboh / Mosunmola Esther Afolami vs "Management") | §24 |
+    60→| Signature / logo | No signature images (none exist; none invented); no logo invented | Supply official signature/logo assets | §25 |
+    61→| Email delivery | **Out of scope** — the portal alone provides access to the appointment; no provider/queue/template built | Provider, sender identity, timing of the integration stage | §26 |
+    62→| Acceptance step | **No second acceptance** — stage 3 already records the explicit, auditable agreement acceptance; the appointment is an issued record, not a decision form | Whether the business ever wants a recorded acknowledgement | §27 |
+    63→
+    64→### 🏷️ STAGE 5 MVP DECISIONS (approved and implemented; see §29–§32)
+    65→
+    66→| Item | MVP decision IMPLEMENTED in Stage 5 | Where recorded |
+    67→| --- | --- | --- |
+    68→| Activation rule | **Option E — explicit in-portal self-activation** (no manual admin approval; zero-manual-intervention goal preserved). Opening the stage only records entry; activation requires the explicit checkbox + confirm action | §29 |
+    69→| Status flow | `APPOINTMENT_ISSUED → ACTIVATION_PENDING` (lazy entry on open) `→ APPROVED_STAFF` (explicit action); direct API activation from `APPOINTMENT_ISSUED` preserves the ENTERED event | §29 |
+    70→| Staff ID format | **`FF-STF-NNNN`** — approved for MVP. Server-generated, unique, sequential, zero-padded ≥4, immutable, never client-supplied, never `count(*)` | §30 |
+    71→| Sequence | `StaffIdSequence` singleton `STAFF_ID`, seeded at 0 → first ID `FF-STF-0001`; atomic `UPDATE…RETURNING` inside the activation transaction | §30 |
+    72→| Staff entity | One `Staff` model (also the activation record — no separate StaffActivation); `candidateId @unique`; snapshots: staffId, version, roleTitle (from Appointment), appointmentReference, activatedAt; no personal data duplicated | §6/§7 of the Stage 5 brief |
+    73→| Access model | **Reference-only access retained** for the MVP — an explicitly accepted limitation; activation is the most consequential reference-only action; OTP/auth is a recommended future hardening phase | §31 |
+    74→| Reversibility | **Activation is one-way.** No deactivate/revoke/reassign workflow (future administrative/business process) | §32 |
+    75→| Role snapshot | Designation snapshotted FROM the issued Appointment at activation ("Remote Staff" for the current version) | §8 of the Stage 5 brief |
+    76→| APPROVED_STAFF meaning | Recruitment complete + staff activated; onboarding (Stage 6) still follows; December 2026 confirmation NOT implied | §17 of the Stage 5 brief |
+    77→| WhatsApp / ID card / revocation / email | All deferred — Stage 6 or later | §19/§20 of the Stage 5 brief |
+    78→
+    79→### ⛔ STILL UNRESOLVED
+    80→
+    81→| # | Item |
+    82→| --- | --- |
+    83→| §3 | Support contact channels (email/WhatsApp placeholder) |
+    84→| §4 | **Canonical role title** — "Remote Staff" (appointment letter) vs "Marketing & Customer Care Executive / FinFam Growth Ambassador" (recruitment material) vs portal's generic "Staff Member" |
+    85→| §5 | Official vision/mission wording |
+    86→| §6 | Assessment retry policy / maximum attempts |
+    87→| §7 | Unanswered questions at submission |
+    88→| §8 | Insight/explanation visibility |
+    89→| §9 | Question randomization |
+    90→| §10 | ₦500 cashback claim (still unconfirmed — not encoded anywhere) |
+    91→| §11 | Reference recovery verification |
+    92→| §12 | Completed-stage read-only history |
+    93→| §13 / §19 | Identity model for consequential actions (reference-only access, OTP question) |
+    94→| §14 | Reference expiration |
+    95→| §16 | Decline policy (portal remains accept-only by decision; the underlying reversal/deadline policy is still open) |
+    96→| §17 | Re-acceptance policy for future agreement versions |
+    97→| §21 | Canonical role-title presentation portal-wide (the appointment letter itself now uses "Remote Staff" — see Stage 4 decisions) |
+    98→| §22 | Appointment reference format permanence & numbering scope (format `FFL/HR/PLA/NNN` from 013 is now implemented — see Stage 4 decisions) |
+    99→| §23 | Appointment effective-date semantics for future HR policy (`issuedAt` prints as the letter date — see Stage 4 decisions) |
+   100→| §24 | Named signatory alignment ("Management, FinFam" is implemented — see Stage 4 decisions) |
+   101→| §25 | Signature/logo assets for generated letters (letters ship text-only — see Stage 4 decisions) |
+   102→| §26 | Appointment email delivery — deferred from Stage 4; provider/sender identity still open |
+   103→| §28 | December 2026 confirmation requirements — future rule, NOT to be built |
+   104→| §29 | Staff activation trigger — ✅ RESOLVED by Stage 5 approval: Option E (explicit in-portal self-activation) implemented |
+   105→| §30 | Staff ID format — ✅ RESOLVED by Stage 5 approval: `FF-STF-NNNN` from 0001 implemented (future format changes never modify assigned IDs) |
+   106→| §31 | Identity verification for activation — 🏷️ Stage 5 MVP decision: reference-only access retained, explicitly accepted; OTP remains a recommended future hardening phase |
+   107→| §32 | Activation reversibility & appointment revocation — 🏷️ Stage 5 MVP decision: one-way activation; no revocation workflow (future business process) |
+   108→| §33 | Official onboarding WhatsApp contact — number NOT supplied; honest pending copy used; wa.me link is a config-only change once supplied |
+   109→| §34 | Verification & completion gating for onboarding — MVP decision: automated operational briefing, no human verification gate, WhatsApp contact NOT a completion gate |
+   110→| §35 | Staff resources availability & identity card — no resource files or card template exist; list-only honest presentation; card deferred to a post-onboarding feature |
+   111→| §36 | Post-onboarding portal state & future Staff Portal — MVP decision: honest terminal state ("ready to begin"); staff platform features out of scope |
+   112→
+   113→---
+   114→
+   115→## 1. "Established Member" savings threshold — RESOLVED (₦5,000)
+   116→
+   117→The source material originally defined an *Established Member* with
+   118→**different savings thresholds in different sections** (₦2,000 vs ₦5,000).
+   119→
+   120→- **Where it appears:** reward/policy sections of the recruitment material.
+   121→- **Why it mattered:** the threshold determines eligibility language and
+   122→  reward communication on the landing page, in the Responsibility & Reward
+   123→  Agreement (offer stage), and possibly in assessment content.
+   124→- **Resolution:** the **Provisional Letter of Appointment dated September 1,
+   125→  2026 (Ref: FFL/HR/PLA/012)** confirms **₦5,000**. A member becomes
+   126→  *Established* when, during their first month, they (1) complete membership
+   127→  signup, (2) make their first deposit, and (3) maintain savings of not less
+   128→  than ₦5,000. The earlier ₦2,000 figure is superseded and must not appear
+   129→  in any content going forward.
+   130→- **Status:** ✅ Resolved. Published in Agreement v1.1
+   131→  (`src/config/agreement.ts` → reward structure). The landing page
+   132→  (`src/config/content.ts`) and orientation section 5
+   133→  (`src/config/orientation.ts`) still carry the neutral
+   134→  "figures being finalised" notice — those are pre-Stage-3 surfaces,
+   135→  deliberately left untouched by the Stage 3 reconciliation; aligning them
+   136→  with the confirmed figures needs a separate instruction.
+   137→
+   138→## 2. Reward structure figures — RESOLVED (published in Agreement v1.1)
+   139→
+   140→The full reward structure was originally unavailable as one consistent set;
+   141→Agreement v1.0 therefore named the structure without figures.
+   142→
+   143→- **Resolution:** the **Provisional Letter of Appointment dated September 1,
+   144→  2026 (Ref: FFL/HR/PLA/012)** supplies the complete, self-consistent
+   145→  structure now published in Agreement v1.1 (`src/config/agreement.ts`):
+   146→  - **Core formula:** Monthly Earnings = Established Members × ₦650 +
+   147→    Applicable Target Bonus.
+   148→  - **Target bonus tiers:** 0–99 Established Members → ₦0;
+   149→    100–199 → ₦10,000; 200+ → ₦20,000.
+   150→  - **Non-cumulative rule:** bonuses are NOT cumulative — only one tier
+   151→    applies per month (worked examples from the letter: 100 members =
+   152→    ₦75,000; 200 = ₦150,000; 300 = ₦215,000).
+   153→  - **Monthly target:** 200 Established Members — a target, not a ceiling;
+   154→    members above 200 continue to earn ₦650 each.
+   155→  - **Payment timing:** monthly earnings are paid at month end, or at the
+   156→    latest during the first week of the following month.
+   157→  - **Referral tracking:** staff must use their referral link; the link is
+   158→    for tracking and does not itself generate commissions.
+   159→  - **Privacy rule:** never request account balances or login details from
+   160→    members (encoded in the Professional conduct section of v1.1).
+   161→  - **Annual recognition:** effective December 2026, details to follow
+   162→    (partially confirmed — see §20).
+   163→- **Status:** ✅ Resolved for everything listed above. No unconfirmed
+   164→  benefit claims were added — the ₦500 cashback item (§10) remains
+   165→  unconfirmed and is still not encoded anywhere.
+   166→- **Follow-up flag:** the landing page and orientation section 5 still show
+   167→  the neutral "figures being finalised" notice (see §1 — separate
+   168→  instruction needed to align those earlier-stage surfaces).
+   169→
+   170→## 3. Support contact channels — PLACEHOLDER
+   171→
+   172→`src/config/site.ts` currently uses `recruitment@finfam.example` as the
+   173→support email. The real inbox (and any WhatsApp channel, once WhatsApp
+   174→automation is planned) must be supplied.
+   175→
+   176→- **Decision needed:** official support email + channel strategy.
+   177→- **Status:** ⚠️ Placeholder in place, clearly marked with `TODO(business)`.
+   178→
+   179→## 4. Role details & CANONICAL ROLE TITLE — UNRESOLVED (now three candidate titles)
+   180→
+   181→Responsibilities and expectations on the landing page
+   182→(`src/config/content.ts`) are scaffold placeholders marked
+   183→`TODO(business)`. Replace with the official content during the Welcome/Jobs
+   184→stage planning.
+   185→
+   186→- **Decision needed:** the **official canonical role title** that should
+   187→  appear consistently across the recruitment application, agreement,
+   188→  provisional appointment letter, staff records, and onboarding materials.
+   189→  The supplied material now contains **three** designations that must not be
+   190→  silently reconciled:
+   191→  - **"Remote Staff"** — the appointment designation used by the official
+   192→    Provisional Letter of Appointment (Sep 1, 2026);
+   193→  - **"Marketing & Customer Care Executive" / "FinFam Growth Ambassador"** —
+   194→    the functional role titles used by the earlier recruitment material and
+   195→    the agreement (v1.0 and v1.1, with a bridging sentence to the portal's
+   196→    generic title);
+   197→  - **"Staff Member"** — the generic title used by the application form and
+   198→    journey copy.
+   199→- **Status:** ⛔ Unresolved. Nothing was renamed in the portal during the
+   200→  Stage 3 reconciliation; the agreement keeps its v1.0 role naming and the
+   201→  appointment letter's "Remote Staff" stands as the appointment designation.
+   202→  Portal-wide alignment is a business decision.
+   203→
+   204→## 5. Official vision/mission wording — ORIENTATION
+   205→
+   206→Orientation section 1 ("About FinFam") is built strictly from the supplied
+   207→brief: the name (Financially Blessed Family), the government-registered
+   208→digital cooperative ecosystem, and the save / grow / prosper purpose. The
+   209→brief asks for vision and mission statements, but no official wording was
+   210→supplied, so none was invented.
+   211→
+   212→- **Decision needed:** the official vision/mission statements (or
+   213→  confirmation that the purpose language now in place is sufficient).
+   214→- **Affects:** orientation section 1 copy (`src/config/orientation.ts`) and
+   215→  any assessment questions that touch FinFam identity.
+   216→- **Status:** ⚠️ Purpose-level content in place; no invented corporate
+   217→  claims.
+   218→
+   219→## 6. Assessment retry policy / maximum attempts — INTERIM BEHAVIOUR
+   220→
+   221→The supplied material says a candidate scoring below 70% "may retry or may
+   222→be disqualified according to policy". That is not specific enough to be a
+   223→final rule, and the stage brief forbids inventing one.
+   224→
+   225→- **Decision needed:** may a failed candidate retake? How many attempts are
+   226→  allowed? Is there a waiting period? Is repeated failure a
+   227→  disqualification?
+   228→- **Interim behaviour (implemented, clearly labelled in the UI):** retakes
+   229→  ARE allowed with no attempt cap. This is controlled by two values in
+   230→  `src/server/assessment-content.ts` (`ASSESSMENT_POLICY.allowRetakeAfterFailure`
+   231→  and `.maxAttempts`), so the confirmed policy is a config change — not a
+   232→  rewrite. The failed-result screen and the status page both state that the
+   233→  final retake policy "is being finalised".
+   234→- **Status:** ⛔ Unresolved policy; ⚠️ safe interim behaviour in place.
+   235→
+   236→## 7. Unanswered questions at submission — INTERIM BEHAVIOUR
+   237→
+   238→The source material does not say whether submission requires all 30 answers
+   239→or allows gaps.
+   240→
+   241→- **Decision needed:** require every question answered (Option A), or allow
+   242→  submission with unanswered questions scored as incorrect (Option B)?
+   243→- **Interim behaviour (implemented):** Option B — submission is allowed and
+   244→  each unanswered question is scored as incorrect. The confirmation modal
+   245→  states the exact unanswered count and this consequence in plain language
+   246→  before the candidate can submit. Changing to Option A is a small change
+   247→  in `submitAssessment` + `ASSESSMENT_POLICY` (a
+   248→  `allowSubmissionWithUnanswered` flag already exists).
+   249→- **Status:** ⛔ Unresolved rule; ⚠️ clearly-communicated interim behaviour.
+   250→
+   251→## 8. Insight/explanation visibility — NOT SHOWN (deliberately)
+   252→
+   253→Every question has an insight/explanation. The source material does not say
+   254→when (if ever) candidates may see them.
+   255→
+   256→- **Decision needed:** show explanations after submission? For all questions
+   257→  or only incorrect ones? Before submission (they reveal the answer, so
+   258→  almost certainly not)?
+   259→- **Interim behaviour (implemented):** insights are shown to NO ONE —
+   260→  they are server-only, are not included in any candidate-facing response,
+   261→  and no review screen exists. Rationale: while the retake policy is
+   262→  unresolved, showing answers after submission would leak the answer key
+   263→  across attempts. When the business confirms the policy, a post-submission
+   264→  review screen can be added safely (the data is already persisted).
+   265→- **Status:** ⛔ Unresolved; insights withheld pending the retry decision.
+   266→
+   267→## 9. Question randomization — NOT IMPLEMENTED
+   268→
+   269→- **Decision needed:** should each attempt receive a shuffled question
+   270→  order?
+   271→- **Interim behaviour (implemented):** the supplied config order is used,
+   272→  snapshotted per attempt (`AssessmentAttemptQuestion.position`), and never
+   273→  reshuffled on refresh or resume. The schema stores positions, so
+   274→  per-attempt shuffling can be added later without a migration.
+   275→- **Status:** ⚠️ Stable order in place; randomization deliberately not
+   276→  added for its own sake.
+   277→
+   278→## 10. "₦500 cashback after first savings deposit" — UNCONFIRMED CLAIM
+   279→
+   280→The source material mentions a ₦500 cashback benefit, but it has not been
+   281→confirmed as official FinFam policy.
+   282→
+   283→- **Decision needed:** is the ₦500 cashback a real, current member benefit?
+   284→  Under what conditions?
+   285→- **Status:** ⛔ Unresolved. It is NOT encoded anywhere — not on the landing
+   286→  page, not in orientation content, and NOT in any assessment question,
+   287→  option or insight. The Provisional Letter of Appointment (Sep 1, 2026)
+   288→  does not mention it, so the reconciliation did not change this. If
+   289→  confirmed later, it must be added consistently across all three surfaces.
+   290→
+   291→## 11. Reference recovery verification — INTERIM BEHAVIOUR
+   292→
+   293→The unified journey includes a "Forgot your application reference?" flow
+   294→(`/continue/recover`). The source material does not specify how a candidate
+   295→should prove their identity when recovering a lost reference.
+   296→
+   297→- **Decision needed:** what verification is required before a reference is
+   298→  revealed (e.g. email/OTP code, phone verification, support contact with
+   299→  manual identity checks)? Is revealing the reference at all acceptable, or
+   300→  should recovery always route through a human support channel?
+   301→- **Interim behaviour (implemented):** the candidate must supply the FULL
+   302→  name, email AND phone exactly as entered on the application; only the
+   303→  reference number is revealed — never application details, NIN/BVN/bank
+   304→  details or documents. Every mismatch (unknown email, wrong name, wrong
+   305→  phone) returns the SAME neutral "no matching application" message, so
+   306→  responses cannot be used to enumerate applications. No email/SMS
+   307→  verification infrastructure exists in the portal.
+   308→- **Known limitation:** anyone who knows all three application details can
+   309→  retrieve the reference. The reference is a lookup key (see §13), not an
+   310→  authentication token, but the business should confirm this trade-off.
+   311→- **Status:** ⛔ Verification policy unresolved; ⚠️ enumeration-safe interim
+   312→  behaviour in place (`src/server/services/journey.ts` →
+   313→  `recoverApplicationReference`).
+   314→
+   315→## 12. Completed-stage history — READ-ONLY RECORDS ONLY
+   316→
+   317→Once a stage is completed it cannot be re-entered as an active workflow
+   318→(one-way progression). Whether candidates should eventually get richer
+   319→read-only history pages (e.g. re-reading orientation sections after
+   320→completion) has not been specified.
+   321→
+   322→- **Decision needed:** should completed stages be viewable as read-only
+   323→  records (orientation content, answered questions)? Which stages, and with
+   324→  what detail?
+   325→- **Interim behaviour (implemented):** the unified journey shows completed
+   326→  stages as non-clickable ✓ entries. The ONLY record view available is the
+   327→  submitted assessment result (`/assessment/[reference]` renders the
+   328→  persisted score read-only — no answers, no insights, no retake from a
+   329→  passed state). Orientation content is not re-openable once completed.
+   330→- **Status:** ⛔ Unresolved; current behaviour is deliberately conservative.
+   331→
+   332→## 13. Candidate identity model — REFERENCE AS LOOKUP KEY
+   333→
+   334→The portal has no login/accounts. The application reference (FF-XXXXXX) is
+   335→a lookup key the candidate holds — it identifies the journey but does not
+   336→authenticate its holder. This matches the supplied material (no account
+   337→system was specified), but it is worth an explicit business decision.
+   338→
+   339→- **Decision needed:** is reference-only access acceptable for the whole
+   340→  journey? If later stages expose more sensitive actions (agreement
+   341→  acceptance, appointment letters, staff activation), does the business
+   342→  want an additional verification step (e.g. OTP at those stages) or a
+   343→  full account system?
+   344→- **Interim behaviour (implemented):** reference-only access everywhere;
+   345→  all candidate-facing data is limited to what the candidate already knows;
+   346→  stage mutations are guarded by server-side state, not by client trust.
+   347→- **Status:** ⛔ Unresolved; revisited during Stage 3 planning — see §19.
+   348→
+   349→## 14. Reference expiration — NONE IMPLEMENTED
+   350→
+   351→References do not expire and applications do not lapse. Whether stale
+   352→applications (e.g. abandoned at orientation for months) should be expired,
+   353→archived or re-activated has not been specified.
+   354→
+   355→- **Decision needed:** do application references expire? What happens to
+   356→  candidates who never complete orientation/assessment?
+   357→- **Status:** ⛔ Unresolved; no expiration logic exists.
+   358→
+   359→## 15. Agreement reward figures vs. §2 — RESOLVED (₦650 CONFIRMED)
+   360→
+   361→The Stage 3 planning brief described the agreement's Reward Structure
+   362→section as "Established Members × ₦650" plus an "Applicable Target Bonus".
+   363→§2 originally blocked publishing any reward figures because the supplied
+   364→material never arrived as one consistent set, and §1 blocked the
+   365→Established Member *savings threshold* (₦2,000 vs ₦5,000 conflict). Agreement
+   366→v1.0 therefore shipped with a "figures being finalised" treatment and no
+   367→encoded numbers.
+   368→
+   369→- **Resolution:** the **Provisional Letter of Appointment dated September 1,
+   370→  2026 (Ref: FFL/HR/PLA/012)** confirms the full structure: ₦650 per
+   371→  Established Member, the ₦5,000 threshold, the 0–99 / 100–199 / 200+ bonus
+   372→  tiers (₦0 / ₦10,000 / ₦20,000), the non-cumulative one-tier-per-month
+   373→  rule, the 200-member monthly target, the payment timing, the
+   374→  referral-tracking rule, and the December 2026 annual-recognition note.
+   375→- **Status:** ✅ Resolved. This was a meaning-bearing content change, so the
+   376→  agreement version was bumped **v1.0 → v1.1** (why: compensation and
+   377→  Established Member definitions were formally confirmed by the Provisional
+   378→  Letter of Appointment dated September 1, 2026). Accepted v1.0 records
+   379→  were not touched — see §17.
+   380→
+   381→## 16. Agreement decline & reversal policy — ACCEPT-ONLY (decision recorded; underlying policy still open)
+   382→
+   383→The shipped state machine reserves `OFFER_DECLINED` with candidate-facing
+   384→copy, which implies the portal could record a decline. The decline policy
+   385→itself was never supplied.
+   386→
+   387→- **Decision made:** the business directed Stage 3 to ship
+   388→  **Accept-only** — no `declinedAt` column, no decline API, no decline UI,
+   389→  no decline transition. The earlier interim proposal (self-service decline)
+   390→  is superseded and nothing was implemented. `OFFER_DECLINED` remains an
+   391→  unused enum value reserved for a future business decision, and its
+   392→  journey mapping keeps `stageCompleted: false` so a decline could never
+   393→  advance the journey.
+   394→- **Still open (policy):** (a) may a candidate ever decline through the
+   395→  portal, or must declines go through a human channel? (b) Is a recorded
+   396→  decline reversible — by whom, and how? (c) Is there a deadline for
+   397→  responding to the agreement?
+   398→- **Status:** ⛔ Policy unresolved; ⚠️ accept-only behaviour in place by
+   399→  explicit instruction.
+   400→
+   401→## 17. Agreement versioning & re-acceptance — NOT SPECIFIED (v1.0 → v1.1 now live)
+   402→
+   403→Agreement acceptance records the exact content version accepted (auditable).
+   404→What happens when the agreement content changes AFTER candidates have
+   405→accepted an older version has not been specified.
+   406→
+   407→- **Decision needed:** if FinFam issues agreement v1.1 or v2.0, must
+   408→  candidates who accepted v1.0 re-accept? Does an already-accepted journey
+   409→  pause until re-acceptance, or do new versions apply only to candidates
+   410→  who have not yet accepted?
+   411→- **Interim proposal (now in effect):** new versions apply only to
+   412→  candidates who have not yet accepted; existing acceptances of older
+   413→  versions remain valid and auditable; no re-acceptance flow exists until
+   414→  the business asks for one. This was exercised for the first time by the
+   415→  v1.0 → v1.1 bump: the two accepted v1.0 records (FF-E9KUVN, FF-WVA24D)
+   416→  remain untouched on v1.0, and new acceptances pin v1.1.
+   417→- **Status:** ⛔ Policy still to be confirmed by the business; the interim
+   418→  proposal is now live behaviour, not just a plan.
+   419→
+   420→## 18. Agreement wording approval — LEGAL/BUSINESS SENSITIVE
+   421→
+   422→The acceptance acknowledgement sentence and the agreement's section wording
+   423→are business- (and possibly legally-) sensitive statements the candidate
+   424→formally accepts. No employment-contract or legal language may be invented
+   425→by implementation.
+   426→
+   427→- **What changed in v1.1:** the reward structure now carries the figures
+   428→  confirmed by the Provisional Letter of Appointment (Sep 1, 2026); a new
+   429→  concise **"Important conditions"** section was added containing only
+   430→  letter-confirmed terms (provisional participation, performance review,
+   431→  December 2026 confirmation expectation); one letter-confirmed privacy rule
+   432→  was added to Professional conduct. No termination, probation, deduction,
+   433→  reversal, or confidentiality language was invented. The acknowledgement
+   434→  sentence is unchanged from v1.0.
+   435→- **Decision needed:** who approves the final wording of the agreement
+   436→  (including the new "Important conditions" section) and the acknowledgement
+   437→  sentence before it is treated as final?
+   438→- **Status:** ⛔ Unresolved. v1.1 contains only content supportable from the
+   439→  supplied FinFam material; the acknowledgement sentence follows the Stage 3
+   440→  brief's suggested wording and is flagged for approval.
+   441→
+   442→## 19. Identity model for consequential actions — REFERENCE-ONLY (§13 revisited)
+   443→
+   444→Stage 3 introduces the first consequential, hard-to-reverse action of the
+   445→journey (agreement acceptance) behind the same reference-as-lookup-key
+   446→access model documented in §13. The portal does not authenticate its users.
+   447→
+   448→- **Decision needed:** is reference-only access acceptable for agreement
+   449→  acceptance, or should this stage require an additional verification step
+   450→  (e.g. OTP to the application email/phone) first? The same question applies
+   451→  to every later stage (appointment letters, activation).
+   452→- **Interim behaviour (in effect):** the reference-only access model is used
+   453→  consistently (no new verification infrastructure in Stage 3); the weakness
+   454→  is documented, not worsened — the agreement API exposes no new personal
+   455→  data. The version echo in the accept payload protects against
+   456→  stale-version submissions, not against reference holders (that would
+   457→  require authentication).
+   458→- **Status:** ⛔ Unresolved; flagged for explicit business sign-off.
+   459→
+   460→## 20. Annual recognition & December 2026 confirmation — PARTIALLY CONFIRMED (new)
+   461→
+   462→The Provisional Letter of Appointment (Sep 1, 2026) confirms two future
+   463→items whose detailed rules are NOT yet supplied:
+   464→
+   465→- **Year-end recognition / rewards.** Effective December 2026, top
+   466→  performers and community builders may be eligible for year-end rewards.
+   467→  The existence and timing are confirmed; the eligibility criteria and
+   468→  reward details are to follow before Q4. Agreement v1.1 states only the
+   469→  confirmed fact. Do not invent eligibility criteria.
+   470→- **December 2026 confirmation.** Participation is provisional and subject
+   471→  to performance review, with confirmation expected in December 2026 upon
+   472→  meeting the stated requirements. The requirements themselves are not
+   473→  supplied. This is recorded as a **future business rule only** — the portal
+   474→  implements NO confirmation workflow, and this must not be built as part
+   475→  of any stage until the business specifies it.
+   476→
+   477→- **Status:** ⚠️ Partially confirmed; details pending from the business
+   478→  before Q4.
+   479→
+   480→---
+   481→
+   482→## 21. Canonical role title on the appointment letter — STAGE 4 DEFAULT USED ("Remote Staff"); portal-wide title still open
+   483→
+   484→The supplied material contains four designations. Where each appears today:
+   485→
+   486→- **"Remote Staff"** — the appointment designation used by the official
+   487→  Provisional Letter of Appointment (Sep 1, 2026), including its subject
+   488→  line ("Provisional Letter of Appointment – Remote Staff").
+   489→- **"Marketing & Customer Care Executive" / "FinFam Growth Ambassador"** —
+   490→  the functional role titles in the earlier recruitment material and in the
+   491→  agreement (v1.0/v1.1 "Your role" section).
+   492→- **"Staff Member"** — the generic title used by the application form and
+   493→  journey copy.
+   494→
+   495→- **IMPLEMENTED (Stage 4 default):** the generated appointment letter uses
+   496→  **"Remote Staff"** as its official appointment designation — snapshotted
+   497→  per appointment (`appointments.roleTitle`) — and the opening paragraph
+   498→  describes the functional responsibility without renaming the role.
+   499→- **Still open:** one canonical title portal-wide (§4). Nothing outside the
+   500→  appointment letter was renamed in Stage 4.
+   501→- **Status:** 🏷️ Stage 4 default applied; portal-wide alignment pending.
+   502→
+   503→## 22. Appointment reference numbering — IMPLEMENTED (FFL/HR/PLA/NNN from 013); format permanence still open
+   504→
+   505→The official sample letter carries reference **FFL/HR/PLA/012**. The
+   506→recruitment reference (FF-XXXXXX) and the appointment reference are
+   507→different concepts and are never conflated.
+   508→
+   509→- **IMPLEMENTED (Stage 4):** server-generated sequential appointment
+   510→  references in the official format `FFL/HR/PLA/{NNN}` (zero-padded to at
+   511→  least three digits, growing naturally beyond that), allocated from a
+   512→  transactional singleton row (`appointment_sequences`, atomic
+   513→  `UPDATE … RETURNING` inside the issuance transaction) so concurrent
+   514→  issuances can never collide; the unique constraint on
+   515→  `appointments.appointmentReference` is the final backstop. Candidates
+   516→  never supply it and it is never derived from `count(*)`.
+   517→- **Initial sequence (documented assumption):** the sample's 012 is treated
+   518→  as the most recently existing appointment — the sample itself is NOT
+   519→  written into the database — so the first system-issued letter is
+   520→  **FFL/HR/PLA/013**. The sequence may skip a number if a transaction rolls
+   521→  back after allocation; monotonicity and uniqueness are the guarantees.
+   522→- **Still open:** is `FFL/HR/PLA/` the permanent prefix? Numbering
+   523→  per-letter-type or global? Any future year component?
+   524→- **Status:** 🏷️ Stage 4 default applied; format permanence pending.
+   525→
+   526→## 23. Appointment effective date — STAGE 4 DEFAULT USED (letter date = issuedAt); semantics still open
+   527→
+   528→The sample letter is dated September 1, 2026 (a source-document date, not a
+   529→rule for future letters).
+   530→
+   531→- **IMPLEMENTED (Stage 4 default):** one server-set `issuedAt` field (the
+   532→  portal issuance moment) prints as the letter date. No hard-coded dates —
+   533→  September 1, 2026 belongs to the sample document only. No `effectiveDate`
+   534→  column exists; the two are NOT silently conflated — the distinction is
+   535→  deliberately left unmodelled until HR defines it.
+   536→- **Still open:** should the appointment take effect at the issue date, at
+   537→  the agreement acceptance date, at a fixed resumption/commencement date
+   538→  set by HR, or another defined date? A column can be added later without
+   539→  touching issued rows.
+   540→- **Status:** 🏷️ Stage 4 default applied; effective-date policy pending.
+   541→
+   542→## 24. Appointment signatory — STAGE 4 DEFAULT USED ("Management, FinFam"); named-officer alignment still open
+   543→
+   544→The earlier recruitment material names **Tosin Eboh — President, FinFam**
+   545→and **Mosunmola Esther Afolami — Global Executive Secretary, FinFam**. The
+   546→supplied appointment letter closes with **"Management, FinFam"**.
+   547→
+   548→- **IMPLEMENTED (Stage 4 default):** generated letters close with the
+   549→  text-only **"Management / FinFam"** (APPOINTMENT_SIGNATORY_LINES in
+   550→  `src/config/appointment.ts`). The named officers from older recruitment
+   551→  content are NOT used.
+   552→- **Still open:** the official signatory format going forward (named
+   553→  officers / "Management, FinFam" / another approved formulation). Changing
+   554→  it means appending a new content version — issued letters are untouched.
+   555→- **Status:** 🏷️ Stage 4 default applied; signatory confirmation pending.
+   556→
+   557→## 25. Signature / logo assets for generated letters — STAGE 4 SHIPS TEXT-ONLY; assets still missing
+   558→
+   559→- **IMPLEMENTED (Stage 4 default):** no signature images are rendered and
+   560→  none were invented (no fake, generated, or handwritten signatures); the
+   561→  letter closes with plain text. No logo was invented or recreated; if the
+   562→  business later supplies the official FinFam Multipurpose Cooperative
+   563→  Society Limited logo, it can be added to the letterhead rendering as a
+   564→  new content version.
+   565→- **Still open:** do generated letters require real signature images or the
+   566→  official logo? Assets have not been supplied.
+   567→- **Status:** 🏷️ Text-only shipped; official assets pending.
+   568→
+   569→## 26. Appointment email delivery — DEFERRED (Stage 4 MVP decision)
+   570→
+   571→The original recruitment brief says appointment letters should eventually
+   572→reach the candidate's registered email. No email infrastructure exists in
+   573→the portal (the support inbox itself is still a placeholder, §3).
+   574→
+   575→- **Stage 4 MVP decision:** email delivery is OUT OF SCOPE. No provider
+   576→  integration, sending, templates, jobs, retries, queues or SMTP were
+   577→  built. The candidate accesses their appointment entirely through the
+   578→  recruitment portal (journey CTA → read-only letter → print/save as PDF).
+   579→- **Still open:** which provider/sender identity, and when the email
+   580→  integration stage happens.
+   581→- **Status:** 🏷️ Deferred by Stage 4 decision; provider pending.
+   582→
+   583→## 27. Separate appointment acknowledgement? — NO (Stage 4 decision)
+   584→
+   585→Earlier recruitment material mentions an "Accept and Download" step for the
+   586→appointment letter. The candidate has already explicitly accepted the
+   587→Responsibility & Reward Agreement (stage 3) — the harder, auditable
+   588→decision.
+   589→
+   590→- **IMPLEMENTED (Stage 4 decision):** no second acceptance. There is no
+   591→  accept-appointment checkbox, signature requirement, acknowledgement API
+   592→  or duplicate confirmation modal. The appointment is a formal ISSUED
+   593→  record: the candidate views/prints it; only stage 3 records a decision.
+   594→- **Still open:** whether the business ever wants a recorded acknowledgement
+   595→  on the appointment itself (it can be added without touching issued
+   596→  letters).
+   597→- **Status:** 🏷️ Resolved for the Stage 4 MVP by decision; revisit only if
+   598→  the business asks.
+   599→
+   600→## 28. December 2026 confirmation requirements — FUTURE RULE ONLY
+
+[showing lines 1-600 of 1166; use offset=601 with limit to continue reading]
