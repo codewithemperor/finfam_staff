@@ -74,7 +74,12 @@
 
   /* Shape: restrained corners, appropriate for a financial product */
   --radius: 0.5rem;
-  --field-radius: calc(var(--radius) * 1.25);
+  --field-radius: calc(var(--radius) * 0.75);
+  --field-border-width: 1px;
+  --field-border: var(--border);
+  --field-border-hover: color-mix(in oklab, var(--border) 72%, var(--foreground) 18%);
+  --field-border-focus: var(--accent);
+  --field-focus: #ffffff;
 }
 
 /* Base document behaviour */
@@ -106,6 +111,127 @@
 
   ::-webkit-scrollbar-track {
     background: transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   HeroUI component tuning
+   ---------------------------------------------------------------------------
+   Keep the accessible HeroUI v3 behavior while making controls feel more
+   deliberate for a financial-services workflow: taller, quieter, squarer,
+   with clear FinFam-primary focus and no decorative glow.
+--------------------------------------------------------------------------- */
+@layer components {
+  .input,
+  .input-group {
+    min-height: 2.875rem;
+    border-radius: var(--field-radius);
+    border-color: var(--field-border);
+    background-color: #ffffff;
+    box-shadow: none;
+  }
+
+  .input {
+    padding-block: 0.625rem;
+  }
+
+  .input-group__input {
+    padding-block: 0.625rem;
+  }
+
+  .input:focus,
+  .input[data-focused="true"],
+  .input:focus-visible,
+  .input[data-focus-visible="true"],
+  .input-group:has([data-slot="input-group-input"]:focus),
+  .input-group:has([data-slot="input-group-textarea"]:focus) {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 20%, transparent);
+  }
+
+  .input[data-invalid="true"],
+  .input-group[data-invalid="true"] {
+    border-color: var(--danger);
+    box-shadow: none;
+  }
+
+  .textfield,
+  .select,
+  .combo-box,
+  .search-field,
+  .date-field,
+  .time-field,
+  .number-field {
+    gap: 0.375rem;
+  }
+
+  .label {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  .description {
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .field-error {
+    color: var(--danger);
+    font-weight: 500;
+  }
+
+  .button {
+    min-height: 2.75rem;
+    border-radius: var(--field-radius);
+    box-shadow: none;
+  }
+
+  .button--sm {
+    min-height: 2.375rem;
+  }
+
+  .button--lg {
+    min-height: 3rem;
+  }
+
+  .button:focus-visible,
+  .button[data-focus-visible="true"] {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--accent);
+  }
+
+  .alert {
+    border-radius: var(--field-radius);
+    box-shadow: none;
+  }
+
+  .alert--default {
+    background-color: var(--surface);
+  }
+
+  .alert--accent {
+    background-color: color-mix(in oklab, var(--accent) 12%, #ffffff);
+  }
+
+  .alert--success {
+    background-color: color-mix(in oklab, var(--success) 14%, #ffffff);
+  }
+
+  .alert--warning {
+    background-color: color-mix(in oklab, var(--warning) 18%, #ffffff);
+  }
+
+  .alert--danger {
+    background-color: color-mix(in oklab, var(--danger) 12%, #ffffff);
+  }
+
+  .alert__title {
+    color: var(--foreground);
+    font-weight: 700;
+  }
+
+  .alert__description {
+    color: color-mix(in oklab, var(--foreground) 72%, var(--muted));
+    line-height: 1.55;
   }
 }
 

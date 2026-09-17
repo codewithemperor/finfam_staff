@@ -13,6 +13,7 @@ export const ADMIN_CONSOLE_LABEL = "FinFam Admin";
 /** Admin navigation — real destinations only (approved brief §16). */
 export const ADMIN_NAV = [
   { href: "/admin", label: "Overview" },
+  { href: "/admin/applicants", label: "Applicants" },
   { href: "/admin/staff", label: "Staff" },
   { href: "/admin/reports", label: "Daily Reports" },
   { href: "/admin/audit", label: "Audit Log" },

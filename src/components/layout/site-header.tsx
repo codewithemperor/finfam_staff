@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 
+import { MobileSiteNavDrawer } from "@/components/layout/mobile-site-nav-drawer";
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteNavLinks } from "@/components/layout/site-nav-links";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -7,9 +9,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Global site header. Intentionally minimal: brand, navigation links, and
- * the primary call to action. On the smallest screens the nav wraps to a
- * second row rather than hiding destinations; if navigation grows further,
- * introduce a mobile drawer (HeroUI Drawer).
+ * the primary call to action. On mobile, destinations live inside a HeroUI
+ * drawer so the header stays compact.
  */
 export function SiteHeader({ className }: { className?: string }) {
   return (
@@ -21,12 +22,14 @@ export function SiteHeader({ className }: { className?: string }) {
             className="flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
             aria-label="FinFam Recruitment home"
           >
-            <span
-              aria-hidden
-              className="grid size-7 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground"
-            >
-              F
-            </span>
+            <Image
+              src="/icon-192.png"
+              alt=""
+              width={32}
+              height={32}
+              className="size-8 object-contain"
+              priority
+            />
             <span className="text-base font-bold tracking-tight text-foreground">
               FinFam
             </span>
@@ -36,7 +39,9 @@ export function SiteHeader({ className }: { className?: string }) {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-5">
-            <SiteNavLinks />
+            <div className="hidden sm:block">
+              <SiteNavLinks />
+            </div>
 
             <ButtonLink
               href="/apply"
@@ -45,6 +50,7 @@ export function SiteHeader({ className }: { className?: string }) {
             >
               Apply now
             </ButtonLink>
+            <MobileSiteNavDrawer />
           </div>
         </div>
       </PageContainer>

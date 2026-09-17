@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
+import { Alert } from "@heroui/react";
 
 import { AppointmentLetter } from "@/components/appointment/appointment-letter";
-import { PrintButton } from "@/components/appointment/print-button";
+import { DownloadAppointmentButton } from "@/components/appointment/download-appointment-button";
 import { JourneyNotFoundPanel } from "@/components/recruitment/journey-not-found";
 import { PageShell } from "@/components/layout/page-shell";
 import {
@@ -41,7 +42,7 @@ export const metadata: Metadata = {
  * Layout: mobile is a single-column reading flow (title → reference/date
  * → letter → print → back); tablet/desktop recomposes into the document
  * plus a useful secondary rail (status, reference, issue date, version,
- * print, journey, back). In print, only the letter document remains.
+ * download, journey, activation).
  */
 export default async function AppointmentPage({
   params,
@@ -91,7 +92,8 @@ export default async function AppointmentPage({
             <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
               Your formal appointment letter from FinFam. It has been issued
               in your name and stays available here — you can reopen it at
-              any time, or print a copy for your records.
+              any time, and you should download the official PDF copy for
+              your records.
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
               For {view.fullName} ·{" "}
@@ -101,18 +103,29 @@ export default async function AppointmentPage({
             </p>
           </div>
 
+          <Alert status="warning" className="mt-6 print:hidden">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>Download your appointment letter</Alert.Title>
+              <Alert.Description>
+                Please download and keep the PDF copy before continuing to
+                activation. The downloaded PDF includes the official stamp.
+              </Alert.Description>
+            </Alert.Content>
+          </Alert>
+
           <div className="mt-8 md:mt-10">
             <AppointmentLetter appointment={appointment} />
           </div>
 
           {/* Mobile action row — the secondary rail is desktop-only */}
           <div className="mt-10 flex flex-col gap-3 border-t border-divider pt-6 print:hidden sm:flex-row md:hidden">
-            <PrintButton />
+            <DownloadAppointmentButton reference={view.referenceNumber} />
             <ButtonLink
-              href={`/application/${view.referenceNumber}`}
+              href={`/activation/${view.referenceNumber}`}
               variant="outline"
             >
-              Back to your application
+              Continue to Activation
             </ButtonLink>
           </div>
         </section>
@@ -158,7 +171,19 @@ export default async function AppointmentPage({
             </dl>
 
             <div className="mt-6 border-t border-divider pt-5">
-              <PrintButton />
+              <div className="flex flex-col gap-3">
+                <DownloadAppointmentButton
+                  reference={view.referenceNumber}
+                  className="w-full"
+                />
+                <ButtonLink
+                  href={`/activation/${view.referenceNumber}`}
+                  variant="outline"
+                  fullWidth
+                >
+                  Continue to Activation
+                </ButtonLink>
+              </div>
             </div>
 
             <div className="mt-6 border-t border-divider pt-5">
@@ -174,11 +199,7 @@ export default async function AppointmentPage({
             </div>
 
             <div className="mt-6 border-t border-divider pt-5">
-              <ButtonLink
-                href={`/application/${view.referenceNumber}`}
-                variant="ghost"
-                size="sm"
-              >
+              <ButtonLink href={`/application/${view.referenceNumber}`} variant="ghost" size="sm">
                 Back to your application
               </ButtonLink>
             </div>

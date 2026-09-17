@@ -33,7 +33,7 @@ export default async function AdminOverviewPage() {
   const overview = await getAdminOverview();
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="max-w-6xl">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
         FinFam Admin
       </p>
@@ -97,6 +97,9 @@ export default async function AdminOverviewPage() {
         <div className="mt-3 flex flex-wrap gap-3">
           <ButtonLink href="/admin/staff" size="sm">
             Open Staff directory
+          </ButtonLink>
+          <ButtonLink href="/admin/applicants" variant="outline" size="sm">
+            View Applicants
           </ButtonLink>
           <ButtonLink href="/admin/reports" variant="outline" size="sm">
             Open Daily Reports

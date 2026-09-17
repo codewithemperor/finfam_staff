@@ -2,6 +2,7 @@ import {
   STAFF_ID_CARD_LABEL,
   STAFF_ID_CARD_TEMPLATE_VERSION,
 } from "@/config/staff-id-card";
+import Image from "next/image";
 
 export interface StaffIdCardProps {
   fullName: string;
@@ -49,12 +50,13 @@ export function StaffIdCard({
       {/* Brand row — the established in-product brand treatment. */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="grid size-7 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground print:size-5 print:text-xs"
-          >
-            F
-          </span>
+          <Image
+            src="/icon-192.png"
+            alt=""
+            width={32}
+            height={32}
+            className="size-8 object-contain print:size-6"
+          />
           <span className="text-base font-bold tracking-tight text-foreground print:text-sm">
             FinFam
           </span>

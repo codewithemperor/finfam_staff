@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { ASSESSMENT_QUESTION_IDS } from "@/config/assessment";
-
 /**
  * Shared assessment validation.
  *
@@ -17,11 +15,7 @@ export const assessmentAnswerSchema = z.object({
   questionId: z
     .string()
     .trim()
-    .min(1, "Missing question.")
-    .refine(
-      (value) => (ASSESSMENT_QUESTION_IDS as string[]).includes(value),
-      "That question does not exist.",
-    ),
+    .min(1, "Missing question."),
   /** 0-based index of the chosen option. */
   selectedOption: z
     .number()

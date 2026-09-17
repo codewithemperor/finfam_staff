@@ -58,7 +58,13 @@ export interface BootstrapResult {
  */
 export function runBootstrap(args: string[]): BootstrapResult {
   const proc = Bun.spawnSync(
-    ["bash", "scripts/bootstrap-admin.sh", ...args],
+    [
+      "bun",
+      "--conditions",
+      "react-server",
+      "scripts/bootstrap-admin.ts",
+      ...args,
+    ],
     {
       cwd: process.cwd(),
       stdout: "pipe",

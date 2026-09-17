@@ -1,39 +1,3 @@
-// ---------------------------------------------------------------------------
-// FinFam Recruitment Portal — schema
-//
-// Implemented stages: Application (scaffold), FSOW Orientation (stage 1),
-// Automated Interview Assessment (stage 2), Responsibility & Reward
-// Agreement (stage 3 — persisted as the OFFER stage/statuses; the
-// candidate-facing label is "Agreement", see src/config/recruitment.ts),
-// the Provisional Appointment (stage 4 — lazy issuance, one letter per
-// candidate, see src/server/services/appointment.ts), Staff Activation
-// (stage 5 — explicit in-portal activation, one Staff identity per
-// candidate, see src/server/services/activation.ts), and Staff Onboarding
-// (stage 6 — STAFF-SIDE operational briefing after recruitment completes:
-// StaffOnboarding + StaffOnboardingStep, see src/server/services/
-// onboarding.ts). Onboarding deliberately adds NO CandidateStatus value
-// and NO RecruitmentStage value — APPROVED_STAFF remains the terminal
-// recruitment status, and StageEvent stays recruitment-only.
-//
-// Staff Platform (post-recruitment, ongoing): Stage 7 added the
-// authenticated Staff Portal (StaffAccount/StaffLoginCode/StaffSession —
-// email-OTP auth, DB-backed sessions), Stage 8 adds Daily Reporting &
-// Accountability (DailyReport — one self-reported activity report per
-// Staff member per Africa/Lagos reporting date, see
-// src/server/services/daily-reports.ts) and Stage 9 adds Staff Training
-// (StaffTrainingEnrollment/StaffTrainingLessonProgress — source-controlled
-// course content with persisted, version-pinned Staff progress, see
-// src/server/services/staff-training.ts). None of these modules touch the
-// recruitment state machine.
-//
-// Cross-cutting platform service: NotificationDelivery (brief
-// "notification_service") records transactional email intents for
-// lifecycle events via the central notification service
-// (src/server/notifications/) — outbox pattern, dedupe-key exactly-once,
-// Mailjet delivery AFTER the business transaction commits.
-// See docs/CONTENT-QUESTIONS.md before extending: stage rules are
-// finalized stage-by-stage in the product planning phase.
-// ---------------------------------------------------------------------------
 
 generator client {
   provider = "prisma-client-js"
@@ -44,10 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Lifecycle status of a candidate. The list mirrors the business's draft
-/// state machine (see docs/PLANNING.md). Transitions between states will be
-/// enforced by the server-side stage service in the planning phase — not by
-/// ad-hoc writes.
+
 enum CandidateStatus {
   APPLICANT
   ORIENTATION_PENDING

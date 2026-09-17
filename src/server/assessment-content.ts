@@ -223,9 +223,9 @@ export const ASSESSMENT_TOTAL_MARKS = ASSESSMENT_QUESTIONS.length * 5;
 export const ASSESSMENT_PASS_PERCENT = 70;
 
 /**
- * The authoritative question set in its canonical order. Attempts persist
- * this order question-by-question (no shuffling — the business has not
- * asked for randomisation; see docs/CONTENT-QUESTIONS.md §9).
+ * The authoritative question set in its canonical order. Attempts persist a
+ * per-attempt order question-by-question, so active attempts resume without
+ * reshuffling while the approved bank and answer key remain unchanged.
  */
 export function getAuthoritativeQuestions(): AssessmentQuestion[] {
   return ASSESSMENT_QUESTIONS;

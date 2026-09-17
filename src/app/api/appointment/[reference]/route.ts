@@ -11,8 +11,8 @@ import { getAppointmentView } from "@/server/services/appointment";
  * same issued record unchanged (read-only). Candidates not yet at the
  * appointment stage get an honest issued:false view — reading never
  * issues anything for them. Unknown references get the same neutral 404
- * as every other lookup. There is deliberately no issue API and no PDF
- * download API: issuance is lazy, and printing uses the browser.
+ * as every other lookup. There is deliberately no issue API: issuance is
+ * lazy. PDF download is a separate read-only route for issued letters.
  */
 export async function GET(
   _request: NextRequest,

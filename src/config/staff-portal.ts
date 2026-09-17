@@ -17,7 +17,6 @@ export const STAFF_PORTAL_NAV = [
   { href: "/staff/reports", label: "Daily Reports" },
   { href: "/staff/training", label: "Training" },
   { href: "/staff/appointment", label: "My Appointment" },
-  { href: "/staff/onboarding", label: "Onboarding" },
   { href: "/staff/resources", label: "Resources" },
   { href: "/staff/profile", label: "Profile" },
 ] as const;

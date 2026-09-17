@@ -55,7 +55,7 @@ export default async function AdminReportDetailPage({
   );
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-6xl">
       <Link
         href="/admin/reports"
         className="text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -72,110 +72,113 @@ export default async function AdminReportDetailPage({
         </Chip>
       </div>
       <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-        Submitted on{" "}
-        {formatLagosDateTimeLabel(new Date(report.submittedAt))} (Africa/Lagos).
-        This report is final and is read-only in the console.
+        Submitted on {formatLagosDateTimeLabel(new Date(report.submittedAt))}{" "}
+        (Africa/Lagos). This report is final and is read-only in the console.
       </p>
 
-      {/* Staff identity — links to the read-only Staff record. */}
-      <section
-        aria-labelledby="report-staff"
-        className="mt-8 rounded-lg border border-border bg-surface p-5 sm:p-6"
-      >
-        <h2 id="report-staff" className="text-sm font-semibold text-foreground">
-          Reported by
-        </h2>
-        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">
-            {report.staff.fullName}
-          </span>
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)] lg:items-start">
+        <div className="space-y-6">
+          {/* The nine metrics — exact submitted values, official grouping. */}
+          <section
+            aria-labelledby="report-metrics"
+            className="rounded-lg border border-border bg-surface p-5 sm:p-6"
+          >
+            <h2
+              id="report-metrics"
+              className="text-sm font-semibold text-foreground"
+            >
+              Reported activity
+            </h2>
+            {DAILY_REPORT_CATEGORIES.map((category) => (
+              <div key={category.id} className="[&:not(:first-child)]:mt-6">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {category.legend}
+                </h3>
+                <dl className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                  {category.fields.map((field) => (
+                    <div
+                      key={field.name}
+                      className="flex items-baseline justify-between gap-4 border-b border-border pb-2"
+                    >
+                      <dt className="text-sm text-muted-foreground">
+                        {field.label}
+                      </dt>
+                      <dd className="text-base font-semibold tabular-nums text-foreground">
+                        {report.metrics[field.name] ?? 0}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </section>
+
+          {/* Activity summary */}
+          <section
+            aria-labelledby="report-summary"
+            className="rounded-lg border border-border bg-surface p-5 sm:p-6"
+          >
+            <h2
+              id="report-summary"
+              className="text-sm font-semibold text-foreground"
+            >
+              Activity summary
+            </h2>
+            {report.activitySummary ? (
+              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-foreground">
+                {report.activitySummary}
+              </p>
+            ) : (
+              <p className="mt-2 text-sm italic text-muted-foreground">
+                No activity summary provided.
+              </p>
+            )}
+          </section>
+        </div>
+
+        <aside className="space-y-6">
+          {/* Staff identity — links to the read-only Staff record. */}
+          <section
+            aria-labelledby="report-staff"
+            className="rounded-lg border border-border bg-surface p-5 sm:p-6"
+          >
+            <h2
+              id="report-staff"
+              className="text-sm font-semibold text-foreground"
+            >
+              Reported by
+            </h2>
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {report.staff.fullName}
+              </span>
+              <Link
+                href={`/admin/staff/${report.staff.rowId}`}
+                className="rounded-md font-mono font-semibold tracking-wider text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+              >
+                {report.staff.staffId}
+              </Link>
+            </p>
+          </section>
+
+          {/* Self-reported framing — verbatim, again. */}
+          <Alert status="warning">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>Self-reported activity</Alert.Title>
+              <Alert.Description>
+                {ADMIN_REPORTS_SELF_REPORTED_NOTICE}
+              </Alert.Description>
+            </Alert.Content>
+          </Alert>
+
           <Link
-            href={`/admin/staff/${report.staff.rowId}`}
-            className="rounded-md font-mono font-semibold tracking-wider text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+            href={`/admin/reports?staff=${encodeURIComponent(report.staff.staffId)}`}
+            className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
           >
-            {report.staff.staffId}
+            View all submitted reports by {report.staff.staffId} →
           </Link>
-        </p>
-      </section>
-
-      {/* The nine metrics — exact submitted values, official grouping. */}
-      <section
-        aria-labelledby="report-metrics"
-        className="mt-6 rounded-lg border border-border bg-surface p-5 sm:p-6"
-      >
-        <h2
-          id="report-metrics"
-          className="text-sm font-semibold text-foreground"
-        >
-          Reported activity
-        </h2>
-        {DAILY_REPORT_CATEGORIES.map((category) => (
-          <div
-            key={category.id}
-            className="[&:not(:first-child)]:mt-6"
-          >
-            <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {category.legend}
-            </h3>
-            <dl className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">
-              {category.fields.map((field) => (
-                <div
-                  key={field.name}
-                  className="flex items-baseline justify-between gap-4 border-b border-border pb-2"
-                >
-                  <dt className="text-sm text-muted-foreground">
-                    {field.label}
-                  </dt>
-                  <dd className="text-base font-semibold tabular-nums text-foreground">
-                    {report.metrics[field.name] ?? 0}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        ))}
-      </section>
-
-      {/* Activity summary */}
-      <section
-        aria-labelledby="report-summary"
-        className="mt-6 rounded-lg border border-border bg-surface p-5 sm:p-6"
-      >
-        <h2
-          id="report-summary"
-          className="text-sm font-semibold text-foreground"
-        >
-          Activity summary
-        </h2>
-        {report.activitySummary ? (
-          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-foreground">
-            {report.activitySummary}
-          </p>
-        ) : (
-          <p className="mt-2 text-sm italic text-muted-foreground">
-            No activity summary provided.
-          </p>
-        )}
-      </section>
-
-      {/* Self-reported framing — verbatim, again. */}
-      <Alert status="warning" className="mt-6">
-        <Alert.Indicator />
-        <Alert.Content>
-          <Alert.Title>Self-reported activity</Alert.Title>
-          <Alert.Description>
-            {ADMIN_REPORTS_SELF_REPORTED_NOTICE}
-          </Alert.Description>
-        </Alert.Content>
-      </Alert>
-
-      <div className="mt-8">
-        <Link
-          href={`/admin/reports?staff=${encodeURIComponent(report.staff.staffId)}`}
-          className="rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
-        >
-          View all submitted reports by {report.staff.staffId} →
-        </Link>
+        </aside>
       </div>
     </div>
   );

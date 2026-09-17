@@ -46,7 +46,7 @@ export default async function AdminAuditPage({
   const audit = await listAdminAuditEvents({ page });
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="max-w-6xl">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
         FinFam Admin
       </p>

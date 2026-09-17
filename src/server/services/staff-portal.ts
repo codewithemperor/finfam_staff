@@ -9,8 +9,16 @@ import {
 } from "@/config/staff-resources";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
-import { getDailyReportTodayState } from "@/server/services/daily-reports";
+import {
+  getDailyReportTodayState,
+} from "@/server/services/daily-reports";
 import { getStaffTrainingHomeState } from "@/server/services/staff-training";
+import {
+  lagosCurrentMonthISO,
+  lagosDateISOFromUtcMidnight,
+  lagosMonthToUtcMidnight,
+  nextLagosMonth,
+} from "@/lib/dates/lagos";
 import type { StaffSessionContext } from "@/server/services/staff-auth";
 import type { IssuedAppointmentView } from "@/types/recruitment";
 import type { DailyReportTodayState } from "@/types/staff-reports";
@@ -23,13 +31,9 @@ import type { TrainingHomeState } from "@/types/staff-training";
  * Staff ROW id resolved from the session and never any client-supplied
  * identifier (brief §18/§19).
  *
- * Deliberately NO metrics, KPIs or activity data: the portal shows only
- * real, persisted facts (brief §40). Onboarding state is READ here — the
- * home page never lazily creates the onboarding record (that side effect
- * belongs to the onboarding door itself). Stage 8 adds exactly ONE
- * reporting fact to the home view: today's Daily Report state (NOT_STARTED
- * / DRAFT / SUBMITTED) so the home card can route to the right action —
- * no aggregates, no history, no metric values.
+ * The home view contains only real, persisted facts. The dashboard summary
+ * below is intentionally limited to submitted self-reported Daily Reports;
+ * there are no earnings, member, commission or target models in this stage.
  */
 
 export interface StaffPortalHomeView {
@@ -54,6 +58,7 @@ export interface StaffPortalHomeView {
   whatsappNumber: string | null;
   /** Today's Daily Report state for the home card (Stage 8, brief §35). */
   dailyReporting: DailyReportTodayState;
+  dashboard: StaffPortalDashboardView;
   /** Staff Training facts for the home card (Stage 9, brief §38) — a
    * READ-ONLY lookup that never creates an enrollment. */
   training: TrainingHomeState;
@@ -62,6 +67,71 @@ export interface StaffPortalHomeView {
    * never a hard-coded availability flag. */
   resources: StaffResourcesHomeSummary;
   accountStatus: "ACTIVE" | "SUSPENDED";
+}
+
+export interface StaffPortalDashboardView {
+  submittedReportsThisMonth: number;
+  newRegistrationsThisMonth: number;
+  establishedMembersThisMonth: number;
+  recentReports: Array<{
+    id: string;
+    reportDate: string;
+    newRegistrations: number;
+    establishedMembersCreated: number;
+  }>;
+}
+
+export async function getStaffPortalDashboard(
+  staffRowId: string,
+): Promise<StaffPortalDashboardView> {
+  const month = lagosCurrentMonthISO();
+  const [start, endExclusive] = [
+    lagosMonthToUtcMidnight(month),
+    lagosMonthToUtcMidnight(nextLagosMonth(month)),
+  ];
+
+  const [monthRows, recentRows] = await Promise.all([
+    db.dailyReport.findMany({
+      where: {
+        staffId: staffRowId,
+        status: "SUBMITTED",
+        reportDate: { gte: start, lt: endExclusive },
+      },
+      select: {
+        newRegistrations: true,
+        establishedMembersCreated: true,
+      },
+    }),
+    db.dailyReport.findMany({
+      where: { staffId: staffRowId, status: "SUBMITTED" },
+      orderBy: { reportDate: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        reportDate: true,
+        newRegistrations: true,
+        establishedMembersCreated: true,
+      },
+    }),
+  ]);
+
+  return {
+    submittedReportsThisMonth: monthRows.length,
+    newRegistrationsThisMonth: monthRows.reduce(
+      (total, row) => total + row.newRegistrations,
+      0,
+    ),
+    establishedMembersThisMonth: monthRows.reduce(
+      (total, row) => total + row.establishedMembersCreated,
+      0,
+    ),
+    recentReports: recentRows.map((row) => ({
+      id: row.id,
+      reportDate: lagosDateISOFromUtcMidnight(row.reportDate),
+      newRegistrations: row.newRegistrations,
+      establishedMembersCreated: row.establishedMembersCreated,
+    })),
+  };
 }
 
 export async function getStaffPortalHome(
@@ -103,6 +173,7 @@ export async function getStaffPortalHome(
   });
 
   const completedAt = onboardingRow?.completedAt ?? null;
+  const dashboard = await getStaffPortalDashboard(staffRowId);
 
   return {
     fullName: staff.candidate.fullName,
@@ -127,6 +198,7 @@ export async function getStaffPortalHome(
     },
     whatsappNumber: ONBOARDING_WHATSAPP.number,
     dailyReporting: await getDailyReportTodayState(staffRowId),
+    dashboard,
     training: await getStaffTrainingHomeState(staffRowId),
     resources: getStaffResourcesHomeSummary(),
     accountStatus: staff.account?.status ?? "ACTIVE",

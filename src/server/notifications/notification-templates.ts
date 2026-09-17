@@ -296,16 +296,16 @@ const RENDERERS: NotificationRenderers = {
       referenceNumber: payload.referenceNumber,
     }),
 
-  ONBOARDING_COMPLETED: (payload, { baseUrl, name, journeyPath }) =>
+  ONBOARDING_COMPLETED: (payload, { baseUrl, name }) =>
     render({
-      subject: "Your FinFam onboarding is complete",
-      heading: `${name}, your onboarding is complete.`,
+      subject: "You are now a FinFam staff member",
+      heading: `${name}, you are now a FinFam staff member.`,
       paragraphs: [
-        "Your onboarding is complete. You are ready to begin your FinFam assignment.",
-        "Your application record remains available in the portal as your reference for the designation and appointment details below.",
+        "Your Staff Onboarding is complete and your recruitment application is now closed. Your FinFam staff profile is ready.",
+        "Open the Staff Portal with your registered email address and request a secure one-time login code. The code will be sent to this email address.",
       ],
       callout: { label: "Staff ID", value: payload.staffId },
-      link: { label: "View your application record", path: journeyPath },
+      link: { label: "Open the Staff Portal", path: "/staff/login" },
       baseUrl,
       referenceNumber: payload.referenceNumber,
     }),

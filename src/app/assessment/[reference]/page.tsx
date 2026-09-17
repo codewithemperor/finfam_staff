@@ -145,9 +145,16 @@ export default async function AssessmentHubPage({
                     What happens next
                   </p>
                   {view.result.passed ? (
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      {statusDefinition.nextStep}
-                    </p>
+                    <>
+                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                        {statusDefinition.nextStep}
+                      </p>
+                      <div className="mt-4">
+                        <ButtonLink href={`/agreement/${view.referenceNumber}`}>
+                          Review Agreement
+                        </ButtonLink>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
@@ -157,11 +164,19 @@ export default async function AssessmentHubPage({
                         communicated to you directly before it affects you.
                       </p>
                       <div className="mt-4">
-                        <StartAssessmentButton
-                          reference={view.referenceNumber}
-                          label="Retake assessment"
-                          pendingLabel="Preparing…"
-                        />
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <ButtonLink
+                            href={`/orientation/${view.referenceNumber}`}
+                            variant="outline"
+                          >
+                            Review Orientation
+                          </ButtonLink>
+                          <StartAssessmentButton
+                            reference={view.referenceNumber}
+                            label="Retake assessment"
+                            pendingLabel="Preparing…"
+                          />
+                        </div>
                       </div>
                     </>
                   )}

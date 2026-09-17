@@ -186,8 +186,18 @@ function toView(candidate: CandidateWithActivation): ActivationView {
  * FF-STF-0001). Must run inside the activation transaction.
  */
 async function allocateStaffId(tx: {
+  $executeRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
   $queryRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
 }): Promise<string> {
+  // `prisma db push` creates the table but does not replay migration seed
+  // SQL, so local databases can miss the singleton sequence row. Ensure it
+  // exists before the atomic increment; existing rows are left untouched.
+  await tx.$executeRaw`
+    INSERT INTO "staff_id_sequences" ("id", "name", "value")
+    VALUES ('seq_staff_id', ${SEQUENCE_NAME}, 0)
+    ON CONFLICT ("name") DO NOTHING
+  `;
+
   const rows = (await tx.$queryRaw`
     UPDATE "staff_id_sequences"
     SET "value" = "value" + 1

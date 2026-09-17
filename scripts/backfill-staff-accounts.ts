@@ -17,7 +17,7 @@ import { dispatchNotification } from "@/server/notifications/notification-servic
  * record are NEVER mutated.
  *
  * Usage:
- *   bash scripts/backfill-staff-accounts.sh [--dry-run]
+ *   bun run backfill:staff-accounts -- [--dry-run]
  *
  * Production execution is a DEPLOYMENT STEP (docs/CONTENT-QUESTIONS.md):
  * run it once after deploy with NOTIFICATIONS_ENABLED configured, so the

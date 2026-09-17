@@ -36,8 +36,8 @@ export async function generateMetadata({ params }: SectionPageProps): Promise<Me
  * (left) and context — key points plus saved progress (right); mobile keeps
  * the reading experience single-column. Sections the candidate has not
  * reached yet are gated server-side: the URL never exposes unread content.
- * Completed orientations are closed entirely — the journey page is the
- * single resume point.
+ * Failed-assessment candidates may reread completed orientation sections in
+ * review mode without reopening or mutating orientation progress.
  */
 export default async function OrientationSectionPage({
   params,
@@ -60,8 +60,15 @@ export default async function OrientationSectionPage({
     throw error;
   }
 
-  // One-way progression: past orientation, section URLs are dead ends.
-  if (view.status !== "APPLICANT" && view.status !== "ORIENTATION_PENDING") {
+  const isReview = view.status === "ASSESSMENT_FAILED";
+
+  // One-way progression: past orientation, only failed-assessment review may
+  // render here. Every other later status resumes from the journey page.
+  if (
+    view.status !== "APPLICANT" &&
+    view.status !== "ORIENTATION_PENDING" &&
+    !isReview
+  ) {
     redirect(`/application/${view.referenceNumber}`);
   }
 
@@ -167,6 +174,7 @@ export default async function OrientationSectionPage({
             prev={prev}
             next={next}
             overviewHref={overviewHref}
+            isReview={isReview}
           />
         </article>
 
@@ -209,6 +217,24 @@ export default async function OrientationSectionPage({
               />
             </div>
           </div>
+          {isReview && (
+            <div className="mt-6 border-t border-divider pt-5">
+              <p className="text-sm font-semibold text-foreground">
+                Review mode
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                This review does not reset orientation or change your failed
+                assessment status.
+              </p>
+              <ButtonLink
+                href={`/assessment/${view.referenceNumber}`}
+                className="mt-4"
+                size="sm"
+              >
+                Back to assessment
+              </ButtonLink>
+            </div>
+          )}
         </aside>
       </div>
     </PageShell>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { format } from "date-fns";
 
 import { AppointmentLetter } from "@/components/appointment/appointment-letter";
+import { DownloadAppointmentButton } from "@/components/appointment/download-appointment-button";
 import { PrintButton } from "@/components/appointment/print-button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { getStaffSession } from "@/lib/auth/session";
@@ -70,6 +71,7 @@ export default async function StaffAppointmentPage() {
 
           <div className="mt-10 flex flex-col gap-3 border-t border-divider pt-6 print:hidden sm:flex-row md:hidden">
             <PrintButton />
+            <DownloadAppointmentButton reference={session?.candidate.referenceNumber ?? ""} />
             <ButtonLink href="/staff" variant="outline">
               Back to the Staff Portal home
             </ButtonLink>
@@ -107,8 +109,15 @@ export default async function StaffAppointmentPage() {
               </div>
             </dl>
 
-            <div className="mt-6 border-t border-divider pt-5">
+            {/* <div className="mt-6 border-t border-divider pt-5">
               <PrintButton />
+            </div> */}
+
+            <div className="mt-4">
+              <DownloadAppointmentButton
+                reference={session?.candidate.referenceNumber ?? ""}
+                className="w-full"
+              />
             </div>
 
             <div className="mt-6 border-t border-divider pt-5">

@@ -4,12 +4,8 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SkipLink } from "@/components/layout/skip-link";
 
 /**
- * FinFam Admin console shell (Stage 11): its own header + navigation over
- * the same footer — structurally the Staff Portal shell, but the brand
- * block is VISIBLY DISTINCT so the privileged console can never be
- * mistaken for the Staff Portal: "FinFam Admin" + a permanent
- * "Management console" label (brief §16). The footer sticks to the bottom
- * on short pages and is pushed naturally on long pages.
+ * FinFam Admin console shell: the privileged console uses the same responsive
+ * rail/drawer structure as Staff while retaining its distinct brand label.
  */
 export function AdminShell({
   adminEmail,
@@ -19,19 +15,17 @@ export function AdminShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[100dvh] flex-col">
+    <div className="min-h-[100dvh] bg-background md:grid md:grid-cols-[16rem_minmax(0,1fr)] lg:grid-cols-[18rem_minmax(0,1fr)]">
       <SkipLink />
-      <header className="border-b border-border bg-background print:hidden">
-        <PageContainer>
-          <AdminNav adminEmail={adminEmail} />
-        </PageContainer>
-      </header>
-      <main id="main-content" className="flex-1">
-        <PageContainer size="default">
-          <div className="py-10 sm:py-12">{children}</div>
-        </PageContainer>
-      </main>
-      <SiteFooter />
+      <AdminNav adminEmail={adminEmail} />
+      <div className="flex min-h-[100dvh] min-w-0 flex-col">
+        <main id="main-content" className="flex-1">
+          <PageContainer size="default">
+            <div className="py-8 sm:py-10 lg:py-12">{children}</div>
+          </PageContainer>
+        </main>
+        <SiteFooter />
+      </div>
     </div>
   );
 }

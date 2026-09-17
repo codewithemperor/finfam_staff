@@ -149,10 +149,7 @@ export function StaffLoginForm() {
           )}
         </Button>
 
-        <p className="max-w-[46ch] text-sm leading-6 text-muted-foreground">
-          Sign in with the email address you used for your FinFam application.
-          We will send a secure 6-digit login code — there is no password.
-        </p>
+
       </form>
     );
   }

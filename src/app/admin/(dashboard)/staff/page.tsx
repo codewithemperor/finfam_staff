@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
-import { Chip } from "@heroui/react";
+import { Chip, Table } from "@heroui/react";
 
 import {
   ADMIN_DIRECTORY_EMPTY_MESSAGE,
@@ -98,7 +98,7 @@ export default async function AdminStaffDirectoryPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="max-w-6xl">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
         FinFam Admin
       </p>
@@ -174,51 +174,44 @@ export default async function AdminStaffDirectoryPage({
           </p>
         </div>
       ) : (
-        <ul className="mt-6 divide-y divide-border rounded-lg border border-border bg-surface">
-          {directory.staff.map((row) => (
-            <li key={row.id}>
-              <Link
-                href={`/admin/staff/${row.id}`}
-                className="flex flex-col gap-3 p-4 transition-colors hover:bg-background sm:flex-row sm:items-start sm:justify-between sm:p-5"
-              >
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="font-mono text-sm font-semibold tracking-wider text-foreground">
-                      {row.staffId}
-                    </span>
-                    <AccountStatusChip status={row.accountStatus} />
-                  </p>
-                  <p className="mt-1 truncate text-sm font-semibold text-foreground">
-                    {row.fullName}
-                  </p>
-                  <p className="mt-0.5 hidden truncate text-sm text-muted-foreground md:block">
-                    {row.email}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {row.designation} · Activated{" "}
-                    {format(new Date(row.activatedAt), "d MMMM yyyy")}
-                  </p>
-                </div>
-                <div className="shrink-0 text-xs text-muted-foreground sm:text-right">
-                  <p>
-                    Onboarding: {STATE_LABELS[row.onboardingState]}
-                    <span className="sr-only"> Status: {row.onboardingState.toLowerCase().replace("_", " ")}.</span>
-                  </p>
-                  <p className="mt-0.5">
-                    Training: {STATE_LABELS[row.trainingState]}
-                    <span className="sr-only"> Status: {row.trainingState.toLowerCase().replace("_", " ")}.</span>
-                  </p>
-                  <span
-                    className="mt-1 hidden text-sm font-medium text-primary sm:inline-block"
-                    aria-hidden="true"
-                  >
-                    Open →
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="mt-6 hidden md:block">
+            <Table>
+              <Table.ScrollContainer>
+                <Table.Content aria-label="Staff directory" className="min-w-[760px]">
+                  <Table.Header>
+                    <Table.Column isRowHeader>Staff</Table.Column>
+                    <Table.Column>Contact</Table.Column>
+                    <Table.Column>Status</Table.Column>
+                    <Table.Column>Progress</Table.Column>
+                    <Table.Column>Action</Table.Column>
+                  </Table.Header>
+                  <Table.Body>
+                    {directory.staff.map((row) => (
+                      <Table.Row key={row.id}>
+                        <Table.Cell><div><p className="font-mono text-sm font-semibold tracking-wider text-foreground">{row.staffId}</p><p className="mt-1 font-semibold text-foreground">{row.fullName}</p><p className="text-xs text-muted-foreground">{row.designation}</p></div></Table.Cell>
+                        <Table.Cell>{row.email}</Table.Cell>
+                        <Table.Cell><AccountStatusChip status={row.accountStatus} /></Table.Cell>
+                        <Table.Cell><p className="text-sm">Onboarding: {STATE_LABELS[row.onboardingState]}</p><p className="text-xs text-muted-foreground">Training: {STATE_LABELS[row.trainingState]}</p></Table.Cell>
+                        <Table.Cell><Link href={`/admin/staff/${row.id}`} className="text-sm font-semibold text-primary hover:underline">View details</Link></Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+          </div>
+          <ul className="mt-6 divide-y divide-border rounded-lg border border-border bg-surface md:hidden">
+            {directory.staff.map((row) => (
+              <li key={row.id} className="p-5">
+                <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-sm font-semibold tracking-wider text-foreground">{row.staffId}</p><p className="mt-1 font-semibold text-foreground">{row.fullName}</p></div><AccountStatusChip status={row.accountStatus} /></div>
+                <p className="mt-2 text-sm text-muted-foreground">{row.email}</p>
+                <dl className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Role</dt><dd className="text-right text-foreground">{row.designation}</dd></div><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Onboarding</dt><dd className="text-foreground">{STATE_LABELS[row.onboardingState]}</dd></div><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Training</dt><dd className="text-foreground">{STATE_LABELS[row.trainingState]}</dd></div><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Activated</dt><dd className="text-foreground">{format(new Date(row.activatedAt), "d MMMM yyyy")}</dd></div></dl>
+                <div className="mt-4"><Link href={`/admin/staff/${row.id}`} className="flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">View details</Link></div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <p className="mt-4 text-sm text-muted-foreground">

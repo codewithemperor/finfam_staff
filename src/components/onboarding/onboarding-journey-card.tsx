@@ -20,9 +20,13 @@ import type { JourneyOnboardingSummary } from "@/types/recruitment";
 export function OnboardingJourneyCard({
   reference,
   onboarding,
+  className = "",
+  headingId = "staff-onboarding-heading",
 }: {
   reference: string;
   onboarding: JourneyOnboardingSummary;
+  className?: string;
+  headingId?: string;
 }) {
   const isCompleted = onboarding.state === "COMPLETED";
 
@@ -43,11 +47,11 @@ export function OnboardingJourneyCard({
   return (
     <section
       aria-labelledby="staff-onboarding-heading"
-      className="mt-8 max-w-xl rounded-lg border border-border bg-surface p-5 sm:p-6"
+      className={`mt-8 max-w-xl border-b border-divider pb-6 ${className}`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2
-          id="staff-onboarding-heading"
+          id={headingId}
           className="text-base font-bold tracking-tight text-foreground"
         >
           Staff Onboarding
@@ -66,9 +70,15 @@ export function OnboardingJourneyCard({
       </p>
 
       {isCompleted ? (
-        <p className="mt-4 text-sm font-semibold text-foreground">
-          You are ready to begin your FinFam assignment.
-        </p>
+        <div className="mt-4 border-t border-divider pt-4">
+          <p className="text-sm font-semibold text-foreground">
+            You are now a FinFam staff member.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Check your email for Staff Portal access, then sign in with a
+            one-time code.
+          </p>
+        </div>
       ) : (
         <div className="mt-5">
           <ButtonLink href={`/onboarding/${reference}`}>

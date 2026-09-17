@@ -8,12 +8,8 @@ import { OnboardingProgress } from "@/components/onboarding/onboarding-progress"
 import { OnboardingStepContent } from "@/components/onboarding/onboarding-step-content";
 import { JourneyNotFoundPanel } from "@/components/recruitment/journey-not-found";
 import { PageShell } from "@/components/layout/page-shell";
-import {
-  RecruitmentProgress,
-} from "@/components/recruitment/recruitment-progress";
 import { StatusBadge } from "@/components/recruitment/status-badge";
 import { ButtonLink } from "@/components/ui/button-link";
-import { CANDIDATE_STATUS_DETAILS, getStageStates } from "@/config/recruitment";
 import { ONBOARDING_STEPS } from "@/config/onboarding";
 import { AppError } from "@/lib/errors";
 import { normalizeReferenceNumber } from "@/lib/reference";
@@ -88,7 +84,6 @@ export default async function OnboardingPage({
     redirect(`/application/${view.referenceNumber}`);
   }
 
-  const statusDefinition = CANDIDATE_STATUS_DETAILS[view.status];
   const completedIds = new Set(
     view.onboarding.steps.map((step) => step.id),
   );
@@ -302,18 +297,6 @@ export default async function OnboardingPage({
                   reference={view.referenceNumber}
                 />
               </div>
-            </div>
-
-            <div className="mt-6 border-t border-divider pt-5">
-              <h2 className="text-sm font-semibold text-foreground">
-                Recruitment journey
-              </h2>
-              <RecruitmentProgress
-                currentStage={statusDefinition.stage}
-                states={getStageStates(view.status)}
-                showDescriptions={false}
-                className="mt-4"
-              />
             </div>
 
             <div className="mt-6 border-t border-divider pt-5">

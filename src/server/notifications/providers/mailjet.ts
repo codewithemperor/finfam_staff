@@ -139,7 +139,9 @@ export async function sendViaMailjet(
         authorization: `Basic ${Buffer.from(`${apiKey}:${secretKey}`).toString("base64")}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(body),
+      // Mailjet Send API v3.1 requires every message inside a top-level
+      // `Messages` array, even when sending one message.
+      body: JSON.stringify({ Messages: [body] }),
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {

@@ -154,12 +154,6 @@ export function AdminLoginForm() {
           )}
         </Button>
 
-        <p className="max-w-[46ch] text-sm leading-6 text-muted-foreground">
-          Enter the email address registered to your FinFam administrator
-          account. We will send a secure 6-digit sign-in code — there is no
-          password. If you have lost access, contact FinFam support; recovery
-          is handled offline.
-        </p>
       </form>
     );
   }

@@ -33,8 +33,8 @@ is complete — see [Production readiness](#production-readiness-post-stage-11).
 # 1. Install dependencies
 bun install
 
-# 2. Start the local PostgreSQL server (no root required — see below)
-bun run db:start
+# 2. Create the local database in your installed PostgreSQL
+bun run db:create
 
 # 3. Push the schema and generate the Prisma client
 bun run db:push          # or: bun run db:migrate
@@ -45,21 +45,19 @@ bun run dev
 
 ### Local PostgreSQL
 
-The sandbox provides real PostgreSQL 17 binaries via the
-`@embedded-postgres/linux-x64` package (plus a vendored ICU 60 runtime in
-`db/pg-libs`). `scripts/postgres.sh` initializes `db/pg-data`, listens on
-`127.0.0.1:5432` only, and creates the `finfam` database on first start.
+Use your locally installed PostgreSQL. The default `.env` points Prisma at
+`postgresql://postgres@127.0.0.1:5432/finfam`; add your local password to
+`DATABASE_URL`, `FINFAM_DB_PASSWORD`, or `PGPASSWORD` if Postgres requires
+password authentication.
 
 ```bash
-bun run db:start     # start (idempotent) + ensure database exists
-bun run db:status    # is it running?
-bun run db:stop      # stop
+bun run db:create    # create finfam if it does not exist
+bun run db:push      # push schema to the database
 ```
 
-Connection string (from `.env`): `postgresql://postgres@127.0.0.1:5432/finfam?schema=public`
+Connection string (from `.env`): `postgresql://postgres@127.0.0.1:5432/finfam`
 
 > In production, point `DATABASE_URL` at a managed PostgreSQL instance.
-> The embedded server exists so local development matches production exactly.
 
 ### Scripts
 
@@ -67,14 +65,10 @@ Connection string (from `.env`): `postgresql://postgres@127.0.0.1:5432/finfam?sc
 | --------------------- | --------------------------------------------------- |
 | `bun run dev`         | Next.js dev server on port 3000 (loads `.env`)      |
 | `bun run lint`        | ESLint                                              |
-| `bun run db:start`    | Start local PostgreSQL + create `finfam` database   |
-| `bun run db:stop`     | Stop local PostgreSQL                               |
+| `bun run db:create`   | Create `finfam` in local PostgreSQL if missing      |
 | `bun run db:push`     | Push schema to database (fast dev iteration)        |
 | `bun run db:migrate`  | Create/apply Prisma migrations (canonical workflow) |
 | `bun run db:reset`    | Reset the database                                  |
-
-> All `db:*` scripts run through `scripts/prisma.sh` / `scripts/dev.sh`,
-> which force `.env` values to win over any inherited shell environment.
 
 ---
 
@@ -152,8 +146,7 @@ prisma/
   schema.prisma        26 models / 10 enums (candidates, staff platform, admin)
   migrations/          Additive-only migration history (13 migrations)
 scripts/
-  postgres.sh dev.sh prisma.sh test.sh           .env-aware process wrappers
-  bootstrap-admin.ts(.sh) backfill-staff-accounts.ts(.sh)   Ops CLIs
+  ensure-db.ts bootstrap-admin.ts backfill-staff-accounts.ts   Ops CLIs
 tests/
   bun.test flow suites driving the REAL dev server over HTTP + helpers/
 docs/

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { format } from "date-fns";
+import { Alert } from "@heroui/react";
 
 import { ButtonLink } from "@/components/ui/button-link";
 import { STAFF_PORTAL_OPERATIONAL_ROLE } from "@/config/staff-portal";
@@ -23,7 +24,7 @@ export default async function StaffProfilePage() {
   if (!session) return null;
 
   return (
-          <div className="max-w-2xl">
+      <div className="max-w-5xl">
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Profile
         </h1>
@@ -33,7 +34,8 @@ export default async function StaffProfilePage() {
           correcting.
         </p>
 
-        <dl className="mt-8 rounded-lg border border-border bg-surface p-6">
+        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.8fr)] lg:items-start">
+        <dl className="rounded-lg border border-border bg-surface p-6">
           <div className="flex items-baseline justify-between gap-4">
             <dt className="text-sm text-muted-foreground">Full name</dt>
             <dd className="text-sm font-semibold text-foreground">
@@ -91,13 +93,14 @@ export default async function StaffProfilePage() {
           </div>
         </dl>
 
-        {/* Staff ID Card entry point (Stage 10, brief §30) — a short
-            explanation and the action only. Profile stays read-only; no
-            Staff data is duplicated or made editable. */}
-        <section
-          aria-labelledby="profile-id-card"
-          className="mt-6 rounded-lg border border-border bg-surface p-6"
-        >
+        <div className="space-y-6">
+          {/* Staff ID Card entry point (Stage 10, brief §30) — a short
+              explanation and the action only. Profile stays read-only; no
+              Staff data is duplicated or made editable. */}
+          <section
+            aria-labelledby="profile-id-card"
+            className="rounded-lg border border-border bg-surface p-6"
+          >
           <h2
             id="profile-id-card"
             className="text-sm font-semibold text-foreground"
@@ -113,13 +116,21 @@ export default async function StaffProfilePage() {
               View Staff ID Card
             </ButtonLink>
           </div>
-        </section>
+          </section>
 
-        <p className="mt-6 max-w-[60ch] text-sm leading-6 text-muted-foreground">
-          Security: signing in uses a secure 6-digit code sent to your login
-          email — there is no password. If you lose access to that email
-          address, contact FinFam support; recovery is handled offline.
-        </p>
+        <Alert status="accent">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>Security</Alert.Title>
+            <Alert.Description>
+              Signing in uses a secure 6-digit code sent to your login email —
+              there is no password. If you lose access to that email address,
+              contact FinFam support; recovery is handled offline.
+            </Alert.Description>
+          </Alert.Content>
+        </Alert>
+        </div>
+        </div>
       </div>
     
   );

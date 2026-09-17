@@ -6,6 +6,7 @@ import { OrientationProgressCard } from "@/components/orientation/orientation-pr
 import { OrientationSectionList } from "@/components/orientation/orientation-section-list";
 import { PageShell } from "@/components/layout/page-shell";
 import { StatusBadge } from "@/components/recruitment/status-badge";
+import { ButtonLink } from "@/components/ui/button-link";
 import { AppError } from "@/lib/errors";
 import {
   getOrientationProgress,
@@ -27,10 +28,9 @@ export const metadata: Metadata = {
  * rail sit side by side (content + context); on mobile the rail — current
  * stage, saved progress and the one next action — comes first.
  *
- * Stage access is decided by the server: once orientation is completed the
- * stage is CLOSED (progression is one-way), so direct visits and browser
- * back-navigation land on the unified journey instead of re-opening the
- * workflow. Active candidates reach the overview as normal.
+ * Stage access is decided by the server. Once orientation is completed the
+ * workflow is closed, but failed-assessment candidates may return here for
+ * read-only review. Review never resets progress or reopens the stage.
  */
 export default async function OrientationOverviewPage({
   params,
@@ -53,9 +53,15 @@ export default async function OrientationOverviewPage({
     throw error;
   }
 
-  // One-way progression: past orientation, this page is a record at most —
-  // the journey page is the single resume point.
-  if (view.status !== "APPLICANT" && view.status !== "ORIENTATION_PENDING") {
+  const isReview = view.status === "ASSESSMENT_FAILED";
+
+  // One-way progression: past orientation, only failed-assessment review may
+  // render here. Every other later status resumes from the journey page.
+  if (
+    view.status !== "APPLICANT" &&
+    view.status !== "ORIENTATION_PENDING" &&
+    !isReview
+  ) {
     redirect(`/application/${view.referenceNumber}`);
   }
 
@@ -72,8 +78,9 @@ export default async function OrientationOverviewPage({
           <StatusBadge status={view.status} />
         </div>
         <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Learn how FinFam works, what your role involves, and the
-          professional standards expected from every team member.
+          {isReview
+            ? "Review the orientation material before retaking your assessment. Your orientation remains complete; this page is read-only."
+            : "Learn how FinFam works, what your role involves, and the professional standards expected from every team member."}
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           For {view.fullName} ·{" "}
@@ -95,9 +102,9 @@ export default async function OrientationOverviewPage({
             What you&apos;ll learn
           </h2>
           <p className="mt-2 max-w-xl text-base leading-relaxed text-muted-foreground">
-            Work through the sections in order. Each one ends with a short
-            confirmation that saves your progress, so you can leave at any
-            time and continue where you stopped.
+            {isReview
+              ? "Open any completed section to reread it. Reviewing does not change your recruitment status or orientation progress."
+              : "Work through the sections in order. Each one ends with a short confirmation that saves your progress, so you can leave at any time and continue where you stopped."}
           </p>
           <OrientationSectionList sections={sections} className="mt-6" />
         </section>
@@ -114,6 +121,23 @@ export default async function OrientationOverviewPage({
             allSectionsRead={progress.allSectionsRead}
             isComplete={progress.isComplete}
           />
+          {isReview && (
+            <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+              <p className="text-sm font-semibold text-foreground">
+                Review mode
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Return to the assessment page when you are ready to retake.
+              </p>
+              <ButtonLink
+                href={`/assessment/${view.referenceNumber}`}
+                className="mt-4"
+                size="sm"
+              >
+                Back to assessment
+              </ButtonLink>
+            </div>
+          )}
         </aside>
       </div>
     </PageShell>

@@ -4,7 +4,7 @@
  * The authoritative answer key lives in src/server/assessment-content.ts,
  * which is guarded by `server-only`:
  *
- * - Under `bun run test` (scripts/test.sh adds --conditions react-server)
+ * - Under `bun run test` (--conditions react-server)
  *   the module imports cleanly, so tests use the REAL key.
  * - Under a plain `bun test`, the `server-only` marker package throws, so
  *   the key is parsed from the source file instead (same file, same values).

@@ -42,7 +42,6 @@ import { adminRequestCodeSchema } from "@/lib/validation/admin";
  *
  * Usage:
  *   bun run bootstrap:admin -- <email> [--dry-run] [--yes]
- *   bash scripts/bootstrap-admin.sh <email> [--dry-run] [--yes]
  *
  * The new admin signs in at /admin/login with email OTP exactly like the
  * Staff Portal (no password exists anywhere in FinFam).

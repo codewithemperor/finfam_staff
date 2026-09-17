@@ -16,13 +16,14 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
-import { ASSESSMENT_META, ASSESSMENT_QUESTION_IDS } from "@/config/assessment";
+import { ASSESSMENT_META } from "@/config/assessment";
 import { ONBOARDING_META } from "@/config/onboarding";
 import { ORIENTATION_SECTION_IDS } from "@/config/orientation";
 import { loadAnswerKey } from "./helpers/answer-key";
 import {
   apiRequest,
   assertServerUp,
+  BASE_URL,
   expectFail,
   expectOk,
 } from "./helpers/api";
@@ -43,6 +44,52 @@ const city = "Abuja";
 
 let email = "";
 let reference = "";
+let attemptOneQuestionOrder: string[] = [];
+
+async function getAttemptQuestionRows(attemptNumber: number) {
+  const candidate = await db.candidate.findUnique({
+    where: { referenceNumber: reference },
+    select: {
+      attempts: {
+        where: { attemptNumber },
+        take: 1,
+        select: {
+          questions: {
+            orderBy: { position: "asc" },
+            select: { id: true, questionId: true, position: true },
+          },
+        },
+      },
+    },
+  });
+  const rows = candidate?.attempts[0]?.questions ?? [];
+  expect(rows).toHaveLength(ASSESSMENT_META.totalQuestions);
+  return rows;
+}
+
+async function getOrientationSnapshot() {
+  return db.candidate.findUnique({
+    where: { referenceNumber: reference },
+    select: {
+      status: true,
+      orientation: {
+        select: {
+          id: true,
+          completedAt: true,
+          acknowledgedAt: true,
+          currentSectionId: true,
+          sections: {
+            orderBy: { sectionId: "asc" },
+            select: { id: true, sectionId: true, completedAt: true },
+          },
+        },
+      },
+      agreement: { select: { id: true } },
+      appointment: { select: { id: true } },
+      staff: { select: { id: true } },
+    },
+  });
+}
 
 beforeAll(async () => {
   await assertServerUp();
@@ -122,19 +169,24 @@ describe("Stage 2 — Outcome A: failing the assessment", () => {
     );
     expect(data.attempt?.attemptNumber).toBe(1);
     expect(data.status).toBe("ASSESSMENT_PENDING");
+    expect(data.attempt?.questions).toHaveLength(ASSESSMENT_META.totalQuestions);
+    attemptOneQuestionOrder = (await getAttemptQuestionRows(1)).map(
+      (row) => row.questionId,
+    );
   });
 
   it("answers every question WRONG and submits → FAILED (0%)", async () => {
     const key = await loadAnswerKey();
-    for (const questionId of ASSESSMENT_QUESTION_IDS) {
-      const wrongOption = (key[questionId] + 1) % 4;
+    const questionRows = await getAttemptQuestionRows(1);
+    for (const row of questionRows) {
+      const wrongOption = (key[row.questionId] + 1) % 4;
       expectOk<{ answeredCount: number }>(
         await apiRequest("POST", `/api/assessment/${reference}/answers`, {
-          questionId,
+          questionId: row.id,
           selectedOption: wrongOption,
         }),
         200,
-        `wrong answer ${questionId}`,
+        `wrong answer ${row.questionId}`,
       );
     }
 
@@ -161,6 +213,59 @@ describe("Stage 2 — Outcome A: failing the assessment", () => {
     // Next action honestly resumes the assessment (retake policy is config-driven).
     expect(data.nextAction?.href).toBe(`/assessment/${reference}`);
   });
+
+  it("allows read-only orientation review after failure without reopening stages", async () => {
+    const before = await getOrientationSnapshot();
+    expect(before?.status).toBe("ASSESSMENT_FAILED");
+    expect(before?.orientation?.completedAt).not.toBeNull();
+
+    const assessmentPage = await fetch(`${BASE_URL}/assessment/${reference}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
+    expect(assessmentPage.status).toBe(200);
+    expect(await assessmentPage.text()).toContain("Review Orientation");
+
+    const overview = await fetch(`${BASE_URL}/orientation/${reference}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
+    expect(overview.status).toBe(200);
+    expect(await overview.text()).toContain("read-only");
+
+    const firstSection = await fetch(
+      `${BASE_URL}/orientation/${reference}/${ORIENTATION_SECTION_IDS[0]}`,
+      { signal: AbortSignal.timeout(20_000) },
+    );
+    expect(firstSection.status).toBe(200);
+    expect(await firstSection.text()).toContain("Review mode");
+
+    const after = await getOrientationSnapshot();
+    expect(after?.status).toBe("ASSESSMENT_FAILED");
+    expect(after?.orientation?.id).toBe(before?.orientation?.id);
+    expect(after?.orientation?.completedAt?.toISOString()).toBe(
+      before?.orientation?.completedAt?.toISOString(),
+    );
+    expect(after?.orientation?.acknowledgedAt?.toISOString()).toBe(
+      before?.orientation?.acknowledgedAt?.toISOString(),
+    );
+    expect(after?.orientation?.currentSectionId).toBe(
+      before?.orientation?.currentSectionId,
+    );
+    expect(after?.orientation?.sections.map((section) => section.sectionId)).toEqual(
+      before?.orientation?.sections.map((section) => section.sectionId),
+    );
+    expect(after?.agreement).toBeNull();
+    expect(after?.appointment).toBeNull();
+    expect(after?.staff).toBeNull();
+
+    const agreement = expectOk<AgreementView>(
+      await apiRequest("GET", `/api/agreement/${reference}`),
+      200,
+      "agreement remains blocked",
+    );
+    expect(agreement.status).toBe("ASSESSMENT_FAILED");
+    expect(agreement.eligible).toBe(false);
+    expect(agreement.decision).toBeNull();
+  });
 });
 
 describe("Stage 2 — Outcome B: the retake passes", () => {
@@ -173,18 +278,22 @@ describe("Stage 2 — Outcome B: the retake passes", () => {
     expect(data.attempt?.attemptNumber).toBe(2);
     expect(data.attempt?.questions).toHaveLength(ASSESSMENT_META.totalQuestions);
     expect(data.attempt?.answers).toHaveLength(0);
+    expect((await getAttemptQuestionRows(2)).map((row) => row.questionId)).not.toEqual(
+      attemptOneQuestionOrder,
+    );
   });
 
   it("answers everything correctly and submits → PASSED (attemptCount 2)", async () => {
     const key = await loadAnswerKey();
-    for (const questionId of ASSESSMENT_QUESTION_IDS) {
+    const questionRows = await getAttemptQuestionRows(2);
+    for (const row of questionRows.reverse()) {
       expectOk(
         await apiRequest("POST", `/api/assessment/${reference}/answers`, {
-          questionId,
-          selectedOption: key[questionId],
+          questionId: row.id,
+          selectedOption: key[row.questionId],
         }),
         200,
-        `correct answer ${questionId}`,
+        `correct answer ${row.questionId}`,
       );
     }
 

@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 type PageContainerSize = "narrow" | "default" | "wide";
 
 const sizeClasses: Record<PageContainerSize, string> = {
-  narrow: "max-w-2xl",
-  default: "max-w-5xl",
-  wide: "max-w-6xl",
+  narrow: "max-w-3xl",
+  default: "max-w-[90rem]",
+  wide: "max-w-[90rem]",
 };
 
 interface PageContainerProps {
@@ -25,7 +25,13 @@ export function PageContainer({
   className,
 }: PageContainerProps) {
   return (
-    <div className={cn("mx-auto w-full px-4 sm:px-6", sizeClasses[size], className)}>
+    <div
+      className={cn(
+        "mx-auto w-full px-4 sm:px-6",
+        sizeClasses[size],
+        className,
+      )}
+    >
       {children}
     </div>
   );

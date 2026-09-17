@@ -23,5 +23,12 @@ export default async function StaffPortalLayout({
     redirect("/staff/login");
   }
 
-  return <StaffShell staffId={session.staff.staffId}>{children}</StaffShell>;
+  return (
+    <StaffShell
+      staffId={session.staff.staffId}
+      fullName={session.candidate.fullName}
+    >
+      {children}
+    </StaffShell>
+  );
 }

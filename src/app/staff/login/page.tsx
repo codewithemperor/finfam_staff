@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -26,16 +27,28 @@ export default async function StaffLoginPage() {
   return (
     <PageShell size="narrow">
       <div className="mx-auto max-w-md">
+        <Image
+          src="/icon-192.png"
+          alt="FinFam"
+          width={56}
+          height={56}
+          className="size-14 object-contain"
+          priority
+        />
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
           FinFam Staff Portal
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Sign in to the Staff Portal
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+        <p className="max-w-[46ch] text-sm leading-6 text-muted-foreground">
+          Sign in with the email address you used for your FinFam application.
+          We will send a secure 6-digit login code — there is no password.
+        </p>
+        {/* <p className="mt-3 text-base leading-relaxed text-muted-foreground">
           Your Staff Portal is where you complete onboarding and access your
           FinFam staff tools.
-        </p>
+        </p> */}
 
         <div className="mt-8">
           <StaffLoginForm />

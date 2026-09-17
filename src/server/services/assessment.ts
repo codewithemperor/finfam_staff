@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomInt } from "node:crypto";
 import { Prisma } from "@prisma/client";
 
 import {
@@ -58,7 +59,7 @@ type AttemptRelation = {
   totalMarks: number | null;
   percentage: number | null;
   passed: boolean | null;
-  questions: { questionId: string; position: number }[];
+  questions: { id: string; questionId: string; position: number }[];
   answers: { questionId: string; selectedOption: number }[];
 };
 
@@ -93,7 +94,7 @@ const CANDIDATE_SELECT = {
       passed: true,
       questions: {
         orderBy: { position: "asc" as const },
-        select: { questionId: true, position: true },
+        select: { id: true, questionId: true, position: true },
       },
       answers: {
         select: { questionId: true, selectedOption: true },
@@ -131,7 +132,7 @@ function toSafeQuestions(attempt: AttemptRelation): SafeAssessmentQuestion[] {
     if (!question) return [];
     return [
       {
-        id: question.id,
+        id: row.id,
         index: row.position + 1,
         text: question.text,
         options: [...question.options],
@@ -139,6 +140,31 @@ function toSafeQuestions(attempt: AttemptRelation): SafeAssessmentQuestion[] {
       },
     ];
   });
+}
+
+function shuffleQuestions(
+  questions: ReturnType<typeof getAuthoritativeQuestions>,
+): ReturnType<typeof getAuthoritativeQuestions> {
+  const shuffled = [...questions];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+  return shuffled;
+}
+
+function sameQuestionOrder(
+  questions: ReturnType<typeof getAuthoritativeQuestions>,
+  previous: { questionId: string; position: number }[] | undefined,
+): boolean {
+  if (!previous || previous.length !== questions.length) return false;
+  const previousIds = [...previous]
+    .sort((a, b) => a.position - b.position)
+    .map((row) => row.questionId);
+  return questions.every((question, index) => question.id === previousIds[index]);
 }
 
 function toResultState(attempt: AttemptRelation): AssessmentResultState | null {
@@ -190,10 +216,18 @@ function toView(candidate: CandidateWithAssessment): AssessmentView {
           attemptNumber: activeAttempt.attemptNumber,
           startedAt: activeAttempt.startedAt.toISOString(),
           questions: toSafeQuestions(activeAttempt),
-          answers: activeAttempt.answers.map((answer) => ({
-            questionId: answer.questionId,
-            selectedOption: answer.selectedOption,
-          })),
+          answers: activeAttempt.answers.flatMap((answer) => {
+            const questionRow = activeAttempt.questions.find(
+              (row) => row.questionId === answer.questionId,
+            );
+            if (!questionRow) return [];
+            return [
+              {
+                questionId: questionRow.id,
+                selectedOption: answer.selectedOption,
+              },
+            ];
+          }),
         }
       : null,
     result: latestSubmitted ? toResultState(latestSubmitted) : null,
@@ -278,6 +312,10 @@ export async function startAssessment(
   }
 
   const isRetake = candidate.attempts.length > 0;
+  let questionOrder = shuffleQuestions(getAuthoritativeQuestions());
+  if (sameQuestionOrder(questionOrder, candidate.attempts[0]?.questions)) {
+    questionOrder = [...questionOrder.slice(1), questionOrder[0]];
+  }
 
   try {
     await db.$transaction(async (tx) => {
@@ -290,7 +328,7 @@ export async function startAssessment(
           candidateId: candidate.id,
           attemptNumber: attemptCount + 1,
           questions: {
-            create: getAuthoritativeQuestions().map((question, position) => ({
+            create: questionOrder.map((question, position) => ({
               questionId: question.id,
               position,
             })),
@@ -356,12 +394,12 @@ export async function saveAssessmentAnswer(
     );
   }
 
-  // The question must belong to THIS attempt's persisted question set —
-  // a valid config id from a different attempt generation is still invalid.
+  // The opaque question token must belong to THIS attempt's persisted
+  // question set. The browser never receives the authoritative bank id.
   const questionRow = activeAttempt.questions.find(
-    (row) => row.questionId === input.questionId,
+    (row) => row.id === input.questionId,
   );
-  if (!questionRow || !getAssessmentQuestion(input.questionId)) {
+  if (!questionRow || !getAssessmentQuestion(questionRow.questionId)) {
     throw validationError("That question is not part of your assessment.", {
       questionId: "That question is not part of your assessment.",
     });
@@ -371,12 +409,12 @@ export async function saveAssessmentAnswer(
     where: {
       attemptId_questionId: {
         attemptId: activeAttempt.id,
-        questionId: input.questionId,
+        questionId: questionRow.questionId,
       },
     },
     create: {
       attemptId: activeAttempt.id,
-      questionId: input.questionId,
+      questionId: questionRow.questionId,
       selectedOption: input.selectedOption,
     },
     update: { selectedOption: input.selectedOption },

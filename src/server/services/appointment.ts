@@ -169,8 +169,18 @@ function toView(candidate: CandidateWithAppointment): AppointmentView {
  * Must run inside the issuance transaction.
  */
 async function allocateAppointmentReference(tx: {
+  $executeRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
   $queryRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
 }): Promise<string> {
+  // `prisma db push` creates the table but does not run migration seed SQL,
+  // so local databases can be missing the singleton. Ensure it exists before
+  // the atomic increment; existing production rows are left untouched.
+  await tx.$executeRaw`
+    INSERT INTO "appointment_sequences" ("id", "name", "value")
+    VALUES ('seq_provisional_appointment', ${SEQUENCE_NAME}, 12)
+    ON CONFLICT ("name") DO NOTHING
+  `;
+
   const rows = (await tx.$queryRaw`
     UPDATE "appointment_sequences"
     SET "value" = "value" + 1

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Alert, Chip } from "@heroui/react";
+import { Alert, Chip, Table } from "@heroui/react";
 
 import { ADMIN_REPORTS_SELF_REPORTED_NOTICE } from "@/config/admin";
 import { getAdminSession } from "@/lib/auth/admin-session";
@@ -78,7 +78,7 @@ export default async function AdminReportsPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="max-w-6xl">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
         FinFam Admin
       </p>
@@ -164,55 +164,43 @@ export default async function AdminReportsPage({
           </p>
         </div>
       ) : (
-        <ul className="mt-6 divide-y divide-border rounded-lg border border-border bg-surface">
-          {reports.reports.map((report) => (
-            <li key={report.id}>
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                <div className="min-w-0">
-                  {/* The report date opens the report; the Staff ID opens
-                      the Staff record — two separate links, never nested. */}
-                  <p className="text-sm font-semibold text-foreground">
-                    <Link
-                      href={`/admin/reports/${report.id}`}
-                      className="rounded-md underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
-                    >
-                      {formatLagosDateCompact(
-                        lagosDateISOFromUtcMidnight(report.reportDate),
-                      )}
-                    </Link>
-                    <span className="sr-only"> — open submitted report</span>
-                  </p>
-                  <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span>
-                      Staff{" "}
-                      <Link
-                        href={`/admin/staff/${report.staffRowId}`}
-                        className="rounded-md font-mono font-medium text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                      >
-                        {report.staffId}
-                      </Link>{" "}
-                      · {report.staffName}
-                    </span>
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Submitted{" "}
-                    {formatLagosDateTimeLabel(new Date(report.submittedAt))}{" "}
-                    (Africa/Lagos)
-                  </p>
-                </div>
-                <Chip
-                  color="success"
-                  variant="soft"
-                  size="sm"
-                  className="shrink-0"
-                >
-                  Submitted
-                  <span className="sr-only">Status: submitted.</span>
-                </Chip>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="mt-6 hidden md:block">
+            <Table>
+              <Table.ScrollContainer>
+                <Table.Content aria-label="Submitted Daily Reports" className="min-w-[760px]">
+                  <Table.Header>
+                    <Table.Column isRowHeader>Report date</Table.Column>
+                    <Table.Column>Staff</Table.Column>
+                    <Table.Column>Submitted</Table.Column>
+                    <Table.Column>Status</Table.Column>
+                    <Table.Column>Action</Table.Column>
+                  </Table.Header>
+                  <Table.Body>
+                    {reports.reports.map((report) => (
+                      <Table.Row key={report.id}>
+                        <Table.Cell><Link href={`/admin/reports/${report.id}`} className="font-semibold text-foreground hover:text-primary hover:underline">{formatLagosDateCompact(lagosDateISOFromUtcMidnight(report.reportDate))}</Link></Table.Cell>
+                        <Table.Cell><Link href={`/admin/staff/${report.staffRowId}`} className="font-mono text-sm font-semibold text-foreground hover:text-primary hover:underline">{report.staffId}</Link><p className="text-xs text-muted-foreground">{report.staffName}</p></Table.Cell>
+                        <Table.Cell>{formatLagosDateTimeLabel(new Date(report.submittedAt))}</Table.Cell>
+                        <Table.Cell><Chip color="success" variant="soft" size="sm">Submitted<span className="sr-only">Status: submitted.</span></Chip></Table.Cell>
+                        <Table.Cell><Link href={`/admin/reports/${report.id}`} className="text-sm font-semibold text-primary hover:underline">View report</Link></Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+          </div>
+          <ul className="mt-6 divide-y divide-border rounded-lg border border-border bg-surface md:hidden">
+            {reports.reports.map((report) => (
+              <li key={report.id} className="p-5">
+                <div className="flex items-start justify-between gap-3"><div><Link href={`/admin/reports/${report.id}`} className="font-semibold text-foreground">{formatLagosDateCompact(lagosDateISOFromUtcMidnight(report.reportDate))}</Link><p className="mt-1 text-sm text-muted-foreground">{report.staffName} · <span className="font-mono">{report.staffId}</span></p></div><Chip color="success" variant="soft" size="sm">Submitted</Chip></div>
+                <p className="mt-4 text-xs text-muted-foreground">Submitted {formatLagosDateTimeLabel(new Date(report.submittedAt))} (Africa/Lagos)</p>
+                <div className="mt-4"><Link href={`/admin/reports/${report.id}`} className="flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">View report</Link></div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <p className="mt-4 text-sm text-muted-foreground">

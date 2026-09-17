@@ -23,6 +23,7 @@ interface SectionReadFooterProps {
   prev: SectionNeighbour | null;
   next: SectionNeighbour | null;
   overviewHref: string;
+  isReview?: boolean;
 }
 
 /**
@@ -39,6 +40,7 @@ export function SectionReadFooter({
   prev,
   next,
   overviewHref,
+  isReview = false,
 }: SectionReadFooterProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -88,11 +90,23 @@ export function SectionReadFooter({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Check aria-hidden className="size-4 text-primary" />
-            {isLast
+            {isReview
+              ? "Read-only review."
+              : isLast
               ? "Every section has been read."
               : "Section marked as read."}
           </p>
-          {isLast ? (
+          {isReview ? (
+            next ? (
+              <ButtonLink href={next.href} className="sm:w-auto">
+                Next section
+              </ButtonLink>
+            ) : (
+              <ButtonLink href={overviewHref} className="sm:w-auto">
+                Orientation overview
+              </ButtonLink>
+            )
+          ) : isLast ? (
             <CompleteOrientationButton reference={reference} />
           ) : (
             next && (

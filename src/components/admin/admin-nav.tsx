@@ -1,30 +1,61 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Button, Drawer } from "@heroui/react";
+import {
+  ClipboardList,
+  FileClock,
+  House,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 import { ADMIN_CONSOLE_LABEL, ADMIN_NAV } from "@/config/admin";
 import { cn } from "@/lib/utils";
 
-/**
- * FinFam Admin console navigation (Stage 11) — real destinations only:
- * Overview, Staff, Daily Reports, Audit Log. Plus the sign-out action,
- * which POSTs /api/admin/auth/logout (revoking the DB session — not
- * merely dropping the cookie) and returns to the login screen.
- *
- * The brand block is deliberately VISIBLY DISTINCT from the Staff Portal
- * (brief §16): "FinFam Admin" with a permanent "Management console" label
- * so a signed-in administrator can never confuse this surface with the
- * Staff Portal. The signed-in admin email is shown md+.
- *
- * Mobile: destinations wrap to a second row like the Staff Portal — no
- * hidden drawer at four links. Keyboard accessible throughout; the active
- * destination is communicated by text + style + aria-current.
- */
+const navIcons: Record<string, LucideIcon> = {
+  "/admin": House,
+  "/admin/applicants": ClipboardList,
+  "/admin/staff": Users,
+  "/admin/reports": FileClock,
+  "/admin/audit": ShieldCheck,
+};
+
+function Brand() {
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white">
+        <Image
+          src="/icon-192.png"
+          alt=""
+          width={36}
+          height={36}
+          className="size-9 object-contain"
+          priority
+        />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-base font-bold tracking-tight">
+          {ADMIN_CONSOLE_LABEL}
+        </span>
+        <span className="block truncate text-xs text-primary-foreground/70">
+          Management console
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export function AdminNav({ adminEmail }: { adminEmail: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function handleLogout() {
@@ -33,79 +64,134 @@ export function AdminNav({ adminEmail }: { adminEmail: string }) {
     try {
       await fetch("/api/admin/auth/logout", { method: "POST" });
     } catch {
-      // Even if the network call fails, send the user to login — the
-      // session row (if any) will still resolve server-side or expire.
+      // The redirect still removes the authenticated view if the request fails.
     }
     router.replace("/admin/login");
     router.refresh();
   }
 
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 sm:h-16 sm:flex-nowrap sm:py-0">
-      <Link
-        href="/admin"
-        className="flex flex-wrap items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
-        aria-label="FinFam Admin console home"
+  function isActive(href: string) {
+    return href === "/admin"
+      ? pathname === "/admin"
+      : pathname.startsWith(href);
+  }
+
+  function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+    return (
+      <ul className="flex flex-col gap-1">
+        {ADMIN_NAV.map((item) => {
+          const active = isActive(item.href);
+          const Icon = navIcons[item.href] ?? FileClock;
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                onClick={onNavigate}
+                className={cn(
+                  "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground",
+                  active
+                    ? "bg-white text-primary"
+                    : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground",
+                )}
+              >
+                <Icon aria-hidden className="size-[1.125rem] shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  function LogoutButton({ mobile = false }: { mobile?: boolean }) {
+    return (
+      <button
+        type="button"
+        onClick={handleLogout}
+        disabled={loggingOut}
+        className={cn(
+          "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60",
+          mobile
+            ? "text-foreground hover:bg-surface hover:text-primary focus-visible:outline-primary"
+            : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground focus-visible:outline-primary-foreground",
+        )}
       >
-        <span
-          aria-hidden
-          className="grid size-7 place-items-center rounded-md border border-border bg-foreground text-sm font-bold text-background"
+        <LogOut aria-hidden className="size-[1.125rem] shrink-0" />
+        {loggingOut ? "Signing out…" : "Sign out"}
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <aside className="sticky top-0 hidden h-[100dvh] max-h-[100dvh] self-start overflow-y-auto bg-primary text-primary-foreground md:flex md:flex-col md:px-4 md:py-5 lg:px-5">
+        <Link
+          href="/admin"
+          aria-label="FinFam Admin home"
+          className="rounded-md px-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground"
         >
-          F
-        </span>
-        <span className="text-base font-bold tracking-tight text-foreground">
-          {ADMIN_CONSOLE_LABEL}
-        </span>
-        <span className="inline-flex items-center rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Management console
-        </span>
-      </Link>
-
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:flex-nowrap sm:gap-4">
-        <nav aria-label="Admin console navigation">
-          <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-4">
-            {ADMIN_NAV.map((item) => {
-              const isActive =
-                item.href === "/admin"
-                  ? pathname === "/admin"
-                  : pathname.startsWith(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-1 text-[13px] font-medium underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:min-h-9 sm:text-sm",
-                      isActive
-                        ? "font-semibold text-primary"
-                        : "text-foreground",
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <span
-            className="hidden max-w-[16rem] truncate font-mono text-xs tracking-wider text-muted-foreground md:inline"
-            title="Signed in as"
-          >
+          <Brand />
+        </Link>
+        <div className="mt-8 border-b border-primary-foreground/15 pb-6">
+          <p className="truncate px-3 text-sm font-semibold">Administrator</p>
+          <p className="mt-1 truncate px-3 font-mono text-xs tracking-wider text-primary-foreground/70">
             {adminEmail}
-          </span>
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="inline-flex min-h-11 items-center whitespace-nowrap rounded-md border border-border px-3 text-[13px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:opacity-60 sm:min-h-9 sm:text-sm"
-          >
-            {loggingOut ? "Signing out…" : "Sign out"}
-          </button>
+          </p>
         </div>
-      </div>
-    </div>
+        <nav aria-label="Admin console navigation" className="mt-6">
+          <NavItems />
+        </nav>
+        <div className="mt-auto border-t border-primary-foreground/15 pt-5">
+          <LogoutButton />
+        </div>
+      </aside>
+
+      <header className="border-b border-border bg-background print:hidden md:hidden">
+        <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6">
+          <Link
+            href="/admin"
+            aria-label="FinFam Admin home"
+            className="rounded-md text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+          >
+            <Brand />
+          </Link>
+          <Button
+            aria-label="Open admin navigation menu"
+            size="sm"
+            variant="outline"
+            onPress={() => setIsOpen(true)}
+          >
+            <Menu aria-hidden className="size-4" />
+            Menu
+          </Button>
+        </div>
+      </header>
+
+      <Drawer.Backdrop isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Drawer.Content placement="left">
+          <Drawer.Dialog className="bg-primary text-primary-foreground">
+            <Drawer.CloseTrigger />
+            <Drawer.Header>
+              <Drawer.Heading>
+                <Brand />
+              </Drawer.Heading>
+              <p className="truncate text-sm text-primary-foreground/75">
+                {adminEmail}
+              </p>
+            </Drawer.Header>
+            <Drawer.Body>
+              <nav aria-label="Mobile Admin console navigation">
+                <NavItems onNavigate={() => setIsOpen(false)} />
+              </nav>
+            </Drawer.Body>
+            <Drawer.Footer>
+              <LogoutButton mobile />
+            </Drawer.Footer>
+          </Drawer.Dialog>
+        </Drawer.Content>
+      </Drawer.Backdrop>
+    </>
   );
 }

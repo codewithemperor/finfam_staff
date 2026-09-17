@@ -69,6 +69,28 @@ const city = "Lagos";
 
 let email = "";
 let reference = "";
+let attemptOneQuestionTokens: string[] = [];
+
+async function getAttemptQuestionRows(attemptNumber: number) {
+  const candidate = await db.candidate.findUnique({
+    where: { referenceNumber: reference },
+    select: {
+      attempts: {
+        where: { attemptNumber },
+        take: 1,
+        select: {
+          questions: {
+            orderBy: { position: "asc" },
+            select: { id: true, questionId: true, position: true },
+          },
+        },
+      },
+    },
+  });
+  const rows = candidate?.attempts[0]?.questions ?? [];
+  expect(rows).toHaveLength(ASSESSMENT_META.totalQuestions);
+  return rows;
+}
 
 beforeAll(async () => {
   await assertServerUp();
@@ -233,15 +255,30 @@ describe("Stage 2 — Automated Interview Assessment", () => {
     expect(data.attempt?.attemptNumber).toBe(1);
     expect(data.attempt?.questions).toHaveLength(ASSESSMENT_META.totalQuestions);
     expect(data.status).toBe("ASSESSMENT_PENDING");
+    attemptOneQuestionTokens = data.attempt?.questions.map((question) => question.id) ?? [];
+    expect(attemptOneQuestionTokens).toHaveLength(ASSESSMENT_META.totalQuestions);
+    expect(attemptOneQuestionTokens).not.toEqual([...ASSESSMENT_QUESTION_IDS]);
   });
 
-  it("re-starting resumes the same attempt (no new attempt)", async () => {
+  it("re-starting and refreshing resume the same ordered attempt (no reshuffle)", async () => {
     const data = expectOk<AssessmentView>(
       await apiRequest("POST", `/api/assessment/${reference}/start`, {}),
       200,
       "resume assessment",
     );
     expect(data.attempt?.attemptNumber).toBe(1);
+    expect(data.attempt?.questions.map((question) => question.id)).toEqual(
+      attemptOneQuestionTokens,
+    );
+
+    const refreshed = expectOk<AssessmentView>(
+      await apiRequest("GET", `/api/assessment/${reference}`),
+      200,
+      "refresh assessment",
+    );
+    expect(refreshed.attempt?.questions.map((question) => question.id)).toEqual(
+      attemptOneQuestionTokens,
+    );
   });
 
   it("rejects an unknown question id (422)", async () => {
@@ -258,10 +295,15 @@ describe("Stage 2 — Automated Interview Assessment", () => {
 
   it("saves and re-saves answers (idempotent autosave)", async () => {
     const key = await loadAnswerKey();
+    const questionRows = await getAttemptQuestionRows(1);
+    const firstQuestion = questionRows.find(
+      (row) => row.id === attemptOneQuestionTokens[0],
+    );
+    expect(firstQuestion).toBeDefined();
     const first = expectOk<{ answeredCount: number; totalQuestions: number }>(
       await apiRequest("POST", `/api/assessment/${reference}/answers`, {
-        questionId: ASSESSMENT_QUESTION_IDS[0],
-        selectedOption: key[ASSESSMENT_QUESTION_IDS[0]],
+        questionId: firstQuestion!.id,
+        selectedOption: key[firstQuestion!.questionId],
       }),
       200,
       "save first answer",
@@ -270,8 +312,8 @@ describe("Stage 2 — Automated Interview Assessment", () => {
 
     const again = expectOk<{ answeredCount: number }>(
       await apiRequest("POST", `/api/assessment/${reference}/answers`, {
-        questionId: ASSESSMENT_QUESTION_IDS[0],
-        selectedOption: key[ASSESSMENT_QUESTION_IDS[0]],
+        questionId: firstQuestion!.id,
+        selectedOption: key[firstQuestion!.questionId],
       }),
       200,
       "resave first answer",
@@ -281,14 +323,15 @@ describe("Stage 2 — Automated Interview Assessment", () => {
 
   it("answers everything correctly and submits → PASSED (100%)", async () => {
     const key = await loadAnswerKey();
-    for (const questionId of ASSESSMENT_QUESTION_IDS.slice(1)) {
+    const questionRows = await getAttemptQuestionRows(1);
+    for (const row of questionRows.slice(1).reverse()) {
       const saved = expectOk<{ answeredCount: number }>(
         await apiRequest("POST", `/api/assessment/${reference}/answers`, {
-          questionId,
-          selectedOption: key[questionId],
+          questionId: row.id,
+          selectedOption: key[row.questionId],
         }),
         200,
-        `answer ${questionId}`,
+        `answer ${row.questionId}`,
       );
       expect(saved.answeredCount).toBeLessThanOrEqual(ASSESSMENT_META.totalQuestions);
     }

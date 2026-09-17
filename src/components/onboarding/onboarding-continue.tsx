@@ -51,6 +51,10 @@ export function OnboardingContinue({
           body: JSON.stringify({ stepId }),
         },
       );
+      // Refreshing a server component preserves the browser's current scroll
+      // position. Each Continue action represents a new reading section, so
+      // return the user to the top before the next section is rendered.
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       // The server advanced the resume point — re-render at the next step.
       router.refresh();
     } catch (error) {

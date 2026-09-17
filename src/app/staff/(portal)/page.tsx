@@ -39,7 +39,7 @@ export default async function StaffHomePage() {
 
   return (
     <>
-      <div className="mt-10 max-w-3xl">
+      <div className="mt-0 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
           FinFam Staff Portal
         </p>
@@ -69,21 +69,30 @@ export default async function StaffHomePage() {
             </h2>
             {home.dailyReporting.state === "NOT_STARTED" && (
               <p className="mt-1.5 text-sm text-muted-foreground">
-                {format(new Date(`${home.dailyReporting.date}T12:00:00Z`), "d MMMM yyyy")}{" "}
+                {format(
+                  new Date(`${home.dailyReporting.date}T12:00:00Z`),
+                  "d MMMM yyyy",
+                )}{" "}
                 — you haven&apos;t started today&apos;s report yet.
                 <span className="sr-only"> Status: not started.</span>
               </p>
             )}
             {home.dailyReporting.state === "DRAFT" && (
               <p className="mt-1.5 text-sm text-muted-foreground">
-                {format(new Date(`${home.dailyReporting.date}T12:00:00Z`), "d MMMM yyyy")}{" "}
+                {format(
+                  new Date(`${home.dailyReporting.date}T12:00:00Z`),
+                  "d MMMM yyyy",
+                )}{" "}
                 — today&apos;s report is a draft, waiting to be submitted.
                 <span className="sr-only"> Status: draft.</span>
               </p>
             )}
             {home.dailyReporting.state === "SUBMITTED" && (
               <p className="mt-1.5 text-sm text-muted-foreground">
-                {format(new Date(`${home.dailyReporting.date}T12:00:00Z`), "d MMMM yyyy")}{" "}
+                {format(
+                  new Date(`${home.dailyReporting.date}T12:00:00Z`),
+                  "d MMMM yyyy",
+                )}{" "}
                 — today&apos;s report was submitted
                 {home.dailyReporting.submittedAt
                   ? ` at ${formatLagosTimeLabel(new Date(home.dailyReporting.submittedAt))} (Africa/Lagos)`
@@ -114,6 +123,103 @@ export default async function StaffHomePage() {
           </div>
         </div>
       </section>
+
+      <div className="mt-8 ">
+        <section aria-labelledby="portal-summary">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2
+                id="portal-summary"
+                className="text-lg font-semibold text-foreground"
+              >
+                This month
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Submitted Daily Report activity. These figures are
+                self-reported.
+              </p>
+            </div>
+            <ButtonLink href="/staff/reports" variant="outline" size="sm">
+              View report history
+            </ButtonLink>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              ["Reports submitted", home.dashboard.submittedReportsThisMonth],
+              ["New registrations", home.dashboard.newRegistrationsThisMonth],
+              [
+                "Established members",
+                home.dashboard.establishedMembersThisMonth,
+              ],
+              [
+                "Training lessons",
+                `${home.training.completedLessons} / ${home.training.totalLessons}`,
+              ],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-lg border border-border bg-surface p-5"
+              >
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* <section aria-labelledby="portal-recent-reports" className="rounded-lg border border-border bg-surface p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="portal-recent-reports" className="text-sm font-semibold text-foreground">
+              Your reports
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Your latest recorded activity, shown exactly as submitted.
+            </p>
+          </div>
+          <ButtonLink href="/staff/reports" variant="ghost" size="sm">
+            All reports
+          </ButtonLink>
+        </div>
+        {home.dashboard.recentReports.length > 0 ? (
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-left text-sm">
+              <caption className="sr-only">Recent submitted Daily Reports</caption>
+              <thead className="border-b border-divider text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th scope="col" className="pb-3 font-semibold">Report date</th>
+                  <th scope="col" className="pb-3 font-semibold">New registrations</th>
+                  <th scope="col" className="pb-3 font-semibold">Established members</th>
+                  <th scope="col" className="pb-3 text-right font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-divider">
+                {home.dashboard.recentReports.map((report) => (
+                  <tr key={report.id}>
+                    <th scope="row" className="py-3 font-medium text-foreground">
+                      {format(new Date(`${report.reportDate}T12:00:00Z`), "d MMMM yyyy")}
+                    </th>
+                    <td className="py-3 text-muted-foreground">{report.newRegistrations}</td>
+                    <td className="py-3 text-muted-foreground">{report.establishedMembersCreated}</td>
+                    <td className="py-3 text-right">
+                      <ButtonLink href={`/staff/reports/${report.id}`} variant="ghost" size="sm">
+                        View report
+                      </ButtonLink>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="mt-5 border-t border-divider pt-5 text-sm text-muted-foreground">
+            No submitted activity reports yet. Your first submission will appear here.
+          </p>
+        )}
+      </section> */}
+      </div>
 
       <div className="mt-10 grid gap-8 md:grid-cols-2 md:gap-10">
         {/* Staff Identity */}
@@ -149,7 +255,9 @@ export default async function StaffHomePage() {
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-sm text-muted-foreground">Operational role</dt>
+              <dt className="text-sm text-muted-foreground">
+                Operational role
+              </dt>
               <dd className="text-sm font-semibold text-foreground">
                 {home.operationalRole}
               </dd>
@@ -164,7 +272,7 @@ export default async function StaffHomePage() {
           {/* Stage 10 (brief §31): the identity card entry point — uses the
               SAME Staff ID already shown here; no second identity summary. */}
           <div className="mt-5">
-            <ButtonLink href="/staff/id-card" variant="outline" size="sm">
+            <ButtonLink href="/staff/id-card" size="sm">
               View Staff ID Card
             </ButtonLink>
           </div>
@@ -196,12 +304,15 @@ export default async function StaffHomePage() {
                   <div className="flex items-baseline justify-between gap-4">
                     <dt className="text-sm text-muted-foreground">Issued</dt>
                     <dd className="text-sm font-semibold text-foreground">
-                      {format(new Date(home.appointment.issuedAt), "d MMMM yyyy")}
+                      {format(
+                        new Date(home.appointment.issuedAt),
+                        "d MMMM yyyy",
+                      )}
                     </dd>
                   </div>
                 </dl>
                 <div className="mt-5">
-                  <ButtonLink href="/staff/appointment" variant="outline" size="sm">
+                  <ButtonLink href="/staff/appointment" size="sm">
                     View Provisional Appointment
                   </ButtonLink>
                 </div>
@@ -260,7 +371,10 @@ export default async function StaffHomePage() {
           aria-labelledby="portal-training"
           className="rounded-lg border border-border bg-surface p-6"
         >
-          <h2 id="portal-training" className="text-sm font-semibold text-foreground">
+          <h2
+            id="portal-training"
+            className="text-sm font-semibold text-foreground"
+          >
             Staff Training
           </h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
@@ -277,13 +391,15 @@ export default async function StaffHomePage() {
             {home.training.state === "IN_PROGRESS" && (
               <>
                 <span className="tabular-nums">
-                  {home.training.completedLessons} of {home.training.totalLessons}
+                  {home.training.completedLessons} of{" "}
+                  {home.training.totalLessons}
                 </span>{" "}
                 lessons completed
                 <span className="sr-only">
                   {" "}
-                  — training in progress: {home.training.completedLessons} of{" "}
-                  {home.training.totalLessons} lessons completed.
+                  — training in progress: {
+                    home.training.completedLessons
+                  } of {home.training.totalLessons} lessons completed.
                 </span>
               </>
             )}
@@ -380,8 +496,8 @@ export default async function StaffHomePage() {
             </p>
           ) : (
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              The official FinFam staff communication channel will be shown
-              here once the onboarding team&apos;s contact is confirmed.
+              The official FinFam staff communication channel will be shown here
+              once the onboarding team&apos;s contact is confirmed.
             </p>
           )}
           <div className="mt-4">
@@ -391,7 +507,6 @@ export default async function StaffHomePage() {
           </div>
         </section>
       </div>
-    
     </>
   );
 }

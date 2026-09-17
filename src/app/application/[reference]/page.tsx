@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { format } from "date-fns";
+import { Accordion } from "@heroui/react";
+import { CheckCircle2, ChevronDown } from "lucide-react";
 
 import { JourneyNotFoundPanel } from "@/components/recruitment/journey-not-found";
 import { PageShell } from "@/components/layout/page-shell";
-import {
-  RecruitmentProgress,
-} from "@/components/recruitment/recruitment-progress";
+import { RecruitmentProgress } from "@/components/recruitment/recruitment-progress";
 import { OnboardingJourneyCard } from "@/components/onboarding/onboarding-journey-card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { CANDIDATE_STATUS_DETAILS } from "@/config/recruitment";
@@ -60,13 +60,14 @@ export default async function ApplicationJourneyPage({
     ? journey.status === "ACTIVATION_PENDING" &&
       journey.currentStage === "ACTIVATION"
       ? "Activation — In progress"
-      : (journey.stages.find((stage) => stage.id === journey.currentStage)?.label ??
-        journey.currentStage)
+      : (journey.stages.find((stage) => stage.id === journey.currentStage)
+          ?.label ?? journey.currentStage)
     : statusDefinition.label;
   const stageStates = Object.fromEntries(
     journey.stages.map((stage) => [stage.id, stage.state]),
   );
   const firstName = journey.fullName.trim().split(/\s+/)[0];
+  const onboardingCompleted = journey.onboarding?.state === "COMPLETED";
 
   return (
     <PageShell size="wide">
@@ -93,47 +94,78 @@ export default async function ApplicationJourneyPage({
         {/* Current stage: one stage, one obvious next action            */}
         {/* ----------------------------------------------------------- */}
         <section aria-labelledby="current-stage" className="order-1 min-w-0">
-          <h2
-            id="current-stage"
-            className="text-sm text-muted-foreground"
-          >
-            Your application is currently at
-          </h2>
-          <p className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {currentStageLabel ?? "Complete"}
-          </p>
-
-          <div className="mt-5 max-w-xl rounded-lg border border-border bg-surface p-5 sm:p-6">
-            {journey.nextAction ? (
-              <>
-                <p className="text-sm font-semibold text-foreground">
-                  Your next step
-                </p>
-                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-                  {statusDefinition.nextStep}
-                </p>
-                {journey.currentStageDetail && (
+          {onboardingCompleted ? (
+            <div
+              role="status"
+              className="max-w-xl border border-primary/30 bg-primary/5 p-6 sm:p-7"
+            >
+              <div className="flex items-start gap-4">
+                <CheckCircle2
+                  aria-hidden="true"
+                  className="mt-0.5 size-7 shrink-0 text-primary"
+                />
+                <div>
+                  <h2
+                    id="current-stage"
+                    className="text-xl font-bold tracking-tight text-foreground sm:text-2xl"
+                  >
+                    You are now a FinFam staff member
+                  </h2>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    So far: {journey.currentStageDetail}.
+                    Your recruitment application is complete. Check your email
+                    for the Staff Portal access message, then use your
+                    registered email to request a secure login code.
                   </p>
-                )}
-                <div className="mt-5">
-                  <ButtonLink href={journey.nextAction.href}>
-                    {journey.nextAction.label}
-                  </ButtonLink>
+                  <div className="mt-5">
+                    <ButtonLink href="/staff/login">
+                      Open Staff Portal
+                    </ButtonLink>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-foreground">
-                  What happens next
-                </p>
-                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-                  {journey.upcomingNote ?? statusDefinition.nextStep}
-                </p>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 id="current-stage" className="text-sm text-muted-foreground">
+                Your application is currently at
+              </h2>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                {currentStageLabel ?? "Complete"}
+              </p>
+
+              <div className="mt-5 max-w-xl rounded-lg border border-border bg-surface p-5 sm:p-6">
+                {journey.nextAction ? (
+                  <>
+                    <p className="text-sm font-semibold text-foreground">
+                      Your next step
+                    </p>
+                    <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                      {statusDefinition.nextStep}
+                    </p>
+                    {journey.currentStageDetail && (
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        So far: {journey.currentStageDetail}.
+                      </p>
+                    )}
+                    <div className="mt-5">
+                      <ButtonLink href={journey.nextAction.href}>
+                        {journey.nextAction.label}
+                      </ButtonLink>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-foreground">
+                      What happens next
+                    </p>
+                    <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                      {journey.upcomingNote ?? statusDefinition.nextStep}
+                    </p>
+                  </>
+                )}
+              </div>
+            </>
+          )}
 
           {/* The submitted assessment stays available as a record — but the
               stage itself is closed; no re-entry, no restart. */}
@@ -169,7 +201,10 @@ export default async function ApplicationJourneyPage({
                 </p>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   Accepted — version {journey.agreementRecord.version} ·{" "}
-                  {format(new Date(journey.agreementRecord.acceptedAt), "d MMM yyyy")}
+                  {format(
+                    new Date(journey.agreementRecord.acceptedAt),
+                    "d MMM yyyy",
+                  )}
                 </p>
               </div>
             </div>
@@ -189,7 +224,10 @@ export default async function ApplicationJourneyPage({
                     {journey.appointmentRecord.appointmentReference}
                   </span>{" "}
                   · issued{" "}
-                  {format(new Date(journey.appointmentRecord.issuedAt), "d MMMM yyyy")}
+                  {format(
+                    new Date(journey.appointmentRecord.issuedAt),
+                    "d MMMM yyyy",
+                  )}
                 </p>
               </div>
               <ButtonLink
@@ -202,10 +240,65 @@ export default async function ApplicationJourneyPage({
             </div>
           )}
 
+          {/* Updates are one expandable history section. Each event remains
+              visible in the body without turning the individual logs into
+              separate navigation controls. */}
+          {journey.events.length > 0 && (
+            <section
+              aria-label="Updates"
+              className="mt-6 max-w-xl border-t border-divider pt-1"
+            >
+              <Accordion className="w-full" hideSeparator>
+                <Accordion.Item id="updates" className="shadow-none">
+                  <Accordion.Heading>
+                    <Accordion.Trigger className="bg-transparent px-0 py-4 text-left shadow-none hover:bg-transparent">
+                      <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">
+                        Updates
+                      </span>
+                      <Accordion.Indicator>
+                        <ChevronDown aria-hidden="true" className="size-4" />
+                      </Accordion.Indicator>
+                    </Accordion.Trigger>
+                  </Accordion.Heading>
+                  <Accordion.Panel>
+                    <Accordion.Body className="px-0 pb-4 pt-0 text-sm text-muted-foreground">
+                      <ul className="divide-y divide-divider">
+                        {journey.events.map((event) => (
+                          <li
+                            key={event.id}
+                            className="py-3 first:pt-0 last:pb-0"
+                          >
+                            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                              <p className="text-sm text-foreground">
+                                {event.description ?? event.type}
+                              </p>
+                              <time
+                                dateTime={event.occurredAt}
+                                className="shrink-0 text-sm text-muted-foreground"
+                              >
+                                {format(
+                                  new Date(event.occurredAt),
+                                  "d MMM yyyy, HH:mm",
+                                )}
+                              </time>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Stage: {event.stage}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </Accordion.Body>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              </Accordion>
+            </section>
+          )}
+
           {/* The staff record — read-only identity facts, no link back into
               the completed activation flow (one-way progression). */}
           {journey.staffRecord && (
-            <div className="mt-6 max-w-xl border-t border-divider pt-5">
+            <div className="mt-6 max-w-xl border-t border-divider pt-5 md:hidden">
               <p className="text-sm font-semibold text-foreground">
                 FinFam staff record
               </p>
@@ -223,7 +316,10 @@ export default async function ApplicationJourneyPage({
                     Activated
                   </dt>
                   <dd className="mt-0.5 text-sm font-semibold text-foreground">
-                    {format(new Date(journey.staffRecord.activatedAt), "d MMMM yyyy")}
+                    {format(
+                      new Date(journey.staffRecord.activatedAt),
+                      "d MMMM yyyy",
+                    )}
                   </dd>
                 </div>
                 <div>
@@ -243,10 +339,13 @@ export default async function ApplicationJourneyPage({
               CTA belongs to this card, not to the recruitment next-action
               frame (deriveNextAction stays null for APPROVED_STAFF). */}
           {journey.onboarding && (
-            <OnboardingJourneyCard
-              reference={journey.referenceNumber}
-              onboarding={journey.onboarding}
-            />
+            <div className="md:hidden">
+              <OnboardingJourneyCard
+                reference={journey.referenceNumber}
+                onboarding={journey.onboarding}
+                headingId="staff-onboarding-heading-mobile"
+              />
+            </div>
           )}
         </section>
 
@@ -257,42 +356,59 @@ export default async function ApplicationJourneyPage({
           aria-label="Your recruitment journey"
           className="order-2 self-start md:sticky md:top-8"
         >
-          <h2 className="text-sm font-semibold text-foreground">
-            Your journey
-          </h2>
-          <RecruitmentProgress
-            currentStage={journey.currentStage}
-            states={stageStates}
-            showDescriptions={false}
-            className="mt-4"
-          />
+          {journey.staffRecord && (
+            <section className="border-b border-divider pb-6">
+              <h2 className="text-sm font-semibold text-foreground">
+                FinFam staff record
+              </h2>
+              <dl className="mt-4 space-y-3">
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-sm text-muted-foreground">Staff ID</dt>
+                  <dd className="font-mono text-sm font-semibold tracking-wider text-foreground">
+                    {journey.staffRecord.staffId}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-sm text-muted-foreground">Activated</dt>
+                  <dd className="text-right text-sm font-semibold text-foreground">
+                    {format(
+                      new Date(journey.staffRecord.activatedAt),
+                      "d MMMM yyyy",
+                    )}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-sm text-muted-foreground">Designation</dt>
+                  <dd className="text-right text-sm font-semibold text-foreground">
+                    {journey.staffRecord.roleTitle}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          )}
+
+          {journey.onboarding && (
+            <OnboardingJourneyCard
+              reference={journey.referenceNumber}
+              onboarding={journey.onboarding}
+              className="mt-6 max-w-none"
+              headingId="staff-onboarding-heading-rail"
+            />
+          )}
+
+          <section className="border-t border-divider pt-6">
+            <h2 className="text-sm font-semibold text-foreground">
+              Your journey
+            </h2>
+            <RecruitmentProgress
+              currentStage={journey.currentStage}
+              states={stageStates}
+              showDescriptions={false}
+              className="mt-4"
+            />
+          </section>
         </aside>
       </div>
-
-      {/* Updates — append-only StageEvent history */}
-      {journey.events.length > 0 && (
-        <section aria-label="Updates" className="mt-12 max-w-2xl">
-          <h2 className="text-base font-semibold text-foreground">Updates</h2>
-          <ul className="mt-1 list-none p-0">
-            {journey.events.map((event) => (
-              <li
-                key={event.id}
-                className="flex items-baseline justify-between gap-4 border-b border-divider py-3 last:border-b-0 last:pb-0"
-              >
-                <span className="text-sm text-foreground">
-                  {event.description ?? event.type}
-                </span>
-                <time
-                  dateTime={event.occurredAt}
-                  className="shrink-0 text-sm text-muted-foreground"
-                >
-                  {format(new Date(event.occurredAt), "d MMM yyyy, HH:mm")}
-                </time>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </PageShell>
   );
 }

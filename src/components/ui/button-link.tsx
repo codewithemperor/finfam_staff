@@ -16,6 +16,12 @@ type HeroButtonVariant =
 
 type HeroButtonSize = "sm" | "md" | "lg";
 
+const buttonLinkSizeClasses: Record<HeroButtonSize, string> = {
+  sm: "h-[2.375rem] min-h-[2.375rem] px-3",
+  md: "h-11 min-h-11 px-4",
+  lg: "h-12 min-h-12 px-6",
+};
+
 export interface ButtonLinkProps
   extends Omit<ComponentProps<typeof Link>, "className"> {
   variant?: HeroButtonVariant;
@@ -45,7 +51,13 @@ export function ButtonLink({
 }: ButtonLinkProps) {
   return (
     <Link
-      className={cn(buttonVariants({ fullWidth, size, variant }), className)}
+      data-slot="button"
+      className={cn(
+        buttonVariants({ fullWidth, size, variant }),
+        "inline-flex items-center justify-center rounded-[var(--field-radius)] shadow-none",
+        buttonLinkSizeClasses[size],
+        className,
+      )}
       {...props}
     />
   );

@@ -191,7 +191,13 @@ describe("Stage 7 — Staff Account provisioning", () => {
 
     const runScript = async (args: string[]) => {
       const proc = Bun.spawn(
-        ["bash", "scripts/backfill-staff-accounts.sh", ...args],
+        [
+          "bun",
+          "--conditions",
+          "react-server",
+          "scripts/backfill-staff-accounts.ts",
+          ...args,
+        ],
         { cwd: process.cwd(), stdout: "pipe", stderr: "pipe" },
       );
       const output = await new Response(proc.stdout).text();
