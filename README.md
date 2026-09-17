@@ -720,6 +720,113 @@ APIs, session/suspension gating, card fields, sensitive-field exclusions,
 query-manipulation immunity, cross-staff isolation, Home/Profile
 integration, ZERO-database-write integrity).
 
+## Admin Operations (Stage 11)
+
+A secure, structurally separate management console (`/admin`) for the
+Staff Platform that already exists. **One effective privilege level
+(ADMIN) — no Supervisor role, no RBAC, no scopes** (approved MVP). It is
+NOT an HRIS/CRM/payroll/earnings/performance/members system and contains
+no content management.
+
+### Admin identity — structurally separate from Staff
+
+```text
+Staff:  StaffSession → StaffAccount → Staff → Candidate   (ff_staff_session)
+Admin:  AdminSession → AdminAccount                        (ff_admin_session)
+```
+
+- **`AdminAccount` is NOT connected to Candidate or Staff** — even when
+  the same person holds both identities they are separate domains, and
+  neither session can ever satisfy the other domain's guard
+  (`requireAdminSession()` vs `requireStaffSession()`; pinned by tests in
+  both directions).
+- **Provisioning is operational only** — `bun run bootstrap:admin --
+  <email> [--dry-run]`. There is NO public registration, no invite flow,
+  no password anywhere. The script creates an ACTIVE account, is
+  idempotent for existing ACTIVE accounts, and **REFUSES to reactivate a
+  suspended admin** (recovery is an explicit future break-glass policy,
+  never a script side effect).
+- **Sign-in is email OTP** (`/admin/login`) mirroring the proven Staff
+  security properties: 6-digit CSPRNG code hashed at rest (sha256),
+  10-minute expiry, single-use latch, 5-attempt budget, latest-code-only,
+  60s resend cooldown, 5-codes/15-min window, neutral anti-enumeration
+  responses. The OTP is delivered by the one-shot `ADMIN_LOGIN_CODE`
+  notification — the recipient is the real AdminAccount email; **no
+  Candidate row is created or borrowed** (`NotificationDelivery.candidateId`
+  stays null).
+- **Sessions** — DB rows (unique hashed token, hard expiry, `revokedAt`),
+  absolute TTL of **12 hours** (`ADMIN_SESSION_TTL_HOURS`), no sliding
+  renewal, logout revokes the row. Cookie: HttpOnly, SameSite=Lax,
+  Path=/, Secure in production.
+- **Dev OTP echo** — `ADMIN_AUTH_DEV_CODE_ECHO` (separate from the Staff
+  switch; **MUST be `false` in production**).
+
+### Console surfaces (all server-guarded; layout AND per-page self-gating)
+
+| Route | Purpose |
+| --- | --- |
+| `/admin` | Overview: real active/suspended counts, recent audit actions, links — no KPIs, no analytics |
+| `/admin/staff` | Staff directory: server-paginated (20/page), whitelisted search (`q` across Staff ID/name/email) + account-status filter |
+| `/admin/staff/[id]` | Read-only detail: identity, appointment snapshot, onboarding, training, recent reports, account access. Opaque internal row id in URLs; `FF-STF-NNNN` is display/search only |
+| `/admin/reports` | **SUBMITTED** daily reports only (drafts hidden, hard policy); month + staff filters; self-reported notice verbatim |
+| `/admin/reports/[reportId]` | Read-only report detail (nine metrics + summary); drafts and unknown ids answer the same 404 |
+| `/admin/audit` | Append-only privileged-action log, paginated, read-only |
+
+Admin APIs: `POST /api/admin/auth/{request-code,verify,logout}`,
+`GET /api/admin/staff`, `GET /api/admin/staff/[id]`,
+`POST /api/admin/staff/[id]/suspend`,
+`POST /api/admin/staff/[id]/reactivate`, `GET /api/admin/reports`,
+`GET /api/admin/reports/[reportId]`, `GET /api/admin/audit` — all use the
+shared envelope; every route calls `requireAdminSession()`; no generic
+status PATCH exists.
+
+### Suspension / reactivation (the only privileged writes)
+
+- **Intent-specific endpoints** — the browser never sends a status value.
+- **Hard atomicity**: one transaction = conditional ACTIVE → SUSPENDED
+  StaffAccount transition + revocation of EVERY live StaffSession for
+  that account (`revokedAt`) + append-only `AdminAuditEvent`. Global
+  access denial was already behavioural (every auth path re-checks
+  status); explicit revocation adds durable cutoff semantics.
+- **Reason required** on suspension (trimmed plain text, 1–500 chars; no
+  invented categories); optional note on reactivation.
+- **Idempotent**: conditional updates mean double-clicks/retries cannot
+  duplicate transitions or audit events; harmless no-ops return the
+  current state and write nothing.
+- **Scope guard**: suspension touches ONLY the account status, its live
+  sessions and the audit log — never Staff rows, Staff IDs, Appointments,
+  Onboarding, Training, Reports, Candidates or StageEvents. Suspension is
+  access disabled, not a record deleted. Reactivation restores ONLY
+  access (no resets, no new sessions resurrected).
+- **Same-origin hardening** on both privileged writes (Origin/Referer
+  validated against `APP_BASE_URL`/request host; fail closed). Existing
+  Staff APIs are untouched.
+
+### Audit log
+
+`AdminAuditEvent` (append-only): actor AdminAccount (session-resolved,
+never client-supplied; `onDelete: Restrict` — the log outlives
+everything), action (`STAFF_SUSPENDED` / `STAFF_REACTIVATED`), target,
+reason, conservative metadata (`staffId`, `previousStatus`,
+`newStatus` — never whole-record dumps). No edit/delete/clear path or
+retention job exists; retention period is an open business/legal
+question.
+
+### Deliberately absent from Stage 11
+
+Supervisor role / RBAC · Admin resource CMS or uploads · Staff profile
+editing (name/email/phone/Staff ID/designation/role) · report
+corrections/approval/deletion · suspension/reactivation emails ·
+termination/resignation states · onboarding/training overrides. Each is
+tracked in [docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md).
+
+Tests: `tests/admin-auth.test.ts` + `tests/admin-operations.test.ts`
+(bootstrap contract, OTP security matrix, cookie flags, cross-domain
+isolation both ways, directory search/filters + secret-exclusion
+assertions, submitted-only report visibility, full
+suspend→lockout→reactivate→restore lifecycle over real HTTP, one-event
+audit semantics, same-origin enforcement at the HTTP boundary).
+
 ## Environment variables
 
 | Variable                    | Required | Purpose                                        |
@@ -738,6 +845,8 @@ integration, ZERO-database-write integrity).
 | `ONBOARDING_WHATSAPP_NUMBER`| no       | Official onboarding WhatsApp number (digits, international format). Empty = honest pending copy in onboarding |
 | `STAFF_SESSION_TTL_DAYS`    | no       | Staff Portal session duration in days (default `7`) |
 | `DAILY_REPORT_BACKDATE_LIMIT_DAYS` | no | How many past Africa/Lagos days a report may cover (default `7`; `0` = today only) |
+| `ADMIN_SESSION_TTL_HOURS` | no      | Admin console session duration in hours (default `12`; absolute, no sliding renewal) |
+| `ADMIN_AUTH_DEV_CODE_ECHO` | no      | **DEV/TEST ONLY** — echoes the ADMIN OTP in the API response when `true`. **MUST be `false` in production.** Default `false` |
 
 Copy `.env.example` → `.env` and adjust. Rules:
 
@@ -766,22 +875,18 @@ The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.m
   (e.g. orientation overview: section list + progress rail from `md` up;
   section pages: content + “In this section” rail from `lg` up).
 
-## Next phase
+## Platform review gate (post-Stage 11)
 
-**Stages 1–9 plus Stage 10 are complete.** All six recruitment stages
+**Stages 1–10 plus Stage 11 are complete.** All six recruitment stages
 (Application → Orientation → Assessment → Agreement → Appointment →
 Activation), the staff-side Onboarding state, the Mailjet transactional
-notification service, **Stage 7 — Staff Portal Foundation, Onboarding &
-Resumption** (secure accounts, email-OTP login, DB-backed sessions,
-onboarding-first portal — see above), **Stage 8 — Daily Reporting &
-Accountability** (one self-reported report per Staff member per
-Africa/Lagos day, DRAFT → SUBMITTED, exactly-once receipt email — see
-above), **Stage 9 — Staff Training** (FinFam Staff Foundations `1.0`, six
-source-controlled lessons, lazy version-pinned enrollments, sequential
-completion with an exactly-once course latch — see above) and **Stage
-10 — Staff Resources & Identity Card** (source-controlled resource
-registry with honest availability; fully derived, printable Staff ID
-card — see above) are implemented and verified.
+notification service, Stage 7 — Staff Portal, Stage 8 — Daily Reporting,
+Stage 9 — Staff Training, Stage 10 — Staff Resources & Identity Card and
+**Stage 11 — Admin Operations** (separate admin identity, email-OTP
+console access, Staff directory/detail, submitted-only report visibility,
+transactional suspension/reactivation with session revocation, and the
+append-only privileged-action audit log — see above) are implemented and
+verified.
 
 The Member Growth / Earnings and Performance / Targets modules were
 **removed from the current project**: the portal has no authoritative
@@ -789,13 +894,20 @@ FinFam member/account database or API from which financial or performance
 facts could be safely verified. They are not planned and must not be
 restored by default.
 
-The next planned module is **Stage 11 — Admin / Supervisor Operations**.
-It must go through its own planning phase before implementation. **Do
-not start building it (or any other module) automatically.**
+**The roadmap now stops for a platform-level review** (approved Stage 11
+brief §70): security, permissions, production configuration, Mailjet
+sender configuration, Admin bootstrap/runbook, operational ownership,
+data/privacy boundaries, outstanding content questions, migration
+history, backup/recovery posture and deployment readiness. **Do not
+propose or build another stage automatically** — any later module must
+come from a real operational requirement identified by that review.
 
-Business decisions still outstanding (official onboarding WhatsApp number,
-canonical role title portal-wide, identity-verification hardening,
-approved resource files, official logo, staff photo policy, physical card
-specification, training knowledge-check policy, future course-version
-policy) are tracked in
+Business decisions still outstanding (official onboarding WhatsApp
+number, canonical role title portal-wide, identity-verification
+hardening, approved resource files, official logo, staff photo policy,
+physical card specification, training knowledge-check policy, future
+course-version policy, admin access list, Supervisor role/scoping,
+draft-report visibility for management, report correction authority,
+access-change email policy, audit retention, admin break-glass recovery)
+are tracked in
 [docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md).

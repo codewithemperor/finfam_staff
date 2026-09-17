@@ -28,7 +28,9 @@ import {
  */
 
 /** Version stored on every NotificationDelivery row at enqueue time. */
-export const NOTIFICATION_TEMPLATE_VERSION = "2.1";
+// v2.2 (Stage 11): registry gained ADMIN_LOGIN_CODE (one-shot admin OTP)
+// plus a recipient-aware footer — no existing template's wording changed.
+export const NOTIFICATION_TEMPLATE_VERSION = "2.2";
 
 /** FinFam accent green — single source: src/app/globals.css --accent. */
 const ACCENT = "#0c7a43";
@@ -69,7 +71,9 @@ function renderHtml(options: {
   callout?: { label: string; value: string };
   link?: SafeLink;
   baseUrl: string;
-  referenceNumber: string;
+  /** Recruitment/Staff framing. Admin one-shots (Stage 11) omit it — the
+   * footer then uses a neutral administrator wording (§9). */
+  referenceNumber?: string;
 }): string {
   const { heading, paragraphs, callout, link, baseUrl, referenceNumber } =
     options;
@@ -106,7 +110,11 @@ function renderHtml(options: {
       ${ctaHtml}
     </div>
     <div style="max-width:560px;margin:14px auto 0;padding:0 8px;">
-      <p style="margin:0;font-size:11px;line-height:1.6;color:${MUTED};">You are receiving this email because of activity on FinFam application ${escapeHtml(referenceNumber)}. The application portal is the authoritative source for your current status.</p>
+      <p style="margin:0;font-size:11px;line-height:1.6;color:${MUTED};">${
+        referenceNumber
+          ? `You are receiving this email because of activity on FinFam application ${escapeHtml(referenceNumber)}. The application portal is the authoritative source for your current status.`
+          : "You are receiving this email because of sign-in activity for a FinFam administrator account. If you did not request this code, you can safely ignore this email."
+      }</p>
     </div>
   </div>
 </body>
@@ -119,7 +127,8 @@ function renderText(options: {
   callout?: { label: string; value: string };
   link?: SafeLink;
   baseUrl: string;
-  referenceNumber: string;
+  /** Recruitment/Staff framing — omitted for admin one-shots (§9). */
+  referenceNumber?: string;
 }): string {
   const { heading, paragraphs, callout, link, baseUrl, referenceNumber } =
     options;
@@ -135,8 +144,12 @@ function renderText(options: {
     lines.push(`${link.label}:`, `${baseUrl}${link.path}`, "");
   }
   lines.push(
-    `FinFam · Application reference ${referenceNumber}`,
-    "The application portal is the authoritative source for your current status.",
+    referenceNumber
+      ? `FinFam · Application reference ${referenceNumber}`
+      : "FinFam · Administrator sign-in",
+    referenceNumber
+      ? "The application portal is the authoritative source for your current status."
+      : "If you did not request this code, you can safely ignore this email.",
     "",
   );
   return lines.join("\n").trimEnd();
@@ -149,7 +162,8 @@ function render(options: {
   callout?: { label: string; value: string };
   link?: SafeLink;
   baseUrl: string;
-  referenceNumber: string;
+  /** Recruitment/Staff framing — omitted for admin one-shots (§9). */
+  referenceNumber?: string;
 }): RenderedEmail {
   return {
     subject: options.subject,
@@ -351,6 +365,24 @@ const RENDERERS: NotificationRenderers = {
       baseUrl,
       referenceNumber: payload.referenceNumber,
     }),
+
+  ADMIN_LOGIN_CODE: (payload, { baseUrl }) =>
+    // Stage 11 admin OTP email (approved brief §9): neutral anti-enumeration
+    // copy, the six-digit code, expiry information and a security note. It
+    // NEVER reveals whether the address holds an AdminAccount, carries no
+    // candidate/recruitment framing (administrators have none), and links
+    // only to the admin sign-in page.
+    render({
+      subject: "Your FinFam Admin sign-in code",
+      heading: "Your FinFam Admin sign-in code.",
+      paragraphs: [
+        "If this email belongs to an authorized FinFam administrator account, use the code below to sign in.",
+        "This code expires 10 minutes after it was sent and can be used once. If you did not request it, you can safely ignore this email — no one can sign in without it.",
+      ],
+      callout: { label: "Sign-in code", value: payload.loginCode },
+      link: { label: "Open FinFam Admin", path: "/admin/login" },
+      baseUrl,
+    }),
 };
 
 /**
@@ -365,7 +397,16 @@ export function renderNotificationEmail<T extends NotificationTypeId>(
 ): RenderedEmail {
   // RAW first name — the HTML shell escapes the composed heading exactly
   // once, so payloads can never slip through unescaped NOR be double-escaped.
-  const name = firstName(payload.candidateName);
-  const journeyPath = `/application/${payload.referenceNumber}`;
+  // Stage 11: admin one-shot payloads carry NO candidate identity — the
+  // admin renderer ignores name/journeyPath and the shell drops the
+  // application footer, so existing renderers are untouched.
+  const candidateName = (payload as { candidateName?: unknown }).candidateName;
+  const referenceNumber = (payload as { referenceNumber?: unknown })
+    .referenceNumber;
+  const name = typeof candidateName === "string" ? firstName(candidateName) : "";
+  const journeyPath =
+    typeof referenceNumber === "string"
+      ? `/application/${referenceNumber}`
+      : "";
   return RENDERERS[type](payload, { baseUrl, name, journeyPath });
 }

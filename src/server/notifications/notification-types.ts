@@ -104,6 +104,20 @@ export interface DailyReportSubmittedPayload extends NotificationRecipient {
 }
 
 /**
+ * Admin console sign-in code (Stage 11, approved brief §8/§9). Deliberately
+ * does NOT extend NotificationRecipient: an administrator has no Candidate
+ * row, no reference number and no recruitment framing — the recipient
+ * identity (the snapshotted NotificationDelivery.recipientEmail) accurately
+ * represents the real recipient and candidateId stays null.
+ */
+export interface AdminLoginCodePayload {
+  /** The 6-digit sign-in code. ONE-SHOT: never persisted, never logged. */
+  loginCode: string;
+  /** ISO timestamp after which the code is dead. */
+  expiresAt: string;
+}
+
+/**
  * Payload contract per notification key. Templates render strictly from
  * these payloads — they never read the database themselves.
  */
@@ -120,6 +134,7 @@ export type NotificationPayloadMap = {
   STAFF_ACCOUNT_CREATED: StaffAccountCreatedPayload;
   STAFF_LOGIN_CODE: StaffLoginCodePayload;
   DAILY_REPORT_SUBMITTED: DailyReportSubmittedPayload;
+  ADMIN_LOGIN_CODE: AdminLoginCodePayload;
 };
 
 /**
@@ -131,11 +146,13 @@ export type NotificationPayloadMap = {
  */
 export const ONE_SHOT_NOTIFICATION_TYPES: readonly NotificationTypeId[] = [
   "STAFF_LOGIN_CODE",
+  "ADMIN_LOGIN_CODE",
 ] as const;
 
 /** Per-type delivery-attempt budget overrides (§10: one attempt per OTP). */
 export const MAX_ATTEMPTS_OVERRIDES: Partial<Record<NotificationTypeId, number>> = {
   STAFF_LOGIN_CODE: 1,
+  ADMIN_LOGIN_CODE: 1,
 };
 
 export type NotificationTypeId = keyof NotificationPayloadMap;

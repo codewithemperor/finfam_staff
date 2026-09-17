@@ -1097,3 +1097,69 @@ without a new approved brief.
 8. **Signature policy** (whose approved signature asset — none exists).
 9. **Server-generated PDF** (currently browser Print/Save-as-PDF only).
 10. **Admin-managed resource publishing** — Stage 11+ domain.
+
+## 45. Stage 11 — Admin Operations — IMPLEMENTED (approved brief; defaults recorded)
+
+**Implemented (approved brief §1–§70):** a structurally separate admin
+domain — `AdminSession → AdminAccount` with cookie `ff_admin_session`,
+deliberately unconnected to Candidate/Staff — with email-OTP sign-in at
+`/admin/login` (mirroring every Staff OTP security property), DB-backed
+sessions with an absolute **12-hour TTL** (`ADMIN_SESSION_TTL_HOURS`),
+and **one effective privilege level (ADMIN)**: no Supervisor role, no
+RBAC, no scopes. Console surfaces: Overview (real counts + recent audit),
+Staff directory (server-paginated, whitelisted search), read-only Staff
+detail, **SUBMITTED-only** Daily Report views (drafts hidden, hard
+policy), and the append-only Audit Log. The only privileged writes are
+intent-specific suspend/reactivate endpoints: one transaction = conditional
+account transition + revocation of every live Staff session + audit
+event; reason required on suspension (1–500 chars, no invented
+categories); idempotent (no duplicate transitions/events); same-origin
+verification, fail closed. Suspension is ACCESS DISABLED — never record
+deletion; reactivation restores ONLY access.
+
+**Bootstrap (§37 as approved):** `bun run bootstrap:admin -- <email>
+[--dry-run]` — no public registration; idempotent for ACTIVE accounts;
+**refuses to reactivate suspended admins**. Admin account lockout/
+recovery requires an explicit future break-glass policy (§39) — not
+implemented, not invented.
+
+**Notification-domain resolution (§8):** the outbox proved
+recipient-generic (`candidateId` optional, `recipientEmail` snapshotted);
+`ADMIN_LOGIN_CODE` was added as a ONE-SHOT type with a candidate-free
+payload — no Candidate row invented, `candidateId` stays null. Template
+registry v2.2 (existing template wording unchanged). The batch retry
+now excludes one-shot types entirely (they can never be re-derived).
+
+### Now resolved by Stage 11
+
+- §39-6 / §40-8: account suspension authority + workflow — authorized
+  ADMIN accounts suspend/reactivate via the console; every transition is
+  audited (actor, reason, status transition, timestamp).
+- §39-13 / §40 opening: who administers Staff accounts — provisioned
+  ADMIN accounts (list itself is a business decision below).
+
+### Still open (business decisions; defaults recorded)
+
+1. **Who receives Admin access initially** and how subsequent admins are
+   provisioned (default: runbook-controlled bootstrap list).
+2. **Supervisor role + scoping** (all Staff vs assigned subset) — not
+   invented; single global ADMIN for MVP.
+3. **Draft Daily Report visibility for management** (default: hidden).
+4. **Report correction authority** — request-correction vs edit
+   (default: none; any future correction must be an explicit append-only
+   amendment model, never silent editing).
+5. **Access-change emails** — should Staff be emailed on
+   suspension/reactivation; wording; support contact (default: none; no
+   notification types created speculatively).
+6. **Audit retention period + viewer scope** (default: all admins,
+   indefinite retention).
+7. **Admin break-glass recovery** — lost admin email access / suspended
+   admin (default: offline operational process; the bootstrap script
+   deliberately refuses to unsuspend).
+8. **Legal/privacy requirements** around management access to Staff data
+   (directory exposure of email/phone; appointment-document access;
+   ID-card preview by admins).
+9. **Future termination/resignation states** vs SUSPENDED-only access
+   semantics (default: SUSPENDED only).
+10. **Production admin OTP delivery** — requires the same Mailjet sender
+    configuration as every other notification (§37).

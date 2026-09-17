@@ -15,7 +15,8 @@
     "db:generate": "bash scripts/prisma.sh generate",
     "db:migrate": "bash scripts/prisma.sh migrate dev",
     "db:reset": "bash scripts/prisma.sh migrate reset",
-    "backfill:staff-accounts": "bash scripts/backfill-staff-accounts.sh"
+    "backfill:staff-accounts": "bash scripts/backfill-staff-accounts.sh",
+    "bootstrap:admin": "bash scripts/bootstrap-admin.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

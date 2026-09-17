@@ -132,6 +132,16 @@ enum NotificationType {
   /// confirmation), NOT a metrics digest and never a reminder — no
   /// DAILY_REPORT_REMINDER exists until a deadline policy is confirmed.
   DAILY_REPORT_SUBMITTED
+
+  /// Admin console email-OTP sign-in code (Stage 11). One-shot semantics,
+  /// identical in kind to STAFF_LOGIN_CODE: the plaintext code exists only
+  /// in memory between creation and the single delivery attempt, so the
+  /// payload can never be re-derived for a retry — a failed delivery is
+  /// terminal for that code. Codes are stored hashed on admin_login_codes.
+  /// The recipient is the AdminAccount email (no Candidate row exists for
+  /// administrators — notification_deliveries.candidateId stays null, the
+  /// recipient identity accurately represents the real recipient).
+  ADMIN_LOGIN_CODE
 }
 
 /// Status of a Staff Portal account (Stage 7). SUSPENDED exists so future
@@ -215,6 +225,9 @@ model DailyReport {
 
   /// One Staff member + one activity date = one report.
   @@unique([staffId, reportDate])
+  /// Stage 11 admin console: month/day filtering across ALL staff on
+  /// /admin/reports cannot use the staff-prefixed unique above.
+  @@index([reportDate])
   @@map("daily_reports")
 }
 
@@ -837,4 +850,139 @@ model StaffTrainingLessonProgress {
   @@unique([enrollmentId, lessonId])
   @@index([enrollmentId])
   @@map("staff_training_lesson_progress")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Stage 11 — Admin / Supervisor Operations (MVP: single ADMIN privilege
+// level, no Supervisor role, no RBAC — approved brief §3/§4).
+//
+// The Admin domain is STRUCTURALLY SEPARATE from the Staff domain:
+//
+//   Staff:  StaffSession → StaffAccount → Staff → Candidate
+//   Admin:  AdminSession → AdminAccount
+//
+// An AdminAccount is deliberately NOT connected to Candidate or Staff even
+// when the same person holds both identities — those are separate domains
+// with separate cookies (ff_staff_session vs ff_admin_session) and neither
+// session can ever satisfy the other domain's guard (approved brief §3).
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Status of a FinFam Admin console account (Stage 11). Mirrors the access
+/// semantics of StaffAccountStatus: SUSPENDED refuses code requests,
+/// verification and session resolution. Deliberately NO TERMINATED/RESIGNED
+/// states exist for admins either — access enable/disable is the whole model.
+enum AdminAccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+/// Privileged actions recorded in the append-only admin audit log (Stage
+/// 11). MVP writes are exactly the two StaffAccount access transitions;
+/// future privileged actions (e.g. resource publishing) extend this enum —
+/// they never bypass the audit log.
+enum AdminAuditAction {
+  STAFF_SUSPENDED
+  STAFF_REACTIVATED
+}
+
+/// One FinFam management identity authorized for the /admin console
+/// (Stage 11). Provisioned ONLY by scripts/bootstrap-admin.ts — there is no
+/// public registration, no password, no invite flow (approved brief §38).
+/// Stores no credentials: sign-in is email OTP (hashed codes live on
+/// AdminLoginCode); sessions are DB rows holding only the token hash.
+model AdminAccount {
+  id      String             @id @default(cuid())
+  /// Lowercase-normalized, unique. The OTP delivery address and the audit
+  /// "actor" identity. Never used for authorization of any Staff surface.
+  email   String             @unique
+  /// ACTIVE by default; SUSPENDED refuses every admin auth path. A
+  /// suspended admin is NOT reactivated by the bootstrap script — recovery
+  /// is an explicit future break-glass policy (approved brief §37/§39).
+  status  AdminAccountStatus @default(ACTIVE)
+  /// Set on each successful OTP verification.
+  lastLoginAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  loginCodes  AdminLoginCode[]
+  sessions    AdminSession[]
+  auditEvents AdminAuditEvent[]
+
+  @@map("admin_accounts")
+}
+
+/// One emailed email-OTP login code for an Admin console account (Stage
+/// 11). Same security properties as StaffLoginCode: 6-digit CSPRNG code
+/// stored ONLY as a sha256 hash, single-use (consumedAt latch), 10-minute
+/// expiry, max 5 failed attempts, latest-code-only verification.
+model AdminLoginCode {
+  id        String       @id @default(cuid())
+  accountId String
+  account   AdminAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// sha256 hex digest of the 6-digit code. Never the plaintext.
+  codeHash  String
+  /// After this instant the code is dead even if unused.
+  expiresAt DateTime
+  /// Single-use latch: set by the ONE verification transaction that wins.
+  consumedAt DateTime?
+  /// Failed verification attempts against this code (max 5).
+  attemptCount Int      @default(0)
+  createdAt DateTime     @default(now())
+
+  @@index([accountId, createdAt])
+  @@map("admin_login_codes")
+}
+
+/// One authenticated Admin console session (Stage 11). DB row + opaque
+/// cookie token (ff_admin_session), exactly like the Staff pattern but a
+/// structurally separate domain. Shorter absolute TTL (12h default,
+/// ADMIN_SESSION_TTL_HOURS) because the surface carries privileged writes.
+model AdminSession {
+  id        String       @id @default(cuid())
+  accountId String
+  account   AdminAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// sha256 hex digest of the cookie token. Unique — lookup key.
+  tokenHash String       @unique
+  createdAt DateTime     @default(now())
+  /// Hard expiry checked on every resolution — no sliding renewal.
+  expiresAt DateTime
+  /// Logout revokes the row — cookie deletion alone is never trusted.
+  revokedAt DateTime?
+  /// Refreshed opportunistically by authenticated admin reads.
+  lastSeenAt DateTime?
+
+  @@index([accountId])
+  @@map("admin_sessions")
+}
+
+/// Append-only privileged-action audit record (Stage 11). Every management
+/// write answers WHO (actor), WHAT (action + target), WHEN (createdAt) and
+/// WHY (reason). There is deliberately NO update/delete path in code, no
+/// admin UI mutation and no retention/expiry job — the log is read-only
+/// after creation and retained indefinitely (retention period is an open
+/// business/legal question, docs/CONTENT-QUESTIONS.md).
+model AdminAuditEvent {
+  id      String           @id @default(cuid())
+  /// The AdminAccount performing the action. ALWAYS resolved from the
+  /// AdminSession — never accepted from the client (approved brief §36).
+  /// Restrict (not Cascade): audit history outlives everything.
+  actorId String
+  actor   AdminAccount     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  action  AdminAuditAction
+  /// Coarse target domain, e.g. "STAFF_ACCOUNT".
+  targetType String
+  /// Database row id of the target. Human-readable identity (FF-STF-NNNN)
+  /// lives in metadata, resolvable from targetId.
+  targetId   String
+  /// Free-text justification (suspension: required, 1–500 chars,
+  /// trimmed; reactivation: optional note).
+  reason  String?
+  /// Conservative structured context — approved fields only: staffId,
+  /// previousStatus, newStatus. NEVER a dump of whole records or PII.
+  metadata Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@map("admin_audit_events")
 }

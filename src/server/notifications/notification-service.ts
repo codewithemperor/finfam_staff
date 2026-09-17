@@ -12,6 +12,7 @@ import {
   type NotificationTypeId,
   type NotificationRuntimeConfig,
   MAX_ATTEMPTS_OVERRIDES,
+  ONE_SHOT_NOTIFICATION_TYPES,
   entityIdFromDedupeKey,
   getNotificationConfig,
   isDeliveryActive,
@@ -310,6 +311,12 @@ export interface RetryBatchResult {
  * Intended for a PROTECTED future scheduler/worker — this project ships no
  * cron and no unauthenticated trigger; whatever deployment infrastructure
  * exists later can call this service (§15).
+ *
+ * ONE-SHOT types (STAFF_LOGIN_CODE / ADMIN_LOGIN_CODE) are EXCLUDED: their
+ * payloads live only in memory at dispatch time and can never be re-derived
+ * — a batch retry could only mark them FAILED, wasting the batch window and
+ * (for OTPs) risking a re-send of an expired or replaced code. A lost
+ * one-shot delivery is terminal by design; the user requests a fresh code.
  */
 export async function retryPendingNotifications(
   options: { limit?: number } = {},
@@ -331,6 +338,7 @@ export async function retryPendingNotifications(
     where: {
       status: { in: ["PENDING", "FAILED"] },
       attemptCount: { lt: config.maxAttempts },
+      type: { notIn: [...ONE_SHOT_NOTIFICATION_TYPES] },
     },
     orderBy: { createdAt: "asc" },
     take: options.limit ?? 20,
