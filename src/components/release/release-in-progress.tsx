@@ -26,7 +26,7 @@ export function ReleaseInProgress({ area }: { area: ReleaseArea }) {
           The {release.label.toLowerCase()} is being prepared and is not open
           yet. Please return after the scheduled release time.
         </p>
-        <div className="mx-auto mt-8 max-w-sm border border-border bg-surface px-5 py-4 text-left">
+        {/* <div className="mx-auto mt-8 max-w-sm border border-border bg-surface px-5 py-4 text-left">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             Scheduled release
           </p>
@@ -38,7 +38,7 @@ export function ReleaseInProgress({ area }: { area: ReleaseArea }) {
             })}{" "}
             {" WAT"}
           </p>
-        </div>
+        </div> */}
       </div>
     </main>
   );
