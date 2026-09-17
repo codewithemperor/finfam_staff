@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 import { AdminLoginForm } from "@/components/admin/admin-login-form";
+import { ReleaseInProgress } from "@/components/release/release-in-progress";
 import { getAdminSession } from "@/lib/auth/admin-session";
+import { isReleaseAvailable } from "@/server/config/release";
 
 export const metadata: Metadata = {
   title: "Administrator Sign In",
@@ -19,6 +22,12 @@ export const metadata: Metadata = {
  * (dashboard) route group, so the guard never loops.
  */
 export default async function AdminLoginPage() {
+  await connection();
+
+  if (!isReleaseAvailable("admin")) {
+    return <ReleaseInProgress area="admin" />;
+  }
+
   const session = await getAdminSession();
   if (session) {
     redirect("/admin");
@@ -67,7 +76,8 @@ export default async function AdminLoginPage() {
             Welcome back
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Enter your registered admin email to receive a secure 6-digit sign-in code.
+            Enter your registered admin email to receive a secure 6-digit
+            sign-in code.
           </p>
           <div className="mt-8">
             <AdminLoginForm />

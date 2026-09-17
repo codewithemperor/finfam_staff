@@ -25,7 +25,7 @@ export default async function StaffLoginPage() {
   }
 
   return (
-    <PageShell size="narrow">
+    <PageShell size="narrow" releaseArea="staff">
       <div className="mx-auto max-w-md">
         <Image
           src="/icon-192.png"

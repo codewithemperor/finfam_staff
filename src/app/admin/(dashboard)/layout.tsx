@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { AdminShell } from "@/components/admin/admin-shell";
+import { ReleaseInProgress } from "@/components/release/release-in-progress";
 import { getAdminSession } from "@/lib/auth/admin-session";
+import { isReleaseAvailable } from "@/server/config/release";
 
 /**
  * Guarded Admin console layout (Stage 11): every /admin page below this
@@ -22,6 +24,10 @@ export default async function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (!isReleaseAvailable("admin")) {
+    return <ReleaseInProgress area="admin" />;
+  }
+
   const session = await getAdminSession();
   if (!session) {
     redirect("/admin/login");

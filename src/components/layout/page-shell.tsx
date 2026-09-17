@@ -2,6 +2,9 @@ import { PageContainer } from "@/components/layout/page-container";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SkipLink } from "@/components/layout/skip-link";
+import { connection } from "next/server";
+import { ReleaseInProgress } from "@/components/release/release-in-progress";
+import { isReleaseAvailable, type ReleaseArea } from "@/server/config/release";
 import { cn } from "@/lib/utils";
 
 interface PageShellProps {
@@ -12,6 +15,7 @@ interface PageShellProps {
    */
   size?: "narrow" | "default" | "wide";
   className?: string;
+  releaseArea?: ReleaseArea;
 }
 
 /**
@@ -25,7 +29,18 @@ interface PageShellProps {
  * pushed down naturally on long pages. Pages that need a different shell
  * (e.g. error screens) can compose the parts themselves.
  */
-export function PageShell({ children, size = "default", className }: PageShellProps) {
+export async function PageShell({
+  children,
+  size = "default",
+  className,
+  releaseArea = "applicant",
+}: PageShellProps) {
+  await connection();
+
+  if (!isReleaseAvailable(releaseArea)) {
+    return <ReleaseInProgress area={releaseArea} />;
+  }
+
   return (
     <div className="flex min-h-[100dvh] flex-col">
       <SkipLink />

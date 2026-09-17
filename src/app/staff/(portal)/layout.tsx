@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { StaffShell } from "@/components/staff/staff-shell";
+import { ReleaseInProgress } from "@/components/release/release-in-progress";
 import { getStaffSession } from "@/lib/auth/session";
+import { isReleaseAvailable } from "@/server/config/release";
 
 /**
  * Guarded Staff Portal layout (Stage 7, brief §16/§22): every /staff page
@@ -18,6 +20,10 @@ export default async function StaffPortalLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (!isReleaseAvailable("staff")) {
+    return <ReleaseInProgress area="staff" />;
+  }
+
   const session = await getStaffSession();
   if (!session) {
     redirect("/staff/login");
