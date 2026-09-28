@@ -21,11 +21,10 @@ import { ApiClientError, apiFetch } from "@/lib/api/client";
  *   1. Enter the administrator email → "Send sign-in code"
  *   2. Enter the 6-digit code → "Sign in"
  *
- * The response to step 1 is the neutral anti-enumeration message for every
- * email; in development (ADMIN_AUTH_DEV_CODE_ECHO=true) a small,
- * clearly-labelled dev notice shows the echoed code so sandbox flows can
- * complete without a real inbox — production MUST run with the flag false
- * (then no code is ever shown in the browser).
+ * An unknown or inactive email is shown as a field-level error. For a valid
+ * account, the request continues with the neutral success message; in
+ * development (ADMIN_AUTH_DEV_CODE_ECHO=true) a clearly-labelled dev notice
+ * shows the echoed code so sandbox flows can complete without a real inbox.
  *
  * There is deliberately NO signup and NO forgot-password path anywhere:
  * administrator accounts are provisioned offline (bootstrap script).
@@ -128,7 +127,11 @@ export function AdminLoginForm() {
 
   if (step === "email") {
     return (
-      <form noValidate onSubmit={handleRequestCode} className="flex flex-col gap-5">
+      <form
+        noValidate
+        onSubmit={handleRequestCode}
+        className="flex flex-col gap-5"
+      >
         <TextField isInvalid={Boolean(emailError)}>
           <Label htmlFor="admin-login-email">Administrator email address</Label>
           <Input
@@ -153,7 +156,6 @@ export function AdminLoginForm() {
             </>
           )}
         </Button>
-
       </form>
     );
   }

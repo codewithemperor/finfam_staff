@@ -19,11 +19,10 @@ import { ApiClientError, apiFetch } from "@/lib/api/client";
  *   1. Enter the registered email → "Send login code"
  *   2. Enter the 6-digit code → "Sign in"
  *
- * The response to step 1 is the neutral anti-enumeration message for every
- * email (brief §8); in development (STAFF_AUTH_DEV_CODE_ECHO=true) a small,
- * clearly-labelled dev notice shows the echoed code so sandbox flows can
- * complete without a real inbox — production MUST run with the flag false
- * (then no code is ever shown in the browser).
+ * An unknown or inactive email is shown as a field-level error. For a valid
+ * account, the request continues with the neutral success message; in
+ * development (STAFF_AUTH_DEV_CODE_ECHO=true) a clearly-labelled dev notice
+ * shows the echoed code so sandbox flows can complete without a real inbox.
  *
  * Accessibility (brief §50; production-readiness remediation §25): labelled
  * email + code fields, the code input uses autocomplete="one-time-code" +
@@ -123,7 +122,11 @@ export function StaffLoginForm() {
 
   if (step === "email") {
     return (
-      <form noValidate onSubmit={handleRequestCode} className="flex flex-col gap-5">
+      <form
+        noValidate
+        onSubmit={handleRequestCode}
+        className="flex flex-col gap-5"
+      >
         <TextField isInvalid={Boolean(emailError)}>
           <Label htmlFor="staff-login-email">Registered email address</Label>
           <Input
@@ -148,8 +151,6 @@ export function StaffLoginForm() {
             </>
           )}
         </Button>
-
-
       </form>
     );
   }

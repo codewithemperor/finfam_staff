@@ -15,12 +15,14 @@ import { ACTIVATION_META } from "@/config/activation";
 import { OPEN_POSITION } from "@/config/content";
 import type { ActivationView } from "@/types/recruitment";
 
-import { apiRequest, assertServerUp, expectOk } from "./helpers/api";
-import { cleanupTestCandidates, db, uniqueEmail } from "./helpers/db";
 import {
-  driveToActivation,
-  STAFF_TEST_PROFILE,
-} from "./helpers/journey";
+  apiRequest,
+  assertServerUp,
+  expectFail,
+  expectOk,
+} from "./helpers/api";
+import { cleanupTestCandidates, db, uniqueEmail } from "./helpers/db";
+import { driveToActivation, STAFF_TEST_PROFILE } from "./helpers/journey";
 
 const emails: string[] = [];
 const fixtureCandidateIds: string[] = [];
@@ -33,7 +35,9 @@ afterAll(async () => {
   const removed = await cleanupTestCandidates(emails);
   if (fixtureCandidateIds.length > 0) {
     // Fixture rows created directly for the self-heal/backfill tests.
-    await db.candidate.deleteMany({ where: { id: { in: fixtureCandidateIds } } });
+    await db.candidate.deleteMany({
+      where: { id: { in: fixtureCandidateIds } },
+    });
   }
   console.log(
     `[staff-accounts] cleanup: ${removed} journey candidate(s) + ${fixtureCandidateIds.length} fixture candidate(s) removed (sequences stay advanced — documented behaviour)`,
@@ -131,9 +135,8 @@ describe("Stage 7 — Staff Account provisioning", () => {
 
     // The same core the activation and backfill use, exercised in-process
     // against an already-provisioned Staff row — pure no-op.
-    const { provisionStaffAccount } = await import(
-      "@/server/services/staff-accounts"
-    );
+    const { provisionStaffAccount } =
+      await import("@/server/services/staff-accounts");
     const provisioned = await provisionStaffAccount(db, {
       staffId: before.staff.id,
       candidateId: before.candidateId,
@@ -212,7 +215,10 @@ describe("Stage 7 — Staff Account provisioning", () => {
       });
     const countEmail = () =>
       db.notificationDelivery.count({
-        where: { candidateId: orphan.candidateId, type: "STAFF_ACCOUNT_CREATED" },
+        where: {
+          candidateId: orphan.candidateId,
+          type: "STAFF_ACCOUNT_CREATED",
+        },
       });
 
     // Dry run: reports the orphan, writes NOTHING.
@@ -240,10 +246,17 @@ describe("Stage 7 — Staff Account provisioning", () => {
     // The backfill never mutated the Staff identity.
     const staffAfter = await db.staff.findUnique({
       where: { id: orphan.staffRowId },
-      select: { staffId: true, activatedAt: true, version: true, roleTitle: true },
+      select: {
+        staffId: true,
+        activatedAt: true,
+        version: true,
+        roleTitle: true,
+      },
     });
     expect(staffAfter?.staffId).toBe(orphan.staffId);
-    expect(staffAfter?.activatedAt.getTime()).toBe(orphan.activatedAt.getTime());
+    expect(staffAfter?.activatedAt.getTime()).toBe(
+      orphan.activatedAt.getTime(),
+    );
     expect(staffAfter?.roleTitle).toBe("Remote Staff");
   });
 
@@ -257,15 +270,18 @@ describe("Stage 7 — Staff Account provisioning", () => {
       data: { status: "SUSPENDED" },
     });
 
-    const neutral = expectOk<{ message: string; devCode?: string }>(
+    const error = expectFail(
       await apiRequest("POST", "/api/staff/auth/request-code", {
         email: staff.email,
       }),
-      200,
+      422,
+      "VALIDATION_ERROR",
       "suspended request-code",
     );
-    // Neutral response, no dev echo, NO code row created.
-    expect(neutral.devCode).toBeUndefined();
+    // Field error, no code row created.
+    expect(error.error.fields?.email).toMatch(
+      /No active FinFam Staff account/i,
+    );
     expect(
       await db.staffLoginCode.count({ where: { accountId: row.account!.id } }),
     ).toBe(0);
@@ -284,8 +300,9 @@ describe("Stage 7 — Staff Account provisioning", () => {
 /** Creates a pre-Stage-7 style orphan: candidate + Staff row, NO account. */
 async function createOrphanStaff(label: string) {
   const email = uniqueEmail(label);
-  const referenceNumber = `FF-${Array.from({ length: 6 }, () =>
-    "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 31)],
+  const referenceNumber = `FF-${Array.from(
+    { length: 6 },
+    () => "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 31)],
   ).join("")}`;
 
   const candidate = await db.candidate.create({

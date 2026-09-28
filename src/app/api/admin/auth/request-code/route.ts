@@ -12,10 +12,9 @@ import {
 /**
  * POST /api/admin/auth/request-code — Stage 11 admin email-OTP step 1.
  *
- * Anti-enumeration (approved brief §9): unknown email, non-admin email and
- * suspended admin accounts all receive the SAME neutral success response
- * and create NO rows. Cooldown/rate-limit breaches answer 429 with neutral
- * wording. Responses never reveal whether an address holds an AdminAccount.
+ * Unknown or inactive admin emails return a field-level validation error and
+ * create NO rows. Valid accounts receive the existing neutral success copy;
+ * cooldown/rate-limit breaches answer 429.
  *
  * DEVELOPMENT/TEST ONLY (ADMIN_AUTH_DEV_CODE_ECHO=true): the response may
  * include `devCode`. Production MUST run with the flag false — documented

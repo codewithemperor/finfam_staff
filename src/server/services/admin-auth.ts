@@ -28,9 +28,8 @@ import type { AdminLoginCodePayload } from "@/server/notifications/notification-
  * - Replacement: only the LATEST code of an account is ever verifiable.
  * - Resend cooldown: 60s between codes per account (HTTP 429).
  * - Request rate limit: max 5 codes / rolling 15 minutes per account (429).
- * - Anti-enumeration (§9): unknown email / non-admin email / suspended
- *   admin account all receive the SAME neutral success response and create
- *   NO rows. Verification failures never reveal which of the three failed.
+ * - Unknown or inactive email requests return a field-level validation error
+ *   and create NO rows. Verification failures remain generic.
  * - Suspension: a SUSPENDED AdminAccount cannot receive usable codes,
  *   cannot verify, and its sessions do not resolve.
  * - One-shot delivery (§9): ADMIN_LOGIN_CODE is attempted exactly once from
@@ -65,6 +64,9 @@ function adminSessionTtlMs(): number {
 
 export const NEUTRAL_ADMIN_REQUEST_MESSAGE =
   "If this email belongs to an authorized FinFam administrator account, a sign-in code has been sent. The code expires in 10 minutes.";
+
+const UNKNOWN_ADMIN_EMAIL_MESSAGE =
+  "No active FinFam administrator account was found for this email address.";
 
 const INVALID_CODE_MESSAGE =
   "That code is not valid or has expired. Request a new code and try again.";
@@ -107,7 +109,7 @@ async function resolveAdminAccountByEmail(
  * ---------------------------------------------------------------------- */
 
 export interface RequestAdminLoginCodeResult {
-  /** Always true externally (anti-enumeration); the client shows one message. */
+  /** Returned only after an active admin account has been resolved. */
   sent: true;
   /**
    * DEVELOPMENT/TEST ONLY (ADMIN_AUTH_DEV_CODE_ECHO=true): the plaintext
@@ -124,10 +126,11 @@ export async function requestAdminLoginCode(
 ): Promise<RequestAdminLoginCodeResult> {
   const account = await resolveAdminAccountByEmail(rawEmail);
 
-  // Anti-enumeration (§9): anything that is not an ACTIVE admin account
-  // gets the neutral response and creates NO rows of any kind.
+  // Unknown and suspended emails cannot receive a code and create no rows.
   if (!account || account.status !== "ACTIVE") {
-    return { sent: true };
+    throw validationError(UNKNOWN_ADMIN_EMAIL_MESSAGE, {
+      email: UNKNOWN_ADMIN_EMAIL_MESSAGE,
+    });
   }
 
   const now = Date.now();
@@ -157,7 +160,10 @@ export async function requestAdminLoginCode(
   // Generate + persist (hashed) + queue the one-shot email intent in ONE
   // transaction, then dispatch once after the commit. The recipient is the
   // AdminAccount email itself — no Candidate row is created or borrowed.
-  const code = String(randomInt(0, 10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
+  const code = String(randomInt(0, 10 ** CODE_LENGTH)).padStart(
+    CODE_LENGTH,
+    "0",
+  );
   const expiresAt = new Date(now + CODE_TTL_MS);
 
   const { row, enqueued } = await db.$transaction(async (tx) => {

@@ -13,13 +13,14 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 import { sha256Hex } from "@/lib/auth/hash";
 
-import { apiRequest, assertServerUp, expectOk } from "./helpers/api";
-import { cleanupTestCandidates, db } from "./helpers/db";
 import {
-  driveToActivation,
-  fetchRaw,
-  loginAsStaff,
-} from "./helpers/journey";
+  apiRequest,
+  assertServerUp,
+  expectFail,
+  expectOk,
+} from "./helpers/api";
+import { cleanupTestCandidates, db } from "./helpers/db";
+import { driveToActivation, fetchRaw, loginAsStaff } from "./helpers/journey";
 
 const EMAILS: string[] = [];
 
@@ -60,35 +61,34 @@ async function backdateLastCode(staffRowId: string, ms: number) {
 describe("Stage 7 — Email OTP", () => {
   let email = "";
   let staffRowId = "";
-/** Request a fresh code, stepping over the 60s resend cooldown via DB
- * backdating (the cooldown is time-based — healing proves the clock rule).
- * Keeps every prior code INSIDE the 15-minute rate window unless the test
- * explicitly pushes them out. */
-async function requestCodeFresh(
-  email: string,
-  opts: { outsideWindow?: boolean } = {},
-) {
-  if (opts.outsideWindow) {
-    // Push every earlier code outside the 15-minute rate window so this
-    // request is unconstrained by it (used after the rate-limit test).
-    const account = await db.staffAccount.findUnique({
-      where: { staffId: staffRowId },
-      select: { id: true },
-    });
-    await db.staffLoginCode.updateMany({
-      where: { accountId: account!.id },
-      data: { createdAt: new Date(Date.now() - 16 * 60 * 1000) },
-    });
-  } else {
-    await backdateLastCode(staffRowId, 61 * 1000);
+  /** Request a fresh code, stepping over the 60s resend cooldown via DB
+   * backdating (the cooldown is time-based — healing proves the clock rule).
+   * Keeps every prior code INSIDE the 15-minute rate window unless the test
+   * explicitly pushes them out. */
+  async function requestCodeFresh(
+    email: string,
+    opts: { outsideWindow?: boolean } = {},
+  ) {
+    if (opts.outsideWindow) {
+      // Push every earlier code outside the 15-minute rate window so this
+      // request is unconstrained by it (used after the rate-limit test).
+      const account = await db.staffAccount.findUnique({
+        where: { staffId: staffRowId },
+        select: { id: true },
+      });
+      await db.staffLoginCode.updateMany({
+        where: { accountId: account!.id },
+        data: { createdAt: new Date(Date.now() - 16 * 60 * 1000) },
+      });
+    } else {
+      await backdateLastCode(staffRowId, 61 * 1000);
+    }
+    return expectOk<{ message: string; devCode?: string }>(
+      await apiRequest("POST", "/api/staff/auth/request-code", { email }),
+      200,
+      "request code (cooldown stepped over)",
+    );
   }
-  return expectOk<{ message: string; devCode?: string }>(
-    await apiRequest("POST", "/api/staff/auth/request-code", { email }),
-    200,
-    "request code (cooldown stepped over)",
-  );
-}
-
 
   beforeAll(async () => {
     const staff = await driveToActivation("auth-otp");
@@ -101,17 +101,19 @@ async function requestCodeFresh(
     staffRowId = row!.id;
   });
 
-  it("unknown email gets the neutral response and creates NOTHING", async () => {
+  it("unknown email returns a field error and creates NOTHING", async () => {
     const unknown = `nobody-${Date.now()}@test.example.com`;
-    const data = expectOk<{ message: string; devCode?: string }>(
+    const error = expectFail(
       await apiRequest("POST", "/api/staff/auth/request-code", {
         email: unknown,
       }),
-      200,
+      422,
+      "VALIDATION_ERROR",
       "unknown email request",
     );
-    expect(data.devCode).toBeUndefined();
-    expect(data.message).toMatch(/login code has been sent/i);
+    expect(error.error.fields?.email).toMatch(
+      /No active FinFam Staff account/i,
+    );
     // No notification row was queued for a non-account email.
     expect(
       await db.notificationDelivery.count({
@@ -337,7 +339,14 @@ describe("Stage 7 — Sessions", () => {
   it("no cookie, garbage cookie, and manipulated cookies are all rejected", async () => {
     expect((await fetchRaw("GET", "/api/staff/me")).status).toBe(401);
     expect(
-      (await fetchRaw("GET", "/api/staff/me", undefined, "ff_staff_session=garbage")).status,
+      (
+        await fetchRaw(
+          "GET",
+          "/api/staff/me",
+          undefined,
+          "ff_staff_session=garbage",
+        )
+      ).status,
     ).toBe(401);
     // sha256 collision games: a random hex token resolves to nothing.
     expect(
@@ -364,7 +373,12 @@ describe("Stage 7 — Sessions", () => {
   });
 
   it("logout revokes the DB session and clears the cookie", async () => {
-    const logout = await fetchRaw("POST", "/api/staff/auth/logout", undefined, cookie);
+    const logout = await fetchRaw(
+      "POST",
+      "/api/staff/auth/logout",
+      undefined,
+      cookie,
+    );
     expect(logout.status).toBe(200);
 
     const sessionRow = await db.staffSession.findFirst({
@@ -373,7 +387,9 @@ describe("Stage 7 — Sessions", () => {
     });
     expect(sessionRow?.revokedAt).not.toBeNull();
 
-    expect((await fetchRaw("GET", "/api/staff/me", undefined, cookie)).status).toBe(401);
+    expect(
+      (await fetchRaw("GET", "/api/staff/me", undefined, cookie)).status,
+    ).toBe(401);
     expect(logout.setCookie ?? "").toContain("Max-Age=0");
   });
 

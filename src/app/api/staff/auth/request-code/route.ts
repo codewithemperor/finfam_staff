@@ -12,9 +12,9 @@ import {
 /**
  * POST /api/staff/auth/request-code — Stage 7 email-OTP step 1.
  *
- * Anti-enumeration (brief §8): unknown email, non-Staff email and suspended
- * accounts all receive the SAME neutral success response and create NO
- * rows. Cooldown/rate-limit breaches answer 429 with neutral wording.
+ * Unknown or inactive Staff emails return a field-level validation error and
+ * create NO rows. Valid accounts receive the existing neutral success copy;
+ * cooldown/rate-limit breaches answer 429.
  *
  * DEVELOPMENT/TEST ONLY (STAFF_AUTH_DEV_CODE_ECHO=true): the response may
  * include `devCode`. Production MUST run with the flag false — documented

@@ -20,7 +20,11 @@ import {
   assertServerUp,
 } from "./helpers/api";
 import { driveToActivation, loginAsStaff, fetchRaw } from "./helpers/journey";
-import { ONBOARDING_STEP_IDS, ONBOARDING_META, ONBOARDING_FINAL_STEP_ID } from "@/config/onboarding";
+import {
+  ONBOARDING_STEP_IDS,
+  ONBOARDING_META,
+  ONBOARDING_FINAL_STEP_ID,
+} from "@/config/onboarding";
 import {
   STAFF_FOUNDATIONS_CURRENT_VERSION,
   STAFF_FOUNDATIONS_VERSIONS,
@@ -56,8 +60,9 @@ let draftReportId: string;
 let submittedMetrics: Record<string, number>;
 let submittedSummary: string;
 
-const LESSON_IDS = STAFF_FOUNDATIONS_VERSIONS[STAFF_FOUNDATIONS_CURRENT_VERSION]
-  .lessons.map((lesson) => lesson.id);
+const LESSON_IDS = STAFF_FOUNDATIONS_VERSIONS[
+  STAFF_FOUNDATIONS_CURRENT_VERSION
+].lessons.map((lesson) => lesson.id);
 
 beforeAll(async () => {
   await assertServerUp();
@@ -81,7 +86,12 @@ beforeAll(async () => {
     (id) => id !== ONBOARDING_FINAL_STEP_ID,
   )) {
     expectOk(
-      await apiRequest("POST", "/api/staff/onboarding/steps", { stepId }, cookieA),
+      await apiRequest(
+        "POST",
+        "/api/staff/onboarding/steps",
+        { stepId },
+        cookieA,
+      ),
       200,
       `ops-a onboarding step ${stepId}`,
     );
@@ -100,7 +110,12 @@ beforeAll(async () => {
   // Training: open the course (lazy enrollment) + complete the FIRST lesson
   // only — the directory must show IN_PROGRESS for A.
   expectOk(
-    await apiRequest("GET", "/api/staff/training/staff-foundations", undefined, cookieA),
+    await apiRequest(
+      "GET",
+      "/api/staff/training/staff-foundations",
+      undefined,
+      cookieA,
+    ),
     200,
     "ops-a training open",
   );
@@ -132,7 +147,8 @@ beforeAll(async () => {
     memberEngagement: 4,
     connectionsBuilt: 6,
   };
-  submittedSummary = "Admin ops fixture — market outreach and member follow-up.";
+  submittedSummary =
+    "Admin ops fixture — market outreach and member follow-up.";
   expectOk(
     await fetchRaw(
       "PATCH",
@@ -210,7 +226,12 @@ afterAll(async () => {
 
 describe("staff directory (brief §18/§19/§56)", () => {
   it("requires an admin session (401 without, 401 with staff cookie)", async () => {
-    expectFail(await apiRequest("GET", "/api/admin/staff"), 401, "UNAUTHORIZED", "no cookie");
+    expectFail(
+      await apiRequest("GET", "/api/admin/staff"),
+      401,
+      "UNAUTHORIZED",
+      "no cookie",
+    );
     expectFail(
       await apiRequest("GET", "/api/admin/staff", undefined, staffA.cookie),
       401,
@@ -236,7 +257,12 @@ describe("staff directory (brief §18/§19/§56)", () => {
       total: number;
       totalPages: number;
     }>(
-      await apiRequest("GET", "/api/admin/staff?status=ALL", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/staff?status=ALL",
+        undefined,
+        adminCookie,
+      ),
       200,
       "directory list",
     );
@@ -288,13 +314,23 @@ describe("staff directory (brief §18/§19/§56)", () => {
 
   it("filters by account status", async () => {
     const active = expectOk<{ staff: { staffId: string }[] }>(
-      await apiRequest("GET", "/api/admin/staff?status=ACTIVE", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/staff?status=ACTIVE",
+        undefined,
+        adminCookie,
+      ),
       200,
       "active filter",
     );
     expect(active.staff.map((s) => s.staffId)).toContain(staffA.staffId);
     const empty = expectOk<{ staff: unknown[]; total: number }>(
-      await apiRequest("GET", "/api/admin/staff?q=nobodymatchesxyz", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/staff?q=nobodymatchesxyz",
+        undefined,
+        adminCookie,
+      ),
       200,
       "no-match search",
     );
@@ -317,7 +353,12 @@ describe("staff directory (brief §18/§19/§56)", () => {
   });
 
   it("response carries NO secrets (tokenHash/codeHash/NIN/BVN/bank/OTP)", async () => {
-    const result = await apiRequest("GET", "/api/admin/staff?status=ALL", undefined, adminCookie);
+    const result = await apiRequest(
+      "GET",
+      "/api/admin/staff?status=ALL",
+      undefined,
+      adminCookie,
+    );
     const raw = JSON.stringify(result.body).toLowerCase();
     for (const forbidden of [
       "tokenhash",
@@ -337,11 +378,24 @@ describe("staff directory (brief §18/§19/§56)", () => {
       identity: { staffId: string; fullName: string; email: string };
       appointment: { reference: string; version: string };
       onboarding: { state: string };
-      training: { state: string; courses: { courseId: string; state: string; completedLessons: number; totalLessons: number }[] };
+      training: {
+        state: string;
+        courses: {
+          courseId: string;
+          state: string;
+          completedLessons: number;
+          totalLessons: number;
+        }[];
+      };
       recentReports: { id: string; status: string }[];
       account: { status: string };
     }>(
-      await apiRequest("GET", `/api/admin/staff/${staffA.staffRowId}`, undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        `/api/admin/staff/${staffA.staffRowId}`,
+        undefined,
+        adminCookie,
+      ),
       200,
       "detail",
     );
@@ -354,10 +408,17 @@ describe("staff directory (brief §18/§19/§56)", () => {
     expect(detail.training.courses[0]!.totalLessons).toBe(LESSON_IDS.length);
     expect(detail.account.status).toBe("ACTIVE");
     expect(detail.recentReports.map((r) => r.id)).toContain(submittedReportId);
-    expect(detail.recentReports.every((r) => r.status === "SUBMITTED")).toBe(true);
+    expect(detail.recentReports.every((r) => r.status === "SUBMITTED")).toBe(
+      true,
+    );
 
     expectFail(
-      await apiRequest("GET", "/api/admin/staff/nonexistent-id", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/staff/nonexistent-id",
+        undefined,
+        adminCookie,
+      ),
       404,
       "NOT_FOUND",
       "unknown staff id",
@@ -371,12 +432,22 @@ describe("staff directory (brief §18/§19/§56)", () => {
 
 describe("admin daily reports (submitted only, read-only)", () => {
   it("requires an admin session", async () => {
-    expectFail(await apiRequest("GET", "/api/admin/reports"), 401, "UNAUTHORIZED", "no cookie");
+    expectFail(
+      await apiRequest("GET", "/api/admin/reports"),
+      401,
+      "UNAUTHORIZED",
+      "no cookie",
+    );
   });
 
   it("lists the submitted report with staff identity; drafts are hidden", async () => {
     const data = expectOk<{
-      reports: { id: string; staffId: string; staffName: string; status: string }[];
+      reports: {
+        id: string;
+        staffId: string;
+        staffName: string;
+        status: string;
+      }[];
     }>(
       await apiRequest("GET", "/api/admin/reports", undefined, adminCookie),
       200,
@@ -416,14 +487,24 @@ describe("admin daily reports (submitted only, read-only)", () => {
     expect(otherStaff.reports).toHaveLength(0);
 
     const pastMonth = expectOk<{ reports: { id: string }[] }>(
-      await apiRequest("GET", "/api/admin/reports?month=2001-01", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/reports?month=2001-01",
+        undefined,
+        adminCookie,
+      ),
       200,
       "past month",
     );
     expect(pastMonth.reports).toHaveLength(0);
 
     expectFail(
-      await apiRequest("GET", "/api/admin/reports?month=notamonth", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/reports?month=notamonth",
+        undefined,
+        adminCookie,
+      ),
       422,
       "VALIDATION_ERROR",
       "bad month",
@@ -436,7 +517,12 @@ describe("admin daily reports (submitted only, read-only)", () => {
       activitySummary: string | null;
       staff: { staffId: string; fullName: string };
     }>(
-      await apiRequest("GET", `/api/admin/reports/${submittedReportId}`, undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        `/api/admin/reports/${submittedReportId}`,
+        undefined,
+        adminCookie,
+      ),
       200,
       "report detail",
     );
@@ -445,13 +531,23 @@ describe("admin daily reports (submitted only, read-only)", () => {
     expect(detail.staff.staffId).toBe(staffA.staffId);
 
     expectFail(
-      await apiRequest("GET", `/api/admin/reports/${draftReportId}`, undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        `/api/admin/reports/${draftReportId}`,
+        undefined,
+        adminCookie,
+      ),
       404,
       "NOT_FOUND",
       "draft hidden",
     );
     expectFail(
-      await apiRequest("GET", "/api/admin/reports/does-not-exist", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/reports/does-not-exist",
+        undefined,
+        adminCookie,
+      ),
       404,
       "NOT_FOUND",
       "unknown report",
@@ -470,10 +566,13 @@ describe("admin daily reports (submitted only, read-only)", () => {
   });
 
   it("the admin reports page carries the self-reported notice and no payroll wording", async () => {
-    const response = await fetch(`${process.env.FLOW_TEST_BASE_URL ?? "http://127.0.0.1:3000"}/admin/reports`, {
-      headers: { cookie: adminCookie },
-      signal: AbortSignal.timeout(20_000),
-    });
+    const response = await fetch(
+      `${process.env.FLOW_TEST_BASE_URL ?? "http://127.0.0.1:3000"}/admin/reports`,
+      {
+        headers: { cookie: adminCookie },
+        signal: AbortSignal.timeout(20_000),
+      },
+    );
     const html = await response.text();
     expect(html).toContain(ADMIN_REPORTS_SELF_REPORTED_NOTICE);
     expect(html.toLowerCase()).not.toContain("payroll");
@@ -528,7 +627,12 @@ describe("same-origin verification (fail closed)", () => {
 
   it("missing browser origin (no Origin, no Referer) is rejected 403", async () => {
     expectFail(
-      await apiRequest("POST", suspendPath(), { reason: "origin test" }, adminCookie),
+      await apiRequest(
+        "POST",
+        suspendPath(),
+        { reason: "origin test" },
+        adminCookie,
+      ),
       403,
       "FORBIDDEN",
       "missing origin",
@@ -630,20 +734,28 @@ describe("suspension and reactivation lifecycle", () => {
     // Portal page serves the login redirect shell without staff content.
     const page = await fetch(
       `${process.env.FLOW_TEST_BASE_URL ?? "http://127.0.0.1:3000"}/staff`,
-      { headers: { cookie: staffA.cookie }, signal: AbortSignal.timeout(20_000) },
+      {
+        headers: { cookie: staffA.cookie },
+        signal: AbortSignal.timeout(20_000),
+      },
     );
     const html = await page.text();
     expect(page.status).toBe(200);
     expect(html).toContain("/staff/login");
 
-    // New OTP requests are neutral and create no rows.
+    // New OTP requests return an email field error and create no rows.
     const before = await db.staffLoginCode.count();
-    const request = expectOk<{ devCode?: string }>(
-      await apiRequest("POST", "/api/staff/auth/request-code", { email: staffA.email }),
-      200,
+    const request = expectFail(
+      await apiRequest("POST", "/api/staff/auth/request-code", {
+        email: staffA.email,
+      }),
+      422,
+      "VALIDATION_ERROR",
       "suspended request-code",
     );
-    expect(request.devCode).toBeUndefined();
+    expect(request.error.fields?.email).toMatch(
+      /No active FinFam Staff account/i,
+    );
     expect(await db.staffLoginCode.count()).toBe(before);
 
     // Verify is the generic invalid-code response.
@@ -661,12 +773,20 @@ describe("suspension and reactivation lifecycle", () => {
   it("historical rows are untouched; exactly ONE audit event; duplicate suspend is a no-op", async () => {
     const staffRow = await db.staff.findUnique({
       where: { id: staffA.staffRowId },
-      select: { staffId: true, roleTitle: true, activatedAt: true, version: true },
+      select: {
+        staffId: true,
+        roleTitle: true,
+        activatedAt: true,
+        version: true,
+      },
     });
     const appointment = await db.appointment.findUnique({
-      where: { candidateId: (
-        await db.staff.findUnique({ where: { id: staffA.staffRowId }, select: { candidateId: true } })
-      )!.candidateId },
+      where: {
+        candidateId: (await db.staff.findUnique({
+          where: { id: staffA.staffRowId },
+          select: { candidateId: true },
+        }))!.candidateId,
+      },
       select: { appointmentReference: true, roleTitle: true, version: true },
     });
     const onboarding = await db.staffOnboarding.findUnique({
@@ -676,7 +796,9 @@ describe("suspension and reactivation lifecycle", () => {
     const enrollments = await db.staffTrainingEnrollment.count({
       where: { staffId: staffA.staffRowId },
     });
-    const reports = await db.dailyReport.count({ where: { staffId: staffA.staffRowId } });
+    const reports = await db.dailyReport.count({
+      where: { staffId: staffA.staffRowId },
+    });
 
     expect(staffRow!.staffId).toBe(staffA.staffId);
     expect(appointment!.appointmentReference).toMatch(/^FFL\/HR\/PLA\/\d{3}$/);
@@ -702,7 +824,11 @@ describe("suspension and reactivation lifecycle", () => {
     expect(event!.reason).toContain("suspension with reason");
     expect(event!.targetType).toBe("STAFF_ACCOUNT");
     expect(event!.actor.email).toBe(adminEmail);
-    const metadata = event!.metadata as { staffId?: string; previousStatus?: string; newStatus?: string };
+    const metadata = event!.metadata as {
+      staffId?: string;
+      previousStatus?: string;
+      newStatus?: string;
+    };
     expect(metadata.staffId).toBe(staffA.staffId);
     expect(metadata.previousStatus).toBe("ACTIVE");
     expect(metadata.newStatus).toBe("SUSPENDED");
@@ -718,7 +844,10 @@ describe("suspension and reactivation lifecycle", () => {
       },
     );
     expect(duplicate.status).toBe(200);
-    const body = duplicate.body as { ok: boolean; data: { transitioned: boolean; accountStatus: string } };
+    const body = duplicate.body as {
+      ok: boolean;
+      data: { transitioned: boolean; accountStatus: string };
+    };
     expect(body.data.transitioned).toBe(false);
     expect(body.data.accountStatus).toBe("SUSPENDED");
     expect(await db.adminAuditEvent.count()).toBe(afterSuspend);
@@ -728,11 +857,15 @@ describe("suspension and reactivation lifecycle", () => {
     for (const reason of [undefined, "   ", "r".repeat(501)]) {
       const body = reason === undefined ? {} : { reason };
       expectFail(
-        await adminRawRequest("POST", `/api/admin/staff/${staffA.staffRowId}/suspend`, {
-          cookie: adminCookie,
-          body,
-          headers: { origin: ORIGIN_OK },
-        }).then((r) => ({ status: r.status, body: r.body })),
+        await adminRawRequest(
+          "POST",
+          `/api/admin/staff/${staffA.staffRowId}/suspend`,
+          {
+            cookie: adminCookie,
+            body,
+            headers: { origin: ORIGIN_OK },
+          },
+        ).then((r) => ({ status: r.status, body: r.body })),
         422,
         "VALIDATION_ERROR",
         `reason case length ${reason?.trim().length ?? 0}`,
@@ -776,7 +909,9 @@ describe("suspension and reactivation lifecycle", () => {
       select: { completedAt: true },
     });
     expect(onboarding!.completedAt).not.toBeNull();
-    expect(await db.dailyReport.count({ where: { staffId: staffA.staffRowId } })).toBe(2);
+    expect(
+      await db.dailyReport.count({ where: { staffId: staffA.staffRowId } }),
+    ).toBe(2);
 
     // The old revoked session stays revoked.
     const oldAfter = await db.staffSession.findUnique({
@@ -796,13 +931,16 @@ describe("suspension and reactivation lifecycle", () => {
     );
 
     // Exactly one reactivation audit event; duplicate is a no-op.
-    expect(await db.adminAuditEvent.count() - auditBefore).toBe(1);
+    expect((await db.adminAuditEvent.count()) - auditBefore).toBe(1);
     const duplicate = await adminRawRequest(
       "POST",
       `/api/admin/staff/${staffA.staffRowId}/reactivate`,
       { cookie: adminCookie, body: {}, headers: { origin: ORIGIN_OK } },
     );
-    const dupBody = duplicate.body as { ok: boolean; data: { transitioned: boolean } };
+    const dupBody = duplicate.body as {
+      ok: boolean;
+      data: { transitioned: boolean };
+    };
     expect(dupBody.data.transitioned).toBe(false);
     expect(await db.adminAuditEvent.count()).toBe(auditBefore + 1);
   });
@@ -814,7 +952,12 @@ describe("suspension and reactivation lifecycle", () => {
 
 describe("audit log", () => {
   it("requires an admin session", async () => {
-    expectFail(await apiRequest("GET", "/api/admin/audit"), 401, "UNAUTHORIZED", "no cookie");
+    expectFail(
+      await apiRequest("GET", "/api/admin/audit"),
+      401,
+      "UNAUTHORIZED",
+      "no cookie",
+    );
   });
 
   it("lists events newest-first with actor, action, target, reason and status transition", async () => {
@@ -833,21 +976,29 @@ describe("audit log", () => {
       page: number;
       total: number;
     }>(
-      await apiRequest("GET", "/api/admin/audit?page=1", undefined, adminCookie),
+      await apiRequest(
+        "GET",
+        "/api/admin/audit?page=1",
+        undefined,
+        adminCookie,
+      ),
       200,
       "audit list",
     );
     expect(data.events.length).toBeGreaterThanOrEqual(2);
     const [first, second] = data.events;
-    expect(new Date(first!.createdAt).getTime())
-      .toBeGreaterThanOrEqual(new Date(second!.createdAt).getTime());
+    expect(new Date(first!.createdAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(second!.createdAt).getTime(),
+    );
     const suspended = data.events.find((e) => e.action === "STAFF_SUSPENDED")!;
     expect(suspended.actorEmail).toBe(adminEmail);
     expect(suspended.targetType).toBe("STAFF_ACCOUNT");
     expect(suspended.staffId).toBe(staffA.staffId);
     expect(suspended.previousStatus).toBe("ACTIVE");
     expect(suspended.newStatus).toBe("SUSPENDED");
-    const reactivated = data.events.find((e) => e.action === "STAFF_REACTIVATED")!;
+    const reactivated = data.events.find(
+      (e) => e.action === "STAFF_REACTIVATED",
+    )!;
     expect(reactivated.previousStatus).toBe("SUSPENDED");
     expect(reactivated.newStatus).toBe("ACTIVE");
   });

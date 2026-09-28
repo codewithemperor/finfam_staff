@@ -5,7 +5,10 @@ import { randomBytes, randomInt } from "node:crypto";
 import { db } from "@/lib/db";
 import { sha256Hex } from "@/lib/auth/hash";
 import { AppError, validationError } from "@/lib/errors";
-import { dispatchNotification, enqueueOneShotNotification } from "@/server/notifications/notification-service";
+import {
+  dispatchNotification,
+  enqueueOneShotNotification,
+} from "@/server/notifications/notification-service";
 import { buildDedupeKey } from "@/server/notifications/notification-types";
 import type { StaffLoginCodePayload } from "@/server/notifications/notification-types";
 
@@ -25,9 +28,8 @@ import type { StaffLoginCodePayload } from "@/server/notifications/notification-
  *   a fresh request supersedes older ones.
  * - Resend cooldown: 60s between codes per account (HTTP 429).
  * - Request rate limit: max 5 codes / rolling 15 minutes per account (429).
- * - Anti-enumeration (§8): unknown email / non-Staff email / suspended
- *   account all receive the SAME neutral success response and create NO
- *   rows. Verification failures never reveal which of the three failed.
+ * - Unknown or inactive email requests return a field-level validation error
+ *   and create NO rows. Verification failures remain generic.
  * - Suspension (§17): a SUSPENDED account cannot receive usable codes,
  *   cannot verify, and its sessions do not resolve.
  * - One-shot delivery (§10): the OTP email is attempted exactly once from
@@ -52,6 +54,9 @@ function sessionTtlMs(): number {
 
 export const NEUTRAL_REQUEST_MESSAGE =
   "If the email belongs to an active FinFam Staff account, a login code has been sent. The code expires in 10 minutes.";
+
+const UNKNOWN_STAFF_EMAIL_MESSAGE =
+  "No active FinFam Staff account was found for this email address.";
 
 const INVALID_CODE_MESSAGE =
   "That code is not valid or has expired. Request a new code and try again.";
@@ -121,7 +126,7 @@ async function resolveAccountByEmail(
  * ---------------------------------------------------------------------- */
 
 export interface RequestLoginCodeResult {
-  /** Always true externally (anti-enumeration); the client shows one message. */
+  /** Returned only after an active Staff account has been resolved. */
   sent: true;
   /**
    * DEVELOPMENT/TEST ONLY (STAFF_AUTH_DEV_CODE_ECHO=true): the plaintext
@@ -137,10 +142,11 @@ export async function requestLoginCode(
 ): Promise<RequestLoginCodeResult> {
   const account = await resolveAccountByEmail(rawEmail);
 
-  // Anti-enumeration (§8): anything that is not an ACTIVE account gets the
-  // neutral response and creates NO rows of any kind.
+  // Unknown and suspended emails cannot receive a code and create no rows.
   if (!account || account.status !== "ACTIVE") {
-    return { sent: true };
+    throw validationError(UNKNOWN_STAFF_EMAIL_MESSAGE, {
+      email: UNKNOWN_STAFF_EMAIL_MESSAGE,
+    });
   }
 
   const now = Date.now();
@@ -169,7 +175,10 @@ export async function requestLoginCode(
 
   // Generate + persist (hashed) + queue the one-shot email intent in ONE
   // transaction, then dispatch once after the commit (§10).
-  const code = String(randomInt(0, 10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
+  const code = String(randomInt(0, 10 ** CODE_LENGTH)).padStart(
+    CODE_LENGTH,
+    "0",
+  );
   const expiresAt = new Date(now + CODE_TTL_MS);
 
   const { row, enqueued } = await db.$transaction(async (tx) => {

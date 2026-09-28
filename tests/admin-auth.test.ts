@@ -51,7 +51,8 @@ beforeAll(async () => {
   const driven = await driveToActivation("adminauth-staff");
   createdEmails.push(driven.email);
   staffEmail = driven.email;
-  staffCookie = (await loginAsStaff(staffEmail, "adminauth staff login")).cookie;
+  staffCookie = (await loginAsStaff(staffEmail, "adminauth staff login"))
+    .cookie;
 }, 300_000);
 
 afterAll(async () => {
@@ -117,33 +118,40 @@ describe("bootstrap CLI (brief §55)", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 2. Request-code: anti-enumeration + rate limits (§9/§54)            */
+/* 2. Request-code: account validation + rate limits (§9/§54)           */
 /* ------------------------------------------------------------------ */
 
-describe("admin request-code anti-enumeration and limits", () => {
-  it("unknown email answers the neutral success and creates no rows", async () => {
+describe("admin request-code account validation and limits", () => {
+  it("unknown email returns a field error and creates no rows", async () => {
     const ghost = uniqueAdminEmail("ghost");
     const before = await db.adminLoginCode.count();
-    const data = expectOk<{ message: string; devCode?: string }>(
-      await apiRequest("POST", "/api/admin/auth/request-code", { email: ghost }),
-      200,
+    const error = expectFail(
+      await apiRequest("POST", "/api/admin/auth/request-code", {
+        email: ghost,
+      }),
+      422,
+      "VALIDATION_ERROR",
       "unknown email request",
     );
-    expect(data.devCode).toBeUndefined();
-    expect(data.message).toContain("administrator");
+    expect(error.error.fields?.email).toMatch(
+      /No active FinFam administrator account/i,
+    );
     expect(await db.adminLoginCode.count()).toBe(before);
   });
 
-  it("an ordinary Staff email (no AdminAccount) cannot request an admin code", async () => {
+  it("an ordinary Staff email returns an admin email field error", async () => {
     const before = await db.adminLoginCode.count();
-    const data = expectOk<{ devCode?: string }>(
+    const error = expectFail(
       await apiRequest("POST", "/api/admin/auth/request-code", {
         email: staffEmail,
       }),
-      200,
+      422,
+      "VALIDATION_ERROR",
       "staff email request",
     );
-    expect(data.devCode).toBeUndefined();
+    expect(error.error.fields?.email).toMatch(
+      /No active FinFam administrator account/i,
+    );
     expect(await db.adminLoginCode.count()).toBe(before);
   });
 
@@ -361,9 +369,13 @@ describe("admin verify security properties (§54)", () => {
       "old code",
     );
     const ok = expectOk<{ next: string }>(
-      await adminRawRequest<{ next: string }>("POST", "/api/admin/auth/verify", {
-        body: { email, code: second.devCode! },
-      }),
+      await adminRawRequest<{ next: string }>(
+        "POST",
+        "/api/admin/auth/verify",
+        {
+          body: { email, code: second.devCode! },
+        },
+      ),
       200,
       "new code",
     );
@@ -508,14 +520,17 @@ describe("admin session lifecycle (§11/§12/§54)", () => {
       "suspended admin session",
     );
 
-    // Code requests are neutral and create NOTHING.
+    // Inactive code requests return an email field error and create NOTHING.
     const before = await db.adminLoginCode.count();
-    const data = expectOk<{ devCode?: string }>(
+    const error = expectFail(
       await apiRequest("POST", "/api/admin/auth/request-code", { email }),
-      200,
+      422,
+      "VALIDATION_ERROR",
       "suspended request",
     );
-    expect(data.devCode).toBeUndefined();
+    expect(error.error.fields?.email).toMatch(
+      /No active FinFam administrator account/i,
+    );
     expect(await db.adminLoginCode.count()).toBe(before);
 
     // Verify is the generic invalid-code response.
