@@ -102,7 +102,11 @@ export async function enqueueNotification(
       },
       select: { id: true },
     });
-    return { deliveryId: row.id, dedupeKey: input.dedupeKey, alreadyQueued: false };
+    return {
+      deliveryId: row.id,
+      dedupeKey: input.dedupeKey,
+      alreadyQueued: false,
+    };
   } catch (error) {
     if (isUniqueViolation(error)) {
       const existing = await client.notificationDelivery.findUnique({
@@ -129,7 +133,9 @@ export async function enqueueNotification(
 export async function enqueueOneShotNotification(
   client: Prisma.TransactionClient,
   input: EnqueueOneShotNotificationInput,
-): Promise<EnqueuedNotification & { payload: NotificationPayloadMap[NotificationTypeId] }> {
+): Promise<
+  EnqueuedNotification & { payload: NotificationPayloadMap[NotificationTypeId] }
+> {
   const enqueued = await enqueueNotification(client, input);
   return { ...enqueued, payload: input.payload };
 }
@@ -146,13 +152,16 @@ export async function enqueueOneShotNotification(
 export function dispatchNotification(
   deliveryId: string,
   payloadOverride?: NotificationPayloadMap[NotificationTypeId],
-): void {
-  void sendNotification(deliveryId, payloadOverride).catch((error: unknown) => {
-    console.error("[notifications] dispatch crashed", {
-      deliveryId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  });
+): Promise<DeliveryOutcome> {
+  return sendNotification(deliveryId, payloadOverride).catch(
+    (error: unknown) => {
+      console.error("[notifications] dispatch crashed", {
+        deliveryId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return "FAILED";
+    },
+  );
 }
 
 export type DeliveryOutcome = "SENT" | "FAILED" | "SKIPPED" | "SUPPRESSED";
@@ -182,9 +191,12 @@ export async function sendNotification(
   // No network request may ever leave while notifications are disabled or
   // the provider is not configured (§26). The row simply stays queued.
   if (!isDeliveryActive(config)) {
-    console.log("[notifications] suppressed (disabled or provider not configured)", {
-      deliveryId,
-    });
+    console.log(
+      "[notifications] suppressed (disabled or provider not configured)",
+      {
+        deliveryId,
+      },
+    );
     return "SUPPRESSED";
   }
 
@@ -226,7 +238,8 @@ export async function sendNotification(
     // row without its in-memory payload is PAYLOAD_UNAVAILABLE by the same
     // runtime path as before, but the compiler now proves derive can never
     // be asked to re-derive a plaintext OTP.)
-    const payload = payloadOverride ??
+    const payload =
+      payloadOverride ??
       (isOneShotNotificationType(row.type)
         ? null
         : await deriveNotificationPayload(row.type, row.dedupeKey));
@@ -282,6 +295,7 @@ export async function sendNotification(
       type: row.type,
       attempt: attemptNumber,
       errorCode: result.errorCode,
+      diagnostic: result.diagnostic,
     });
     return "FAILED";
   } catch (error) {

@@ -51,7 +51,13 @@ interface MailjetV31Response {
 
 export type MailjetSendResult =
   | { ok: true; messageId: string | null }
-  | { ok: false; errorCode: string; errorMessage: string };
+  | {
+      ok: false;
+      errorCode: string;
+      errorMessage: string;
+      /** Safe transport classification for server logs; never provider text. */
+      diagnostic?: string;
+    };
 
 interface MailjetMessageBody {
   From: { Email: string; Name: string };
@@ -83,21 +89,42 @@ export function buildMailjetMessage(
   return body;
 }
 
-function transportFailure(
-  error: unknown,
-): { ok: false; errorCode: string; errorMessage: string } {
+function transportFailure(error: unknown): {
+  ok: false;
+  errorCode: string;
+  errorMessage: string;
+  diagnostic?: string;
+} {
+  const diagnostic = safeTransportDiagnostic(error);
   if (error instanceof Error && error.name === "AbortError") {
     return {
       ok: false,
       errorCode: "TIMEOUT",
       errorMessage: "The email service did not respond in time.",
+      diagnostic,
     };
   }
   return {
     ok: false,
     errorCode: "NETWORK_ERROR",
     errorMessage: "The email service could not be reached.",
+    diagnostic,
   };
+}
+
+/** Keep useful runtime transport categories while excluding provider details. */
+function safeTransportDiagnostic(error: unknown): string {
+  const name = error instanceof Error ? error.name : "UnknownError";
+  const cause =
+    typeof error === "object" && error !== null && "cause" in error
+      ? (error as { cause?: unknown }).cause
+      : undefined;
+  const causeCode =
+    typeof cause === "object" && cause !== null && "code" in cause
+      ? (cause as { code?: unknown }).code
+      : undefined;
+
+  return typeof causeCode === "string" ? `${name}/${causeCode}` : name;
 }
 
 /**
@@ -111,16 +138,24 @@ export async function sendViaMailjet(
 ): Promise<MailjetSendResult> {
   const apiKey = (options.apiKey ?? process.env.MAILJET_API_KEY ?? "").trim();
   const secretKey = (
-    options.secretKey ?? process.env.MAILJET_SECRET_KEY ?? ""
+    options.secretKey ??
+    process.env.MAILJET_SECRET_KEY ??
+    ""
   ).trim();
   const fromEmail = (
-    options.fromEmail ?? process.env.MAILJET_FROM_EMAIL ?? ""
+    options.fromEmail ??
+    process.env.MAILJET_FROM_EMAIL ??
+    ""
   ).trim();
   const fromName = (
-    options.fromName ?? process.env.MAILJET_FROM_NAME ?? "FinFam Recruitment"
+    options.fromName ??
+    process.env.MAILJET_FROM_NAME ??
+    "FinFam Recruitment"
   ).trim();
   const url = (
-    options.url ?? process.env.MAILJET_API_URL ?? MAILJET_SEND_API_URL
+    options.url ??
+    process.env.MAILJET_API_URL ??
+    MAILJET_SEND_API_URL
   ).trim();
   const timeoutMs =
     options.timeoutMs ??

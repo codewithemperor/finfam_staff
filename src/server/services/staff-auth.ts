@@ -67,6 +67,9 @@ const RATE_LIMITED_MESSAGE =
 const COOLDOWN_MESSAGE =
   "A login code was sent recently. Please wait a minute before requesting another one.";
 
+const STAFF_CODE_DELIVERY_FAILURE_MESSAGE =
+  "We couldn't send your Staff Portal login code. Please try again shortly.";
+
 /* -------------------------------------------------------------------------
  * Account resolution — the single authority for "does this email belong to
  * an ACTIVE Staff Portal account". Never leaks existence to the client.
@@ -212,15 +215,22 @@ export async function requestLoginCode(
     return { row: created, enqueued: queued };
   });
 
-  // Exactly one delivery attempt from memory (§10). If the process dies
-  // before this line, the row stays queued but can never be rendered — the
-  // user simply requests a fresh code. The code is NOT logged.
-  if (enqueued.deliveryId) {
-    dispatchNotification(enqueued.deliveryId, enqueued.payload);
-  }
-
   const devCode =
     process.env.STAFF_AUTH_DEV_CODE_ECHO === "true" ? code : undefined;
+
+  // OTP delivery is awaited because a serverless runtime may end as soon as
+  // the HTTP response is returned. The plaintext code remains in memory only.
+  if (enqueued.deliveryId) {
+    const delivery = await dispatchNotification(
+      enqueued.deliveryId,
+      enqueued.payload,
+    );
+    if (delivery !== "SENT" && !devCode) {
+      throw new AppError("INTERNAL", STAFF_CODE_DELIVERY_FAILURE_MESSAGE, {
+        status: 502,
+      });
+    }
+  }
 
   return { sent: true, ...(devCode ? { devCode } : {}) };
 }
