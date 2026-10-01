@@ -230,11 +230,11 @@ export default function WelcomePage() {
           <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Review the terms before you accept
           </h2>
-          {OPEN_POSITION.rewardsPending ? (
+          {!OPEN_POSITION.showRewardFigures ? (
             <Alert status="accent" className="mt-5">
               <Alert.Indicator />
               <Alert.Content>
-                <Alert.Title>Reward figures are being finalised.</Alert.Title>
+                <Alert.Title>Review the confirmed structure later</Alert.Title>
                 <Alert.Description>
                   {OPEN_POSITION.rewardsNote}
                 </Alert.Description>

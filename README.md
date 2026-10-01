@@ -710,9 +710,9 @@ database stores nothing for this module.
   immediately). Query parameters (`?staffId=`) are never read; the page
   self-gates with `redirect("/staff/login")` so it never emits content
   without a verified session.
-- **Fields** — full name, Staff ID (`FF-STF-NNNN`), appointment
-  designation ("Remote Staff") and operational role ("FinFam Growth
-  Ambassador") as separate facts, Activated date, card label, template
+- **Fields** — full name, Staff ID (`FF-STF-NNNN`), role
+  ("Marketing & Customer Care Executive") and work arrangement ("Remote")
+  as separate facts, Activated date, card label, template
   version (`STAFF_ID_CARD_TEMPLATE_VERSION = "1.0"`, presentation-only).
   NO photo (the platform stores none), NO QR, NO signature, and never
   NIN/BVN/bank/address/next-of-kin/candidate/appointment reference,

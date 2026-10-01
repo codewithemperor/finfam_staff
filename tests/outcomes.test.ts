@@ -131,7 +131,7 @@ describe("Stage 0 — Registration", () => {
         email,
         phone,
         city,
-        roleTitle: "Staff Member",
+        roleTitle: "Marketing & Customer Care Executive",
         consent: true,
       }),
       200,

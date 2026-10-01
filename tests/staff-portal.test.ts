@@ -76,18 +76,18 @@ describe("Stage 7 — first-login gating & Section 7 content", () => {
     expect(titles).toContain("Daily Accountability");
     expect(titles).toContain("Ready to Begin");
 
-    // 2. Intro: designation vs operational role shown SEPARATELY (§27).
+    // 2. Intro: role and work arrangement shown separately.
     const intro = data.content.steps[0]!;
     const facts = intro.blocks.find((b) => b.type === "facts");
     expect(facts?.type).toBe("facts");
     if (facts?.type === "facts") {
       expect(facts.items).toContainEqual({
-        label: "Appointment designation",
-        value: "Remote Staff",
+        label: "Role",
+        value: "Marketing & Customer Care Executive",
       });
       expect(facts.items).toContainEqual({
-        label: "Operational role",
-        value: "FinFam Growth Ambassador",
+        label: "Work arrangement",
+        value: "Remote",
       });
     }
 

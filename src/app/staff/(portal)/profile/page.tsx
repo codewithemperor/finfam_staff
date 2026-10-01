@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Alert } from "@heroui/react";
 
 import { ButtonLink } from "@/components/ui/button-link";
-import { STAFF_PORTAL_OPERATIONAL_ROLE } from "@/config/staff-portal";
+import { STAFF_PORTAL_WORK_ARRANGEMENT } from "@/config/staff-portal";
 import { getStaffSession } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -58,16 +58,16 @@ export default async function StaffProfilePage() {
           </div>
           <div className="mt-4 flex items-baseline justify-between gap-4">
             <dt className="text-sm text-muted-foreground">
-              Appointment designation
+              Role
             </dt>
             <dd className="text-sm font-semibold text-foreground">
               {session.staff.roleTitle}
             </dd>
           </div>
           <div className="mt-4 flex items-baseline justify-between gap-4">
-            <dt className="text-sm text-muted-foreground">Operational role</dt>
+            <dt className="text-sm text-muted-foreground">Work arrangement</dt>
             <dd className="text-sm font-semibold text-foreground">
-              {STAFF_PORTAL_OPERATIONAL_ROLE}
+              {STAFF_PORTAL_WORK_ARRANGEMENT}
             </dd>
           </div>
           <div className="mt-4 flex items-baseline justify-between gap-4">

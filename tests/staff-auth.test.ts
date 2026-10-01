@@ -331,8 +331,8 @@ describe("Stage 7 — Sessions", () => {
     const body = me.body as { ok: boolean; data: Record<string, unknown> };
     expect(body.ok).toBe(true);
     expect(body.data.email).toBe(email);
-    expect(body.data.designation).toBe("Remote Staff");
-    expect(body.data.operationalRole).toBe("FinFam Growth Ambassador");
+    expect(body.data.designation).toBe("Marketing & Customer Care Executive");
+    expect(body.data.workArrangement).toBe("Remote");
     expect(String(body.data.staffId)).toMatch(/^FF-STF-\d{4,}$/);
   });
 

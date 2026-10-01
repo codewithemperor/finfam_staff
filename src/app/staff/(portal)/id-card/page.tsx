@@ -12,7 +12,7 @@ import {
   STAFF_ID_CARD_PAGE_INTRO,
   STAFF_ID_CARD_PAGE_TITLE,
 } from "@/config/staff-id-card";
-import { STAFF_PORTAL_OPERATIONAL_ROLE } from "@/config/staff-portal";
+import { STAFF_PORTAL_WORK_ARRANGEMENT } from "@/config/staff-portal";
 import { getStaffSession } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -65,8 +65,8 @@ export default async function StaffIdCardPage() {
         <StaffIdCard
           fullName={session.candidate.fullName}
           staffId={session.staff.staffId}
-          designation={session.staff.roleTitle}
-          operationalRole={STAFF_PORTAL_OPERATIONAL_ROLE}
+          role={session.staff.roleTitle}
+          workArrangement={STAFF_PORTAL_WORK_ARRANGEMENT}
           activatedAtLabel={format(
             new Date(session.staff.activatedAt),
             "d MMMM yyyy",

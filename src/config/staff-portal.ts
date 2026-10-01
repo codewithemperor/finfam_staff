@@ -6,8 +6,12 @@
  * Analytics destinations are deliberately absent until those modules exist.
  */
 
-/** The operational-role identity shown beside the appointment designation. */
-export const STAFF_PORTAL_OPERATIONAL_ROLE = "FinFam Growth Ambassador";
+/** The work arrangement is separate from the person's role. */
+export const STAFF_PORTAL_WORK_ARRANGEMENT = "Remote";
+
+/** @deprecated Use the role stored on the authenticated Staff record. */
+export const STAFF_PORTAL_OPERATIONAL_ROLE =
+  "Marketing & Customer Care Executive";
 
 /** Portal navigation — real destinations only (brief §21; Stage 8 adds the
  * Daily Reports destination; Stage 9 adds Training after Daily Reports —

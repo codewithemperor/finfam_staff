@@ -161,10 +161,10 @@ describe("Stage 10 — card content & identity fields (brief §14–§24)", () =
     expect(html).toContain(STAFF_ID_CARD_LABEL); // card heading
     expect(html).toMatch(/FF-STF-\d{4}/);
     expect(html).toContain(staffA.staffId);
-    expect(html).toContain("Remote Staff");
+    expect(html).toContain("Marketing & Customer Care Executive");
     expect(html).toContain(STAFF_PORTAL_OPERATIONAL_ROLE);
-    expect(html).toContain("Appointment designation");
-    expect(html).toContain("Operational role");
+    expect(html).toContain("Role");
+    expect(html).toContain("Work arrangement");
     expect(html).toContain("Activated");
     expect(html).toContain("Identity reference only");
     expect(html).toContain(`Card template v${STAFF_ID_CARD_TEMPLATE_VERSION}`);

@@ -131,17 +131,17 @@ export default async function AdminStaffDetailPage({
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-4 border-b border-border py-3">
-                <dt className="text-sm text-muted-foreground">Designation</dt>
+                <dt className="text-sm text-muted-foreground">Role</dt>
                 <dd className="text-right text-sm font-semibold text-foreground">
                   {identity.designation}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-4 border-b border-border py-3">
                 <dt className="text-sm text-muted-foreground">
-                  Operational role
+                  Work arrangement
                 </dt>
                 <dd className="text-right text-sm font-semibold text-foreground">
-                  {identity.operationalRole}
+                  {identity.workArrangement}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-4 pt-3">

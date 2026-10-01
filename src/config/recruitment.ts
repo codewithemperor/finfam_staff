@@ -168,7 +168,7 @@ export const CANDIDATE_STATUS_DETAILS: Record<CandidateStatusId, StatusDefinitio
     stageCompleted: true,
     journeyComplete: false,
     nextStep:
-      "Thank you for accepting. Your Provisional Letter of Appointment is ready — open it to read your appointment as a Remote Staff, including your role, compensation policy and the expectations that come with it.",
+      "Thank you for accepting. Your Provisional Letter of Appointment is ready — open it to read your appointment as a Marketing & Customer Care Executive, including your role, compensation policy and the expectations that come with it.",
   },
   OFFER_DECLINED: {
     id: "OFFER_DECLINED",

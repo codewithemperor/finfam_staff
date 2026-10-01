@@ -9,7 +9,10 @@ import type { AgreementSection } from "@/types/recruitment";
  * section MUST bump the version so accepted versions stay auditable
  * (docs/CONTENT-QUESTIONS.md §17).
  *
- * v1.1 (current): compensation and Established Member definitions were
+ * v1.3 (current): the role is now consistently identified as Marketing &
+ * Customer Care Executive, and the confirmed reward structure uses the approved
+ * Milestone Bonuses wording and worked examples. Compensation and
+ * Established Member definitions were
  * formally confirmed by the Provisional Letter of Appointment dated
  * September 1, 2026 (Ref: FFL/HR/PLA/012). The reward structure now
  * publishes the confirmed figures (₦650 per Established Member, the
@@ -18,7 +21,7 @@ import type { AgreementSection } from "@/types/recruitment";
  * and the December 2026 annual-recognition note), a concise
  * "Important conditions" section was added from the same letter, and the
  * confirmed privacy rule was added to Professional conduct. Candidates
- * who already accepted v1.0 keep that version on their record — v1.1
+ * who already accepted an earlier version keep that version on their record — v1.3
  * applies to candidates who have not yet accepted
  * (docs/CONTENT-QUESTIONS.md §17 interim proposal).
  *
@@ -29,7 +32,7 @@ import type { AgreementSection } from "@/types/recruitment";
  * - No unconfirmed benefit claims (including the ₦500 cashback item, §10).
  */
 export const AGREEMENT_META = {
-  version: "1.1",
+  version: "1.3",
 } as const;
 
 /**
@@ -47,7 +50,7 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
     blocks: [
       {
         type: "paragraph",
-        text: "This agreement covers the Marketing & Customer Care Executive role — the FinFam Growth Ambassador role your application leads to. In this portal your application is recorded under the general title \"Staff Member\"; this agreement describes that role in full.",
+        text: "This agreement covers the Marketing & Customer Care Executive role. You will work remotely as part of the FinFam team, attracting and onboarding new members before supporting their savings and day-to-day service needs.",
       },
       {
         type: "paragraph",
@@ -126,22 +129,36 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
         ],
       },
       {
+        type: "heading",
+        text: "3. MILESTONE BONUSES",
+      },
+      {
         type: "paragraph",
-        text: "The applicable target bonus is set by how many Established Members you have in the month:",
+        text: "Bonuses are progressive by achievement level and are not cumulative. You qualify for only one bonus tier per month.",
+      },
+      {
+        type: "paragraph",
+        text: "Established Members and Applicable Bonus",
       },
       {
         type: "list",
         items: [
-          "0–99 Established Members — ₦0 target bonus.",
-          "100–199 Established Members — ₦10,000 target bonus.",
-          "200 or more Established Members — ₦20,000 target bonus.",
+          "Established Members: 0–99 — Applicable Bonus: ₦0",
+          "Established Members: 100–199 — Applicable Bonus: ₦10,000",
+          "Established Members: 200 and above — Applicable Bonus: ₦20,000",
         ],
       },
       {
-        type: "alert",
-        tone: "accent",
-        title: "Bonuses are not cumulative",
-        text: "Only one bonus tier applies per month. For example: 100 Established Members earn ₦75,000 (100 × ₦650 + ₦10,000); 200 earn ₦150,000 (200 × ₦650 + ₦20,000); 300 earn ₦215,000 (300 × ₦650 + ₦20,000).",
+        type: "heading",
+        text: "Earnings Examples",
+      },
+      {
+        type: "list",
+        items: [
+          "100 Members: 100 × ₦650 + ₦10,000 = ₦75,000",
+          "200 Members: 200 × ₦650 + ₦20,000 = ₦150,000",
+          "300 Members: 300 × ₦650 + ₦20,000 = ₦215,000",
+        ],
       },
       {
         type: "paragraph",

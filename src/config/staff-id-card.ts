@@ -8,15 +8,13 @@
  * only the card's presentation-template identity.
  *
  * Approved MVP decisions encoded here (brief §14–§24):
- *  - Fields: full name, Staff ID, appointment designation ("Remote Staff"),
- *    operational role ("FinFam Growth Ambassador"), activated date, card
- *    label and template version. Designation and operational role stay
- *    SEPARATE facts.
+ *  - Fields: full name, Staff ID, role ("Marketing & Customer Care
+ *    Executive"), work arrangement ("Remote"), activated date, card label
+ *    and template version.
  *  - FORBIDDEN on the card: NIN, BVN, bank details, address, next of kin,
  *    candidate reference, appointment reference, email, phone,
  *    government-ID numbers, account/session identifiers.
- *  - NO photo (the platform stores no photograph — brief §17), NO QR
- *    (no verification system exists — brief §22), NO signature (no
+ *  - NO QR (no verification system exists — brief §22), NO signature (no
  *    approved signature asset exists — brief §23), NO expiry (no policy
  *    exists — brief §21).
  *  - Branding uses the established in-product brand treatment only;
@@ -26,7 +24,7 @@
  */
 
 /** Presentation-template version only — never persisted (brief §19). */
-export const STAFF_ID_CARD_TEMPLATE_VERSION = "1.0";
+export const STAFF_ID_CARD_TEMPLATE_VERSION = "1.1";
 
 /** The card's own label (also the accessible heading of the card). */
 export const STAFF_ID_CARD_LABEL = "Staff Identity Card";

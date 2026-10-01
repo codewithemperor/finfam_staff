@@ -1,5 +1,6 @@
 import { ORIENTATION_SECTIONS } from "@/config/orientation";
 import { ONBOARDING_STEPS } from "@/config/onboarding";
+import { OPEN_POSITION } from "@/config/content";
 import {
   CANDIDATE_STATUS_DETAILS,
   RECRUITMENT_STAGES,
@@ -376,7 +377,7 @@ export async function getRecruitmentJourney(
   return {
     referenceNumber: candidate.referenceNumber,
     fullName: candidate.fullName,
-    roleTitle: candidate.applications[0]?.roleTitle ?? "Staff Member",
+    roleTitle: candidate.applications[0]?.roleTitle ?? OPEN_POSITION.title,
     status: candidate.status,
     submittedAt: candidate.createdAt.toISOString(),
     stages,

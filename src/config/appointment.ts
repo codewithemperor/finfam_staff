@@ -31,10 +31,8 @@ import type { AppointmentContent } from "@/types/recruitment";
  *
  * Approved Stage 4 MVP business defaults (documented, changeable without
  * touching historical appointments — see docs/CONTENT-QUESTIONS.md):
- * - Official appointment designation: "Remote Staff" (§21). It is NOT
- *   renamed to Marketing & Customer Care Executive / Growth Ambassador /
- *   Staff Member; descriptive paragraphs may explain the functional
- *   responsibility without replacing the designation.
+ * - Official appointment role: "Marketing & Customer Care Executive".
+ *   Remote work describes the work arrangement, not the role.
  * - Letter date = the server-issued timestamp (§23). No hard-coded
  *   September 1, 2026 — that date belongs to the sample document only.
  * - Signatory: "Management, FinFam" text-only (§24). No named officers.
@@ -48,11 +46,11 @@ import type { AppointmentContent } from "@/types/recruitment";
  *   September 1, 2026 letter, so it is omitted rather than asserted).
  */
 export const APPOINTMENT_META = {
-  version: "1.0",
+  version: "1.2",
 } as const;
 
 /** Official appointment designation used in the letter (approved default). */
-export const APPOINTMENT_ROLE_TITLE = "Remote Staff";
+export const APPOINTMENT_ROLE_TITLE = "Marketing & Customer Care Executive";
 
 /** Issuing organisation as printed in the letterhead. */
 export const APPOINTMENT_ORGANISATION =
@@ -75,16 +73,16 @@ export const APPOINTMENT_REFERENCE_MIN_DIGITS = 3;
 
 /**
  * Append-only letter-content registry. Key = content version pinned on
- * issued Appointment rows. v1.0 is the initial (and currently only)
- * version; its body below must never be modified in place.
+ * issued Appointment rows. Existing versions must never be modified in
+ * place; new wording is added as a new version.
  */
 export const APPOINTMENT_CONTENT_VERSIONS: Record<string, AppointmentContent> = {
   "1.0": {
-    subject: "Provisional Letter of Appointment – Remote Staff",
+    subject: "Provisional Letter of Appointment – Marketing & Customer Care Executive",
     body: [
       {
         type: "paragraph",
-        text: "FinFam Multipurpose Cooperative Society Limited is pleased to offer you a provisional appointment as a Remote Staff of the cooperative. This appointment is provisional and is subject to the performance expectations set out in this letter.",
+        text: "FinFam Multipurpose Cooperative Society Limited is pleased to offer you a provisional appointment as a Marketing & Customer Care Executive of the cooperative. You will work remotely. This appointment is provisional and is subject to the performance expectations set out in this letter.",
       },
       {
         type: "subheading",
@@ -145,6 +143,268 @@ export const APPOINTMENT_CONTENT_VERSIONS: Record<string, AppointmentContent> = 
         tone: "accent",
         title: "Bonuses are not cumulative — one tier applies per month",
         text: "For example: 100 Established Members = ₦75,000 (100 × ₦650 + ₦10,000); 200 Established Members = ₦150,000 (200 × ₦650 + ₦20,000); 300 Established Members = ₦215,000 (300 × ₦650 + ₦20,000).",
+      },
+      {
+        type: "paragraph",
+        text: "Your monthly target is 200 Established Members. The target is not an earning ceiling — every Established Member above 200 continues to attract ₦650.",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly earnings are paid at month end, or no later than the first week of the following month.",
+      },
+      {
+        type: "subheading",
+        text: "Your referral link",
+      },
+      {
+        type: "paragraph",
+        text: "You must use your referral link when bringing members to FinFam. The link is how the members you bring in are tracked; the link itself does not generate commission — your earnings come from your Established Members, as set out above.",
+      },
+      {
+        type: "subheading",
+        text: "Member privacy and professional conduct",
+      },
+      {
+        type: "paragraph",
+        text: "You must never request a member's account balances or login details. You are also expected to uphold the professional standards already set out in your Responsibility & Reward Agreement, including honest representation of FinFam and careful protection of member information.",
+      },
+      {
+        type: "subheading",
+        text: "Community impact",
+      },
+      {
+        type: "paragraph",
+        text: "The role supports responsible financial habits, community growth and meaningful member impact. Your performance is about more than raw registration numbers — the quality of the members you bring in and the value they actually receive matter.",
+      },
+      {
+        type: "subheading",
+        text: "Annual recognition",
+      },
+      {
+        type: "paragraph",
+        text: "Annual recognition and rewards become applicable from December 2026. Top performers and community builders may be eligible, and further details will be communicated to you before then.",
+      },
+      {
+        type: "subheading",
+        text: "Provisional appointment",
+      },
+      {
+        type: "paragraph",
+        text: "This appointment is provisional and subject to performance review. Confirmation is expected in December 2026 upon meeting the required expectations; those expectations will be communicated to you by FinFam.",
+      },
+    ],
+  },
+  "1.1": {
+    subject: "Provisional Letter of Appointment – Marketing & Customer Care Executive",
+    body: [
+      {
+        type: "paragraph",
+        text: "FinFam Multipurpose Cooperative Society Limited is pleased to offer you a provisional appointment as a Marketing & Customer Care Executive of the cooperative. You will work remotely. This appointment is provisional and is subject to the performance expectations set out in this letter.",
+      },
+      {
+        type: "subheading",
+        text: "Your role",
+      },
+      {
+        type: "paragraph",
+        text: "Your primary responsibility is to grow FinFam's community and look after the members you bring in. In particular, the role involves:",
+      },
+      {
+        type: "list",
+        items: [
+          "Growing FinFam's community.",
+          "Onboarding new members.",
+          "Guiding members on how FinFam works.",
+          "Supporting members as they save and participate.",
+          "Operating in line with FinFam's mission.",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "Compensation and incentive policy",
+      },
+      {
+        type: "paragraph",
+        text: "Your monthly earnings follow one formula:",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly Earnings = Established Members × ₦650 + Applicable Target Bonus.",
+      },
+      {
+        type: "paragraph",
+        text: "A member qualifies as an Established Member when, during their first month, they complete all three of the following:",
+      },
+      {
+        type: "list",
+        items: [
+          "Membership signup.",
+          "A first deposit.",
+          "Savings of not less than ₦5,000 maintained during their first month.",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "3. MILESTONE BONUSES",
+      },
+      {
+        type: "paragraph",
+        text: "Bonuses are progressive by achievement level and are not cumulative. You qualify for only one bonus tier per month.",
+      },
+      {
+        type: "paragraph",
+        text: "Established Members and Applicable Bonus",
+      },
+      {
+        type: "list",
+        items: [
+          "Established Members: 0–99 — Applicable Bonus: ₦0",
+          "Established Members: 100–199 — Applicable Bonus: ₦10,000",
+          "Established Members: 200 and above — Applicable Bonus: ₦20,000",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "Earnings Examples",
+      },
+      {
+        type: "list",
+        items: [
+          "100 Members: 100 × ₦650 + ₦10,000 = ₦75,000",
+          "200 Members: 200 × ₦650 + ₦20,000 = ₦150,000",
+          "300 Members: 300 × ₦650 + ₦20,000 = ₦215,000",
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "Your monthly target is 200 Established Members. The target is not an earning ceiling — every Established Member above 200 continues to attract ₦650.",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly earnings are paid at month end, or no later than the first week of the following month.",
+      },
+      {
+        type: "subheading",
+        text: "Your referral link",
+      },
+      {
+        type: "paragraph",
+        text: "You must use your referral link when bringing members to FinFam. The link is how the members you bring in are tracked; the link itself does not generate commission — your earnings come from your Established Members, as set out above.",
+      },
+      {
+        type: "subheading",
+        text: "Member privacy and professional conduct",
+      },
+      {
+        type: "paragraph",
+        text: "You must never request a member's account balances or login details. You are also expected to uphold the professional standards already set out in your Responsibility & Reward Agreement, including honest representation of FinFam and careful protection of member information.",
+      },
+      {
+        type: "subheading",
+        text: "Community impact",
+      },
+      {
+        type: "paragraph",
+        text: "The role supports responsible financial habits, community growth and meaningful member impact. Your performance is about more than raw registration numbers — the quality of the members you bring in and the value they actually receive matter.",
+      },
+      {
+        type: "subheading",
+        text: "Annual recognition",
+      },
+      {
+        type: "paragraph",
+        text: "Annual recognition and rewards become applicable from December 2026. Top performers and community builders may be eligible, and further details will be communicated to you before then.",
+      },
+      {
+        type: "subheading",
+        text: "Provisional appointment",
+      },
+      {
+        type: "paragraph",
+        text: "This appointment is provisional and subject to performance review. Confirmation is expected in December 2026 upon meeting the required expectations; those expectations will be communicated to you by FinFam.",
+      },
+    ],
+  },
+  "1.2": {
+    subject: "Provisional Letter of Appointment – Marketing & Customer Care Executive",
+    body: [
+      {
+        type: "paragraph",
+        text: "FinFam Multipurpose Cooperative Society Limited is pleased to offer you a provisional appointment as a Marketing & Customer Care Executive of the cooperative. This appointment is provisional and is subject to the performance expectations set out in this letter.",
+      },
+      {
+        type: "subheading",
+        text: "Your role",
+      },
+      {
+        type: "paragraph",
+        text: "Your primary responsibility is to grow FinFam's community and look after the members you bring in. In particular, the role involves:",
+      },
+      {
+        type: "list",
+        items: [
+          "Growing FinFam's community.",
+          "Onboarding new members.",
+          "Guiding members on how FinFam works.",
+          "Supporting members as they save and participate.",
+          "Operating in line with FinFam's mission.",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "Compensation and incentive policy",
+      },
+      {
+        type: "paragraph",
+        text: "Your monthly earnings follow one formula:",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly Earnings = Established Members × ₦650 + Applicable Target Bonus.",
+      },
+      {
+        type: "paragraph",
+        text: "A member qualifies as an Established Member when, during their first month, they complete all three of the following:",
+      },
+      {
+        type: "list",
+        items: [
+          "Membership signup.",
+          "A first deposit.",
+          "Savings of not less than ₦5,000 maintained during their first month.",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "3. MILESTONE BONUSES",
+      },
+      {
+        type: "paragraph",
+        text: "Bonuses are progressive by achievement level and are not cumulative. You qualify for only one bonus tier per month.",
+      },
+      {
+        type: "paragraph",
+        text: "Established Members and Applicable Bonus",
+      },
+      {
+        type: "list",
+        items: [
+          "Established Members: 0–99 — Applicable Bonus: ₦0",
+          "Established Members: 100–199 — Applicable Bonus: ₦10,000",
+          "Established Members: 200 and above — Applicable Bonus: ₦20,000",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "Earnings Examples",
+      },
+      {
+        type: "list",
+        items: [
+          "100 Members: 100 × ₦650 + ₦10,000 = ₦75,000",
+          "200 Members: 200 × ₦650 + ₦20,000 = ₦150,000",
+          "300 Members: 300 × ₦650 + ₦20,000 = ₦215,000",
+        ],
       },
       {
         type: "paragraph",

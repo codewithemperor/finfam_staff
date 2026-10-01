@@ -257,7 +257,7 @@ describe("Stage 7 — Staff Account provisioning", () => {
     expect(staffAfter?.activatedAt.getTime()).toBe(
       orphan.activatedAt.getTime(),
     );
-    expect(staffAfter?.roleTitle).toBe("Remote Staff");
+    expect(staffAfter?.roleTitle).toBe("Marketing & Customer Care Executive");
   });
 
   it("suspended accounts cannot receive login codes (status respected at request time)", async () => {
@@ -325,7 +325,7 @@ async function createOrphanStaff(label: string) {
       candidateId: candidate.id,
       staffId: `FF-STF-9${Math.floor(100 + Math.random() * 900)}`,
       version: "1.0",
-      roleTitle: "Remote Staff",
+      roleTitle: "Marketing & Customer Care Executive",
       appointmentReference: "FFL/HR/PLA/901",
       activatedAt: new Date(),
     },

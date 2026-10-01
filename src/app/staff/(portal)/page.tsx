@@ -248,7 +248,7 @@ export default async function StaffHomePage() {
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-sm text-muted-foreground">
-                Appointment designation
+                Role
               </dt>
               <dd className="text-sm font-semibold text-foreground">
                 {home.designation}
@@ -256,10 +256,10 @@ export default async function StaffHomePage() {
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-sm text-muted-foreground">
-                Operational role
+                Work arrangement
               </dt>
               <dd className="text-sm font-semibold text-foreground">
-                {home.operationalRole}
+                {home.workArrangement}
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">

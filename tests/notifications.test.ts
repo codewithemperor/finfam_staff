@@ -344,8 +344,14 @@ describe("Notification templates", () => {
   }
 
   const SAMPLE_PAYLOADS = {
-    APPLICATION_RECEIVED: { ...BASE_PAYLOAD, roleTitle: "Staff Member" },
-    ORIENTATION_COMPLETED: { ...BASE_PAYLOAD, roleTitle: "Staff Member" },
+    APPLICATION_RECEIVED: {
+      ...BASE_PAYLOAD,
+      roleTitle: "Marketing & Customer Care Executive",
+    },
+    ORIENTATION_COMPLETED: {
+      ...BASE_PAYLOAD,
+      roleTitle: "Marketing & Customer Care Executive",
+    },
     ASSESSMENT_PASSED: {
       ...BASE_PAYLOAD,
       attemptNumber: 2,
@@ -364,24 +370,24 @@ describe("Notification templates", () => {
     APPOINTMENT_ISSUED: {
       ...BASE_PAYLOAD,
       appointmentReference: "FFL/HR/PLA/013",
-      designation: "Remote Staff",
+      designation: "Marketing & Customer Care Executive",
       issuedAt: "2026-09-15T10:00:00.000Z",
     },
     STAFF_ACTIVATED: {
       ...BASE_PAYLOAD,
       staffId: "FF-STF-0099",
-      designation: "Remote Staff",
+      designation: "Marketing & Customer Care Executive",
       activatedAt: "2026-09-15T11:00:00.000Z",
     },
     ONBOARDING_STARTED: {
       ...BASE_PAYLOAD,
       staffId: "FF-STF-0099",
-      designation: "Remote Staff",
+      designation: "Marketing & Customer Care Executive",
     },
     ONBOARDING_COMPLETED: {
       ...BASE_PAYLOAD,
       staffId: "FF-STF-0099",
-      designation: "Remote Staff",
+      designation: "Marketing & Customer Care Executive",
     },
     STAFF_ACCOUNT_CREATED: { ...BASE_PAYLOAD, staffId: "FF-STF-0099" },
     STAFF_LOGIN_CODE: {
@@ -593,7 +599,7 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
         email,
         phone,
         city,
-        roleTitle: "Staff Member",
+        roleTitle: "Marketing & Customer Care Executive",
         consent: true,
       }),
       200,
@@ -630,7 +636,7 @@ describe("Live notification matrix (§28) — one candidate, whole journey", () 
         email,
         phone,
         city,
-        roleTitle: "Staff Member",
+        roleTitle: "Marketing & Customer Care Executive",
         consent: true,
       }),
       409,

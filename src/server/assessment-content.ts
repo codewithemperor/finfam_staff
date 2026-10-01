@@ -90,8 +90,7 @@ export const ASSESSMENT_ANSWER_KEY: Record<string, AssessmentQuestionKey> = {
   },
   "q-12": {
     correctIndex: 2,
-    insight:
-      "The role is also called FinFam Growth Ambassador — it is the same role.",
+    insight: "The role is Marketing & Customer Care Executive.",
   },
   "q-13": {
     correctIndex: 2,

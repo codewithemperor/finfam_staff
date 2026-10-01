@@ -111,17 +111,17 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     blocks: [
       {
         type: "paragraph",
-        text: "Welcome to the FinFam Team. Your recruitment is complete and you are now part of the FinFam Remote Team. Your next responsibility is to complete onboarding and begin work as a FinFam Growth Ambassador.",
+        text: "Welcome to the FinFam Team. Your recruitment is complete and you are now part of the FinFam remote working team. Your next responsibility is to complete onboarding and begin work as a Marketing & Customer Care Executive.",
       },
       {
         type: "paragraph",
-        text: "Two descriptions of your role are used, and they stand side by side — one does not replace the other:",
+        text: "Your role and work arrangement are separate:",
       },
       {
         type: "facts",
         items: [
-          { label: "Appointment designation", value: "Remote Staff" },
-          { label: "Operational role", value: "FinFam Growth Ambassador" },
+          { label: "Role", value: "Marketing & Customer Care Executive" },
+          { label: "Work arrangement", value: "Remote" },
         ],
       },
       {

@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { ADMIN_DIRECTORY_PAGE_SIZE } from "@/config/admin";
+import { STAFF_PORTAL_WORK_ARRANGEMENT } from "@/config/staff-portal";
 import { notFoundError } from "@/lib/errors";
 
 /**
@@ -32,7 +33,7 @@ export interface StaffDirectoryRow {
   fullName: string;
   email: string;
   designation: string;
-  operationalRole: string;
+  workArrangement: string;
   activatedAt: Date;
   accountStatus: "ACTIVE" | "SUSPENDED";
   onboardingState: StaffOnboardingStateId;
@@ -149,7 +150,7 @@ export async function listStaffDirectory(query: {
       fullName: row.candidate.fullName,
       email: row.candidate.email,
       designation: row.roleTitle,
-      operationalRole: "FinFam Growth Ambassador",
+      workArrangement: STAFF_PORTAL_WORK_ARRANGEMENT,
       activatedAt: row.activatedAt,
       accountStatus: row.account?.status ?? "ACTIVE",
       onboardingState: deriveOnboardingState(row.onboarding),
@@ -172,7 +173,7 @@ export interface StaffAdminDetailView {
     fullName: string;
     email: string;
     designation: string;
-    operationalRole: string;
+    workArrangement: string;
     activatedAt: Date;
   };
   appointment: {
@@ -295,7 +296,7 @@ export async function getStaffAdminDetail(
       fullName: staff.candidate.fullName,
       email: staff.candidate.email,
       designation: staff.roleTitle,
-      operationalRole: "FinFam Growth Ambassador",
+      workArrangement: STAFF_PORTAL_WORK_ARRANGEMENT,
       activatedAt: staff.activatedAt,
     },
     appointment: {

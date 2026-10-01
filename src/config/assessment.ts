@@ -168,12 +168,12 @@ export const ASSESSMENT_QUESTIONS: AssessmentQuestion[] = [
   },
   {
     id: "q-12",
-    text: "The role is also known by another name. Which one?",
+    text: "What is the main focus of the Marketing & Customer Care Executive role?",
     options: [
-      "FinFam Field Officer",
-      "FinFam Cooperative Secretary",
-      "FinFam Growth Ambassador",
-      "FinFam Branch Coordinator",
+      "Managing FinFam branches",
+      "Processing loan applications",
+      "Attracting and onboarding new members, then supporting members with savings and customer care",
+      "Auditing cooperative accounts",
     ],
     category: "Your role",
   },

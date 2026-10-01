@@ -1,6 +1,7 @@
 import "server-only";
 
 import { AGREEMENT_META, AGREEMENT_SECTIONS } from "@/config/agreement";
+import { OPEN_POSITION } from "@/config/content";
 import { db } from "@/lib/db";
 import { dispatchNotification, enqueueNotification } from "@/server/notifications/notification-service";
 import { buildDedupeKey } from "@/server/notifications/notification-types";
@@ -115,7 +116,7 @@ function toView(candidate: CandidateWithAgreement): AgreementView {
   return {
     referenceNumber: candidate.referenceNumber,
     fullName: candidate.fullName,
-    roleTitle: candidate.applications[0]?.roleTitle ?? "Staff Member",
+    roleTitle: candidate.applications[0]?.roleTitle ?? OPEN_POSITION.title,
     status: candidate.status,
     eligible:
       candidate.status === "ASSESSMENT_PASSED" ||

@@ -15,7 +15,7 @@ import { OPEN_POSITION } from "@/config/content";
 export const metadata: Metadata = {
   title: "Apply",
   description:
-    "Complete your application for the FinFam Staff Member role.",
+    "Complete your application for the FinFam Marketing & Customer Care Executive role.",
 };
 
 const nextSteps = [

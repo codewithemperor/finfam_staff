@@ -7,8 +7,8 @@ import Image from "next/image";
 export interface StaffIdCardProps {
   fullName: string;
   staffId: string;
-  designation: string;
-  operationalRole: string;
+  role: string;
+  workArrangement: string;
   /** Preformatted "d MMMM yyyy" activation label (Africa/Lagos facts). */
   activatedAtLabel: string;
 }
@@ -37,8 +37,8 @@ export interface StaffIdCardProps {
 export function StaffIdCard({
   fullName,
   staffId,
-  designation,
-  operationalRole,
+  role,
+  workArrangement,
   activatedAtLabel,
 }: StaffIdCardProps) {
   return (
@@ -79,12 +79,12 @@ export function StaffIdCard({
         </p>
       </div>
 
-      {/* Designation and operational role as SEPARATE facts (brief §14). */}
+      {/* Role and work arrangement are separate facts. */}
       <dl className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 gap-y-1 text-[11px] sm:text-xs print:text-[8px]">
-        <dt className="text-muted-foreground">Appointment designation</dt>
-        <dd className="min-w-0 font-semibold text-foreground">{designation}</dd>
-        <dt className="text-muted-foreground">Operational role</dt>
-        <dd className="min-w-0 font-semibold text-foreground">{operationalRole}</dd>
+        <dt className="text-muted-foreground">Role</dt>
+        <dd className="min-w-0 font-semibold text-foreground">{role}</dd>
+        <dt className="text-muted-foreground">Work arrangement</dt>
+        <dd className="min-w-0 font-semibold text-foreground">{workArrangement}</dd>
         <dt className="text-muted-foreground">Activated</dt>
         <dd className="min-w-0 font-semibold text-foreground">{activatedAtLabel}</dd>
       </dl>

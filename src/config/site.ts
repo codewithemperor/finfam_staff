@@ -7,7 +7,7 @@ export const siteConfig = {
   name: "FinFam Recruitment",
   shortName: "FinFam",
   description:
-    "Apply for the FinFam Staff Member role and follow your recruitment journey.",
+    "Apply for the FinFam Marketing & Customer Care Executive role and follow your recruitment journey.",
   support: {
     /**
      * BUSINESS INPUT REQUIRED (production-readiness remediation §35): no

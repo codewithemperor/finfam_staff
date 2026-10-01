@@ -219,7 +219,7 @@ function SubmissionConfirmation({ result }: { result: ApplicationSubmissionResul
           Application received
         </h2>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          Thank you — your application for the Staff Member role has been
+          Thank you — your application for the Marketing & Customer Care Executive role has been
           submitted. Save your reference number somewhere safe; it identifies
           your whole application journey and you&apos;ll use it every time you
           return.
@@ -264,4 +264,3 @@ function SubmissionConfirmation({ result }: { result: ApplicationSubmissionResul
     </div>
   );
 }
-

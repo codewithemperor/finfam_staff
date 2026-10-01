@@ -8,8 +8,9 @@
  *
  * Rules for this file (see the stage brief):
  * - Direct, human sentences. No marketing copy, no invented corporate claims.
- * - Reward figures and the Established Member threshold are NOT published —
- *   the source material conflicts and is unresolved (docs/CONTENT-QUESTIONS.md).
+ * - Reward figures and the Established Member threshold are NOT published in
+ *   orientation. Candidates receive the confirmed structure later in the
+ *   recruitment process.
  * - The fraud section is serious policy content, presented calmly.
  */
 
@@ -19,7 +20,7 @@ export type OrientationBlock =
   | { type: "list"; items: string[] }
   /**
    * Persistent, important context rendered as a HeroUI Alert. Used sparingly:
-   * finalising rewards (section 5) and the fraud policy (section 8).
+   * deferred reward details (section 5) and the fraud policy (section 8).
    */
   | { type: "alert"; tone: "accent" | "warning"; title: string; text: string };
 
@@ -116,7 +117,7 @@ export const ORIENTATION_SECTIONS: OrientationSection[] = [
     title: "Your role",
     summary: "What a Marketing & Customer Care Executive actually does.",
     keyPoints: [
-      "Your role: Marketing & Customer Care Executive (Growth Ambassador)",
+      "Your role: Marketing & Customer Care Executive",
       "Four responsibilities: community, savings consistency, customer care, member support",
       "You are often the human face of FinFam",
       "These responsibilities are how your work is evaluated",
@@ -124,7 +125,7 @@ export const ORIENTATION_SECTIONS: OrientationSection[] = [
     blocks: [
       {
         type: "paragraph",
-        text: "Your role is Marketing & Customer Care Executive. You may also hear it called FinFam Growth Ambassador — it is the same role. In practice the work has four parts, and most days you will do some combination of them.",
+        text: "Your role is Marketing & Customer Care Executive. In practice the work has four parts, and most days you will do some combination of them.",
       },
       { type: "heading", text: "Community building" },
       {
@@ -185,11 +186,11 @@ export const ORIENTATION_SECTIONS: OrientationSection[] = [
   {
     id: "reward-structure",
     title: "Reward structure",
-    summary: "How rewards work — and what is still being confirmed.",
+    summary: "How rewards work — and when the confirmed structure is shared.",
     keyPoints: [
       "Rewards are attached to the responsibilities of the role",
-      "Figures and thresholds are not final yet",
-      "The confirmed structure arrives in writing at the offer stage",
+      "Figures and thresholds are shared later in the recruitment process",
+      "The confirmed structure arrives in writing before acceptance",
       "Your written agreement is what counts",
     ],
     blocks: [
@@ -200,8 +201,8 @@ export const ORIENTATION_SECTIONS: OrientationSection[] = [
       {
         type: "alert",
         tone: "accent",
-        title: "Reward figures are being finalised",
-        text: "The exact reward amounts and the savings threshold for becoming an Established Member are still being confirmed by the business. This orientation does not publish figures, and no figure you may have seen elsewhere should be treated as final. You will receive the confirmed structure in writing before you are asked to accept any offer.",
+        title: "Review the confirmed structure later",
+        text: "The exact reward amount to earn and the savings threshold to become an Established Member will be shared with you in subsequent sections. This orientation does not publish figures, and no figure you may have seen elsewhere should be treated as final. You will receive the confirmed structure through this recruitment process before you are asked to accept any offer.",
       },
       {
         type: "paragraph",

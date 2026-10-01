@@ -1,6 +1,8 @@
 import "server-only";
 
-import { STAFF_PORTAL_OPERATIONAL_ROLE } from "@/config/staff-portal";
+import {
+  STAFF_PORTAL_WORK_ARRANGEMENT,
+} from "@/config/staff-portal";
 import { getAppointmentContent } from "@/config/appointment";
 import { ONBOARDING_WHATSAPP } from "@/config/onboarding";
 import {
@@ -39,10 +41,10 @@ import type { TrainingHomeState } from "@/types/staff-training";
 export interface StaffPortalHomeView {
   fullName: string;
   staffId: string;
-  /** Official appointment designation (snapshot: "Remote Staff"). */
+  /** The person's canonical role title. */
   designation: string;
-  /** Operational role presented beside the designation (brief §27). */
-  operationalRole: string;
+  /** The person's work arrangement, separate from the role title. */
+  workArrangement: string;
   activatedAt: string;
   appointment: {
     appointmentReference: string;
@@ -179,7 +181,7 @@ export async function getStaffPortalHome(
     fullName: staff.candidate.fullName,
     staffId: staff.staffId,
     designation: staff.roleTitle,
-    operationalRole: STAFF_PORTAL_OPERATIONAL_ROLE,
+    workArrangement: STAFF_PORTAL_WORK_ARRANGEMENT,
     activatedAt: staff.activatedAt.toISOString(),
     appointment: staff.candidate.appointment
       ? {
@@ -211,7 +213,7 @@ export interface StaffMeView {
   /** The login email — the candidate's registered email (brief §5). */
   email: string;
   designation: string;
-  operationalRole: string;
+  workArrangement: string;
   appointmentReference: string;
   activatedAt: string;
   accountStatus: "ACTIVE" | "SUSPENDED";
@@ -244,7 +246,7 @@ export async function getStaffMe(
     fullName: session.candidate.fullName,
     email: session.candidate.email,
     designation: session.staff.roleTitle,
-    operationalRole: STAFF_PORTAL_OPERATIONAL_ROLE,
+    workArrangement: STAFF_PORTAL_WORK_ARRANGEMENT,
     appointmentReference: session.staff.appointmentReference,
     activatedAt: session.staff.activatedAt.toISOString(),
     accountStatus: session.account.status,

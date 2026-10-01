@@ -298,8 +298,8 @@ const RENDERERS: NotificationRenderers = {
 
   ONBOARDING_COMPLETED: (payload, { baseUrl, name }) =>
     render({
-      subject: "You are now a FinFam staff member",
-      heading: `${name}, you are now a FinFam staff member.`,
+      subject: "You are now a FinFam Marketing & Customer Care Executive",
+      heading: `${name}, you are now a FinFam Marketing & Customer Care Executive.`,
       paragraphs: [
         "Your Staff Onboarding is complete and your recruitment application is now closed. Your FinFam staff profile is ready.",
         "Open the Staff Portal with your registered email address and request a secure one-time login code. The code will be sent to this email address.",

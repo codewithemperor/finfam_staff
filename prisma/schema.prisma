@@ -417,10 +417,9 @@ model Appointment {
   /// Printed candidate name, snapshotted from Candidate.fullName at
   /// issuance. Never read from the client at render time.
   printedName String
-  /// Official appointment designation, snapshotted at issuance. The
-  /// approved MVP value is "Remote Staff" (the designation used by the
-  /// official Provisional Letter of Appointment) — not renamed to any
-  /// other role title (docs/CONTENT-QUESTIONS.md §21).
+  /// Official appointment role title, snapshotted at issuance. The current
+  /// role is "Marketing & Customer Care Executive"; remote work is a
+  /// separate work arrangement and is not part of the role title.
   roleTitle   String
   /// Server issuance timestamp. Doubles as the printed letter date for
   /// the MVP; no separate effectiveDate exists (§23).
@@ -481,10 +480,9 @@ model Staff {
   /// Activation-content version pinned at activation (e.g. "1.0",
   /// src/config/activation.ts). Immutable.
   version     String
-  /// Official designation, snapshotted FROM the issued Appointment row at
-  /// activation ("Remote Staff" for the current appointment version). The
-  /// appointment remains the authoritative source for the designation under
-  /// which the person was activated. Immutable.
+  /// Official role title, snapshotted FROM the issued Appointment row at
+  /// activation. The appointment remains the authoritative source for the
+  /// role under which the person was activated. Immutable.
   roleTitle   String
   /// Appointment reference, snapshotted at activation so the staff identity
   /// is self-contained. Immutable.

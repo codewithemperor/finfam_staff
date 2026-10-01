@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { OPEN_POSITION } from "@/config/content";
 import { notFoundError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
 import type { CandidateStatusView } from "@/types/recruitment";
@@ -55,7 +56,7 @@ export async function getCandidateStatus(
   return {
     referenceNumber: candidate.referenceNumber,
     fullName: candidate.fullName,
-    roleTitle: candidate.applications[0]?.roleTitle ?? "Staff Member",
+    roleTitle: candidate.applications[0]?.roleTitle ?? OPEN_POSITION.title,
     status: candidate.status,
     submittedAt: candidate.createdAt.toISOString(),
     events: candidate.events.map((event) => ({

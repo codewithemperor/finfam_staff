@@ -949,7 +949,7 @@ describe("Stage 9 — content & payroll firewall", () => {
     expect(serialized).toContain(DAILY_REPORT_SELF_REPORTED_NOTICE);
   });
 
-  it("presents appointment designation and operational role as separate facts", () => {
+  it("presents role and work arrangement as separate facts", () => {
     const lesson1 = courseContent.lessons.find(
       (lesson) => lesson.id === "professional-representation",
     )!;
@@ -957,8 +957,8 @@ describe("Stage 9 — content & payroll firewall", () => {
     expect(facts).toBeDefined();
     if (facts!.type !== "facts") throw new Error("unreachable");
     expect(facts!.items).toEqual([
-      { label: "Appointment designation", value: "Remote Staff" },
-      { label: "Operational role", value: "FinFam Growth Ambassador" },
+      { label: "Role", value: "Marketing & Customer Care Executive" },
+      { label: "Work arrangement", value: "Remote" },
     ]);
   });
 

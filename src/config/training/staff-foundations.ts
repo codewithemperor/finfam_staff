@@ -59,16 +59,19 @@ export const STAFF_FOUNDATIONS_VERSIONS: Record<
           {
             type: "facts",
             items: [
-              { label: "Appointment designation", value: "Remote Staff" },
               {
-                label: "Operational role",
-                value: "FinFam Growth Ambassador",
+                label: "Role",
+                value: "Marketing & Customer Care Executive",
+              },
+              {
+                label: "Work arrangement",
+                value: "Remote",
               },
             ],
           },
           {
             type: "paragraph",
-            text: "Two descriptions of your role are used, and they stand side by side — one does not replace the other. Your appointment letter carries the designation; your day-to-day work is described by the operational role.",
+            text: "Your role is Marketing & Customer Care Executive, and your work arrangement is remote. The role covers attracting and onboarding new members, then supporting members with their savings and day-to-day service needs.",
           },
           { type: "heading", text: "Your core responsibilities" },
           {
@@ -155,7 +158,7 @@ export const STAFF_FOUNDATIONS_VERSIONS: Record<
         blocks: [
           {
             type: "paragraph",
-            text: "Supporting members well is at the heart of the Growth Ambassador role. Most days you will be helping people start, understand and stay consistent with FinFam.",
+            text: "Supporting members well is at the heart of the Marketing & Customer Care Executive role. Most days you will be helping people start, understand and stay consistent with FinFam.",
           },
           { type: "heading", text: "How you support members" },
           {
