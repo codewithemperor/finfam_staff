@@ -85,7 +85,7 @@ const ELIGIBLE_STATUS = "APPROVED_STAFF";
  * null (not supplied) keeps the honest pending copy. Read server-side only
  * — never in client bundles.
  */
-function getOnboardingWhatsappNumber(): string | null {
+export function getOnboardingWhatsappNumber(): string | null {
   const fromEnv = process.env.ONBOARDING_WHATSAPP_NUMBER?.trim() ?? "";
   if (fromEnv.length > 0) return fromEnv.replace(/[^0-9]/g, "") || null;
   return ONBOARDING_WHATSAPP.number;

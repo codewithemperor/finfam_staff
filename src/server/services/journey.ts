@@ -1,5 +1,5 @@
 import { ORIENTATION_SECTIONS } from "@/config/orientation";
-import { ONBOARDING_STEPS } from "@/config/onboarding";
+import { ONBOARDING_STEPS, ONBOARDING_WHATSAPP } from "@/config/onboarding";
 import { OPEN_POSITION } from "@/config/content";
 import {
   CANDIDATE_STATUS_DETAILS,
@@ -8,6 +8,9 @@ import {
 import { db } from "@/lib/db";
 import { notFoundError } from "@/lib/errors";
 import { REFERENCE_NUMBER_PATTERN } from "@/lib/reference";
+import {
+  getOnboardingWhatsappNumber,
+} from "@/server/services/onboarding";
 import type { ReferenceRecoveryInput } from "@/lib/validation/recovery";
 import type {
   CandidateStageEvent,
@@ -432,6 +435,8 @@ export async function getRecruitmentJourney(
           totalSteps: ONBOARDING_STEPS.length,
           startedAt: staffOnboarding?.startedAt.toISOString() ?? null,
           completedAt: staffOnboarding?.completedAt?.toISOString() ?? null,
+          whatsappNumber: getOnboardingWhatsappNumber(),
+          whatsappMessage: ONBOARDING_WHATSAPP.message,
         }
       : null,
     events,

@@ -456,6 +456,9 @@ export interface JourneyOnboardingSummary {
   totalSteps: number;
   startedAt: string | null;
   completedAt: string | null;
+  /** Official contact remains available after the communication step is reviewed. */
+  whatsappNumber: string | null;
+  whatsappMessage: string;
 }
 
 /* -------------------------------------------------------------------------

@@ -29,6 +29,9 @@ export function OnboardingJourneyCard({
   headingId?: string;
 }) {
   const isCompleted = onboarding.state === "COMPLETED";
+  const whatsappHref = onboarding.whatsappNumber
+    ? `https://wa.me/${onboarding.whatsappNumber}?text=${encodeURIComponent(onboarding.whatsappMessage)}`
+    : null;
 
   const statusLine =
     onboarding.state === "COMPLETED"
@@ -78,6 +81,16 @@ export function OnboardingJourneyCard({
             Check your email for Staff Portal access, then sign in with a
             one-time code.
           </p>
+          {whatsappHref && (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+            >
+              Contact FinFam Onboarding Team
+            </a>
+          )}
         </div>
       ) : (
         <div className="mt-5">
@@ -86,6 +99,16 @@ export function OnboardingJourneyCard({
               ? "Continue Onboarding"
               : "Start Onboarding"}
           </ButtonLink>
+          {whatsappHref && (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex h-11 items-center justify-center rounded-md border border-border px-5 text-sm font-semibold text-foreground transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+            >
+              Contact FinFam Onboarding Team
+            </a>
+          )}
         </div>
       )}
     </section>
