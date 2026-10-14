@@ -280,12 +280,24 @@ export async function sendNotification(
           lastErrorMessage: null,
         },
       });
+      const otpCode =
+        payload && typeof payload === "object" && "loginCode" in payload
+          ? (payload as { loginCode: string }).loginCode
+          : undefined;
+
       console.log("[notifications] sent", {
         deliveryId,
         type: row.type,
         attempt: attemptNumber,
         messageId: result.messageId,
+        ...(otpCode ? { loginCode: otpCode } : {}),
       });
+
+      if (otpCode) {
+        console.log(`\n========================================`);
+        console.log(`[auth] 🔐 LOGIN OTP CODE for ${row.recipientEmail}: [ ${otpCode} ]`);
+        console.log(`========================================\n`);
+      }
       return "SENT";
     }
 

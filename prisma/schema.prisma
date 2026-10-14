@@ -205,7 +205,16 @@ model Candidate {
   fullName        String
   email           String          @unique
   phone           String
+  residentialAddress String?
   city            String?
+  state           String?
+  highestQualification String?
+  institution     String?
+  courseOfStudy   String?
+  graduationYear  String?
+  cvUrl           String?
+  passportPhotoUrl String?
+  idCardUrl       String?
   status          CandidateStatus @default(APPLICANT)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -855,6 +864,7 @@ enum AdminAccountStatus {
 enum AdminAuditAction {
   STAFF_SUSPENDED
   STAFF_REACTIVATED
+  SETTINGS_UPDATED
 }
 
 /// One FinFam management identity authorized for the /admin console
@@ -981,3 +991,15 @@ model RateLimitEvent {
   @@index([bucket, clientKey, createdAt])
   @@map("rate_limit_events")
 }
+
+/// Dynamic system settings configurable by administrators.
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+

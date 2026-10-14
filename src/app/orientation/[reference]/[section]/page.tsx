@@ -5,6 +5,7 @@ import { Lock } from "lucide-react";
 
 import { OrientationContent } from "@/components/orientation/orientation-content";
 import { OrientationNotFoundPanel } from "@/components/orientation/orientation-not-found";
+import { SectionIntroDialog } from "@/components/orientation/section-intro-dialog";
 import { SectionReadFooter } from "@/components/orientation/section-read-footer";
 import { PageShell } from "@/components/layout/page-shell";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -152,16 +153,26 @@ export default async function OrientationSectionPage({
         >
           ← Orientation overview
         </Link>
-        <span className="text-sm text-muted-foreground">
+        <span className="shrink-0 text-sm font-medium text-muted-foreground">
           Section {thisSection.index} of {progress.total}
         </span>
       </div>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12 xl:gap-14">
-        <article className="order-1 min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {sectionDefinition.title}
-          </h1>
+      <div className="mt-8 max-w-3xl">
+        <article className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {sectionDefinition.title}
+            </h1>
+            <SectionIntroDialog
+              sectionId={sectionDefinition.id}
+              sectionIndex={thisSection.index}
+              totalSections={progress.total}
+              sectionTitle={sectionDefinition.title}
+              keyPoints={sectionDefinition.keyPoints}
+            />
+          </div>
+
           <div className="mt-6">
             <OrientationContent blocks={sectionDefinition.blocks} />
           </div>
@@ -176,49 +187,9 @@ export default async function OrientationSectionPage({
             overviewHref={overviewHref}
             isReview={isReview}
           />
-        </article>
 
-        <aside
-          aria-label="About this section"
-          className="order-2 self-start lg:sticky lg:top-8"
-        >
-          <h2 className="text-sm font-semibold text-foreground">
-            In this section
-          </h2>
-          <ul className="mt-3 list-disc space-y-2 pl-4">
-            {sectionDefinition.keyPoints.map((point) => (
-              <li key={point} className="text-sm leading-6 text-muted-foreground">
-                {point}
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-6 border-t border-divider pt-5">
-            <p className="text-sm font-semibold text-foreground">
-              Orientation progress
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {progress.completed} of {progress.total} sections read
-            </p>
-            <div
-              role="progressbar"
-              aria-label="Orientation sections read"
-              aria-valuemin={0}
-              aria-valuemax={progress.total}
-              aria-valuenow={progress.completed}
-              aria-valuetext={`${progress.completed} of ${progress.total} sections`}
-              className="mt-3 h-1.5 overflow-hidden rounded-full bg-divider"
-            >
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{
-                  width: `${(progress.completed / progress.total) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
           {isReview && (
-            <div className="mt-6 border-t border-divider pt-5">
+            <div className="mt-8 rounded-lg border border-divider bg-surface/50 p-5">
               <p className="text-sm font-semibold text-foreground">
                 Review mode
               </p>
@@ -235,7 +206,7 @@ export default async function OrientationSectionPage({
               </ButtonLink>
             </div>
           )}
-        </aside>
+        </article>
       </div>
     </PageShell>
   );

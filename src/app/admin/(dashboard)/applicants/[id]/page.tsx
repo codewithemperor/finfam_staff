@@ -75,9 +75,82 @@ export default async function AdminApplicantDetailPage({
               <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Full name</dt><dd className="font-semibold text-foreground">{applicant.fullName}</dd></div>
               <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Email</dt><dd className="font-semibold text-foreground">{applicant.email}</dd></div>
               <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Phone</dt><dd className="font-semibold text-foreground">{applicant.phone}</dd></div>
+              <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Contact address</dt><dd className="font-semibold text-foreground">{applicant.residentialAddress ?? "Not provided"}</dd></div>
               <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">City</dt><dd className="font-semibold text-foreground">{applicant.city ?? "Not provided"}</dd></div>
+              <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">State</dt><dd className="font-semibold text-foreground">{applicant.state ?? "Not provided"}</dd></div>
             </dl>
           </section>
+
+          <section aria-labelledby="applicant-education" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <h2 id="applicant-education" className="text-sm font-semibold text-foreground">Educational Details</h2>
+            <dl className="mt-4 space-y-4 text-sm">
+              <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Highest qualification</dt><dd className="font-semibold text-foreground">{applicant.highestQualification ?? "Not provided"}</dd></div>
+              <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Institution / School</dt><dd className="font-semibold text-foreground">{applicant.institution ?? "Not provided"}</dd></div>
+              <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Course of study</dt><dd className="font-semibold text-foreground">{applicant.courseOfStudy ?? "Not provided"}</dd></div>
+              <div className="flex flex-wrap justify-between gap-4"><dt className="text-muted-foreground">Graduation year</dt><dd className="font-semibold text-foreground">{applicant.graduationYear ?? "Not provided"}</dd></div>
+            </dl>
+          </section>
+
+          <section aria-labelledby="applicant-credentials" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <h2 id="applicant-credentials" className="text-sm font-semibold text-foreground">Uploaded Credentials (Cloudinary)</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-md border border-border p-3 bg-background">
+                <p className="text-xs font-semibold text-muted-foreground">Curriculum Vitae (CV)</p>
+                {applicant.cvUrl ? (
+                  <a
+                    href={applicant.cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-xs font-medium text-primary underline"
+                  >
+                    View / Download CV ↗
+                  </a>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">Not uploaded</p>
+                )}
+              </div>
+
+              <div className="rounded-md border border-border p-3 bg-background">
+                <p className="text-xs font-semibold text-muted-foreground">Passport Photo</p>
+                {applicant.passportPhotoUrl ? (
+                  <div className="mt-2 space-y-1.5">
+                    <img
+                      src={applicant.passportPhotoUrl}
+                      alt="Passport"
+                      className="size-16 rounded object-cover border border-border"
+                    />
+                    <a
+                      href={applicant.passportPhotoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-xs font-medium text-primary underline"
+                    >
+                      View full photo ↗
+                    </a>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">Not uploaded</p>
+                )}
+              </div>
+
+              <div className="rounded-md border border-border p-3 bg-background">
+                <p className="text-xs font-semibold text-muted-foreground">National Means of ID</p>
+                {applicant.idCardUrl ? (
+                  <a
+                    href={applicant.idCardUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-xs font-medium text-primary underline"
+                  >
+                    View ID document ↗
+                  </a>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">Not uploaded</p>
+                )}
+              </div>
+            </div>
+          </section>
+
           <section aria-labelledby="applicant-application" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
             <h2 id="applicant-application" className="text-sm font-semibold text-foreground">Application</h2>
             <dl className="mt-4 space-y-4 text-sm">

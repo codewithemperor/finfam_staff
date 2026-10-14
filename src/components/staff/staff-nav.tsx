@@ -61,6 +61,74 @@ function Brand({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function isActive(pathname: string, href: string) {
+  return href === "/staff"
+    ? pathname === "/staff"
+    : pathname.startsWith(href);
+}
+
+function NavItems({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {STAFF_PORTAL_NAV.map((item) => {
+        const active = isActive(pathname, item.href);
+        const Icon = navIcons[item.href] ?? FileText;
+        return (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              onClick={onNavigate}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground",
+                active
+                  ? "bg-white text-primary"
+                  : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground",
+              )}
+            >
+              <Icon aria-hidden className="size-[1.125rem] shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function LogoutButton({
+  onLogout,
+  loggingOut,
+  mobile = false,
+}: {
+  onLogout: () => void;
+  loggingOut: boolean;
+  mobile?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onLogout}
+      disabled={loggingOut}
+      className={cn(
+        "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground disabled:opacity-60",
+        mobile
+          ? "text-foreground hover:bg-surface hover:text-primary focus-visible:outline-primary"
+          : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground",
+      )}
+    >
+      <LogOut aria-hidden className="size-[1.125rem] shrink-0" />
+      {loggingOut ? "Signing out…" : "Sign out"}
+    </button>
+  );
+}
+
 export function StaffNav({
   staffId,
   fullName,
@@ -85,60 +153,6 @@ export function StaffNav({
     router.refresh();
   }
 
-  function isActive(href: string) {
-    return href === "/staff"
-      ? pathname === "/staff"
-      : pathname.startsWith(href);
-  }
-
-  function NavItems({ onNavigate }: { onNavigate?: () => void }) {
-    return (
-      <ul className="flex flex-col gap-1">
-        {STAFF_PORTAL_NAV.map((item) => {
-          const active = isActive(item.href);
-          const Icon = navIcons[item.href] ?? FileText;
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                onClick={onNavigate}
-                className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground",
-                  active
-                    ? "bg-white text-primary"
-                    : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground",
-                )}
-              >
-                <Icon aria-hidden className="size-[1.125rem] shrink-0" />
-                <span>{item.label}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  }
-
-  function LogoutButton({ mobile = false }: { mobile?: boolean }) {
-    return (
-      <button
-        type="button"
-        onClick={handleLogout}
-        disabled={loggingOut}
-        className={cn(
-          "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground disabled:opacity-60",
-          mobile
-            ? "text-foreground hover:bg-surface hover:text-primary focus-visible:outline-primary"
-            : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground",
-        )}
-      >
-        <LogOut aria-hidden className="size-[1.125rem] shrink-0" />
-        {loggingOut ? "Signing out…" : "Sign out"}
-      </button>
-    );
-  }
-
   return (
     <>
       <aside className="sticky top-0 hidden h-[100dvh] max-h-[100dvh] self-start overflow-y-auto bg-primary text-primary-foreground md:flex md:flex-col md:px-4 md:py-5 lg:px-5">
@@ -158,11 +172,11 @@ export function StaffNav({
         </div>
 
         <nav aria-label="Staff Portal navigation" className="mt-6">
-          <NavItems />
+          <NavItems pathname={pathname} />
         </nav>
 
         <div className="mt-auto border-t border-primary-foreground/15 pt-5">
-          <LogoutButton />
+          <LogoutButton onLogout={handleLogout} loggingOut={loggingOut} />
         </div>
       </aside>
 
@@ -199,11 +213,11 @@ export function StaffNav({
             </Drawer.Header>
             <Drawer.Body>
               <nav aria-label="Mobile Staff Portal navigation">
-                <NavItems onNavigate={() => setIsOpen(false)} />
+                <NavItems pathname={pathname} onNavigate={() => setIsOpen(false)} />
               </nav>
             </Drawer.Body>
             <Drawer.Footer>
-              <LogoutButton mobile />
+              <LogoutButton onLogout={handleLogout} loggingOut={loggingOut} mobile />
             </Drawer.Footer>
           </Drawer.Dialog>
         </Drawer.Content>

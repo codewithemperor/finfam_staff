@@ -133,7 +133,7 @@ describe("admin request-code account validation and limits", () => {
       "VALIDATION_ERROR",
       "unknown email request",
     );
-    expect(error.error.fields?.email).toMatch(
+    expect(error.fields?.email).toMatch(
       /No active FinFam administrator account/i,
     );
     expect(await db.adminLoginCode.count()).toBe(before);
@@ -149,7 +149,7 @@ describe("admin request-code account validation and limits", () => {
       "VALIDATION_ERROR",
       "staff email request",
     );
-    expect(error.error.fields?.email).toMatch(
+    expect(error.fields?.email).toMatch(
       /No active FinFam administrator account/i,
     );
     expect(await db.adminLoginCode.count()).toBe(before);
@@ -528,7 +528,7 @@ describe("admin session lifecycle (§11/§12/§54)", () => {
       "VALIDATION_ERROR",
       "suspended request",
     );
-    expect(error.error.fields?.email).toMatch(
+    expect(error.fields?.email).toMatch(
       /No active FinFam administrator account/i,
     );
     expect(await db.adminLoginCode.count()).toBe(before);

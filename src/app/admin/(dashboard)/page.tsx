@@ -104,6 +104,9 @@ export default async function AdminOverviewPage() {
           <ButtonLink href="/admin/reports" variant="outline" size="sm">
             Open Daily Reports
           </ButtonLink>
+          <ButtonLink href="/admin/settings" variant="outline" size="sm">
+            Manage Settings
+          </ButtonLink>
         </div>
       </section>
 

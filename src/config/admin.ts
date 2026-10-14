@@ -16,6 +16,7 @@ export const ADMIN_NAV = [
   { href: "/admin/applicants", label: "Applicants" },
   { href: "/admin/staff", label: "Staff" },
   { href: "/admin/reports", label: "Daily Reports" },
+  { href: "/admin/settings", label: "Settings" },
   { href: "/admin/audit", label: "Audit Log" },
 ] as const;
 
@@ -32,6 +33,7 @@ export const ADMIN_AUDIT_PAGE_SIZE = 20;
 export const ADMIN_AUDIT_ACTION_LABELS: Record<string, string> = {
   STAFF_SUSPENDED: "Staff suspended",
   STAFF_REACTIVATED: "Staff reactivated",
+  SETTINGS_UPDATED: "Settings updated",
 };
 
 /**

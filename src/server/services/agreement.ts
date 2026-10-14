@@ -277,3 +277,41 @@ export async function acceptAgreement(
   // the authoritative view is read back from persisted state (idempotent).
   return getAgreementView(reference);
 }
+
+/**
+ * Explicitly decline the Responsibility & Reward Offer.
+ */
+export async function declineAgreement(
+  reference: string,
+  input: { version: string },
+): Promise<AgreementView> {
+  const candidate = await loadCandidate(reference);
+
+  if (candidate.status === "OFFER_DECLINED") {
+    return getAgreementView(reference);
+  }
+
+  if (candidate.status !== "OFFER_PENDING" && candidate.status !== "ASSESSMENT_PASSED") {
+    throw conflictError(
+      "This application is not currently at the offer stage. Open your application to see your current status.",
+    );
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.candidate.update({
+      where: { id: candidate.id },
+      data: { status: "OFFER_DECLINED" },
+    });
+
+    await tx.stageEvent.create({
+      data: {
+        candidateId: candidate.id,
+        stage: "OFFER" satisfies RecruitmentStageId,
+        type: "FAILED",
+        description: `Declined the Responsibility & Reward Policy (version ${input.version})`,
+      },
+    });
+  });
+
+  return getAgreementView(reference);
+}

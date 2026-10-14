@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import type { Prisma, AdminAuditAction } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { ADMIN_AUDIT_PAGE_SIZE } from "@/config/admin";
@@ -32,7 +32,7 @@ export interface AdminAuditMetadata {
 
 export interface RecordAdminAuditEventInput {
   actorId: string;
-  action: "STAFF_SUSPENDED" | "STAFF_REACTIVATED";
+  action: AdminAuditAction;
   targetType: string;
   targetId: string;
   reason?: string | null;
@@ -81,7 +81,7 @@ function toAuditMetadata(raw: unknown): AdminAuditMetadata | null {
 
 export interface AdminAuditEventView {
   id: string;
-  action: "STAFF_SUSPENDED" | "STAFF_REACTIVATED";
+  action: AdminAuditAction;
   /** The acting administrator's email (never their session or any secret). */
   actorEmail: string;
   targetType: string;

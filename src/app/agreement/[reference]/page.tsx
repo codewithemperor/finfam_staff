@@ -67,24 +67,55 @@ export default async function AgreementPage({
 
   return (
     <PageShell size="default">
-      <div className="max-w-2xl">
+      <div className="max-w-3xl">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Responsibility &amp; Reward Agreement
-          </h1>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+            SECTION 5: FINFAM RESPONSIBILITY &amp; REWARD POLICY ACCEPTANCE
+          </p>
           <StatusBadge status={view.status} />
         </div>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          This is the formal review of your role, responsibilities, support
-          package and reward structure before your provisional appointment.
-          Read it in full, then record your decision at the end.
-        </p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Marketing &amp; Customer Care Executive Offer Review
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          For {view.fullName} ·{" "}
-          <span className="font-mono tracking-widest">
-            {view.referenceNumber}
-          </span>
+          Prepared for <span className="font-semibold text-foreground">{view.fullName}</span> ·{" "}
+          <span className="font-mono tracking-widest">{view.referenceNumber}</span>
         </p>
+
+        {/* Congratulations Banner */}
+        <div className="mt-6 rounded-lg border border-border bg-surface p-5 sm:p-6 shadow-sm">
+          <h2 className="text-base font-bold text-foreground sm:text-lg">
+            Congratulations on Reaching This Stage
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            You have successfully completed the FinFam Staff Assessment (Interview Stage). Your performance demonstrates that you have gained an understanding of:
+          </p>
+          <ul className="mt-3 space-y-1.5 text-sm text-foreground">
+            <li className="flex items-center gap-2">
+              <span className="text-primary font-bold">✓</span>
+              <span>FinFam&apos;s vision and mission</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-primary font-bold">✓</span>
+              <span>Our products and services</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-primary font-bold">✓</span>
+              <span>Your role as a Marketing &amp; Customer Care Executive</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-primary font-bold">✓</span>
+              <span>Our reward structure</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-primary font-bold">✓</span>
+              <span>Our professional standards and expectations</span>
+            </li>
+          </ul>
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground border-t border-border pt-3">
+            Before your appointment can be finalized, please carefully review and accept the FinFam Responsibility &amp; Reward Policy. This document defines your responsibilities, performance expectations, earning structure, and professional obligations as a FinFam representative.
+          </p>
+        </div>
       </div>
 
       <div className="mt-10 grid gap-10 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12 xl:gap-14">

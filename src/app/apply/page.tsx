@@ -19,13 +19,14 @@ export const metadata: Metadata = {
 };
 
 const nextSteps = [
-  "Submit your personal and contact details.",
+  "Submit your bio data, educational details, and upload credentials.",
   "Save the reference number shown after submission.",
   "Continue to the orientation workshop from your confirmation screen.",
 ];
 
 const guidance = [
-  "Use your real name and reachable contact details.",
+  "Use your real name, contact address, and reachable details.",
+  "Upload clear credentials (CV, passport photo, and national ID).",
   "Keep your reference number private and easy to find.",
   "Return with the same reference whenever you need to continue.",
 ];
@@ -43,9 +44,10 @@ export default function ApplyPage() {
               Apply for the {OPEN_POSITION.title} role
             </h1>
             <p className="mt-4 text-base leading-7 text-muted-foreground">
-              Fill in your details below. You will receive a reference number
-              as soon as you submit; save it somewhere safe because it
-              identifies your full recruitment journey.
+              Fill in your bio data, educational background, and upload your
+              credentials below. You will receive a reference number as soon as
+              you submit; save it somewhere safe because it identifies your full
+              recruitment journey.
             </p>
           </div>
 
@@ -54,9 +56,10 @@ export default function ApplyPage() {
             <Alert.Content>
               <Alert.Title>Before you start</Alert.Title>
               <Alert.Description>
-                Have your contact details ready. After you submit, your
-                reference number unlocks the orientation workshop, the first
-                stage of the recruitment journey.
+                Have your contact details, educational details, and credentials
+                (CV, passport photo, and national means of ID) ready.
+                After you submit, your reference number unlocks the orientation
+                workshop, the first stage of the recruitment journey.
               </Alert.Description>
             </Alert.Content>
           </Alert>

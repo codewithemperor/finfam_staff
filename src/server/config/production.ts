@@ -180,18 +180,32 @@ export function assertProductionConfig(): void {
   if (!isProduction()) return;
 
   // 1. Dev OTP echo must be OFF in production (remediation §6).
+  // Allowed ONLY when explicitly running an isolated test deployment (ALLOW_INSECURE_APP_BASE_URL=true).
+  const insecureAllowed = readSwitch("ALLOW_INSECURE_APP_BASE_URL");
   if (readSwitch("STAFF_AUTH_DEV_CODE_ECHO")) {
-    throw new ProductionConfigError(
-      "STAFF_AUTH_DEV_CODE_ECHO",
-      "Refusing to start: STAFF_AUTH_DEV_CODE_ECHO=true in production " +
-        "would return Staff OTPs in HTTP responses. Set it to false.",
+    if (!insecureAllowed) {
+      throw new ProductionConfigError(
+        "STAFF_AUTH_DEV_CODE_ECHO",
+        "Refusing to start: STAFF_AUTH_DEV_CODE_ECHO=true in production " +
+          "would return Staff OTPs in HTTP responses. Set it to false.",
+      );
+    }
+    console.warn(
+      "[config] WARNING: STAFF_AUTH_DEV_CODE_ECHO=true in production. " +
+        "Allowed ONLY because ALLOW_INSECURE_APP_BASE_URL=true for isolated testing.",
     );
   }
   if (readSwitch("ADMIN_AUTH_DEV_CODE_ECHO")) {
-    throw new ProductionConfigError(
-      "ADMIN_AUTH_DEV_CODE_ECHO",
-      "Refusing to start: ADMIN_AUTH_DEV_CODE_ECHO=true in production " +
-        "would return Admin OTPs in HTTP responses. Set it to false.",
+    if (!insecureAllowed) {
+      throw new ProductionConfigError(
+        "ADMIN_AUTH_DEV_CODE_ECHO",
+        "Refusing to start: ADMIN_AUTH_DEV_CODE_ECHO=true in production " +
+          "would return Admin OTPs in HTTP responses. Set it to false.",
+      );
+    }
+    console.warn(
+      "[config] WARNING: ADMIN_AUTH_DEV_CODE_ECHO=true in production. " +
+        "Allowed ONLY because ALLOW_INSECURE_APP_BASE_URL=true for isolated testing.",
     );
   }
 

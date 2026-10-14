@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { AdminAuditAction } from "@prisma/client";
+
 import { db } from "@/lib/db";
 import { ADMIN_DIRECTORY_PAGE_SIZE } from "@/config/admin";
 import { STAFF_PORTAL_WORK_ARRANGEMENT } from "@/config/staff-portal";
@@ -335,7 +337,7 @@ export interface AdminOverviewView {
   totalStaff: number;
   recentAuditEvents: {
     id: string;
-    action: "STAFF_SUSPENDED" | "STAFF_REACTIVATED";
+    action: AdminAuditAction;
     actorEmail: string;
     staffId: string | null;
     createdAt: Date;

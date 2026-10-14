@@ -45,7 +45,16 @@ export async function submitApplication(
           fullName: input.fullName,
           email: input.email,
           phone: input.phone,
+          residentialAddress: input.residentialAddress,
           city: input.city,
+          state: input.state,
+          highestQualification: input.highestQualification,
+          institution: input.institution,
+          courseOfStudy: input.courseOfStudy,
+          graduationYear: input.graduationYear,
+          cvUrl: input.cvUrl,
+          passportPhotoUrl: input.passportPhotoUrl,
+          idCardUrl: input.idCardUrl,
           status: "APPLICANT",
           applications: {
             create: {

@@ -15,6 +15,7 @@ import {
   getDailyReportTodayState,
 } from "@/server/services/daily-reports";
 import { getStaffTrainingHomeState } from "@/server/services/staff-training";
+import { getOfficialWhatsappGroupLink } from "@/server/services/system-settings";
 import {
   lagosCurrentMonthISO,
   lagosDateISOFromUtcMidnight,
@@ -58,6 +59,8 @@ export interface StaffPortalHomeView {
   };
   /** Official WhatsApp contact when configured; null keeps honest pending copy. */
   whatsappNumber: string | null;
+  /** Official Staff WhatsApp Group invite link. */
+  whatsappGroupLink: string;
   /** Today's Daily Report state for the home card (Stage 8, brief §35). */
   dailyReporting: DailyReportTodayState;
   dashboard: StaffPortalDashboardView;
@@ -199,6 +202,7 @@ export async function getStaffPortalHome(
       completedAt: completedAt?.toISOString() ?? null,
     },
     whatsappNumber: ONBOARDING_WHATSAPP.number,
+    whatsappGroupLink: await getOfficialWhatsappGroupLink(),
     dailyReporting: await getDailyReportTodayState(staffRowId),
     dashboard,
     training: await getStaffTrainingHomeState(staffRowId),

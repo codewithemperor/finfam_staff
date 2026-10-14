@@ -215,8 +215,14 @@ export async function requestLoginCode(
     return { row: created, enqueued: queued };
   });
 
-  const devCode =
-    process.env.STAFF_AUTH_DEV_CODE_ECHO === "true" ? code : undefined;
+  const isDevEcho = process.env.STAFF_AUTH_DEV_CODE_ECHO === "true";
+  const devCode = isDevEcho ? code : undefined;
+
+  if (isDevEcho || process.env.NODE_ENV !== "production") {
+    console.log(`\n========================================`);
+    console.log(`[auth:staff] 🔐 STAFF LOGIN CODE for ${account.candidateEmail}: [ ${code} ]`);
+    console.log(`========================================\n`);
+  }
 
   // OTP delivery is awaited because a serverless runtime may end as soon as
   // the HTTP response is returned. The plaintext code remains in memory only.

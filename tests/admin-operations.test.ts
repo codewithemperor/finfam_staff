@@ -753,7 +753,7 @@ describe("suspension and reactivation lifecycle", () => {
       "VALIDATION_ERROR",
       "suspended request-code",
     );
-    expect(request.error.fields?.email).toMatch(
+    expect(request.fields?.email).toMatch(
       /No active FinFam Staff account/i,
     );
     expect(await db.staffLoginCode.count()).toBe(before);

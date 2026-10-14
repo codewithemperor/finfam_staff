@@ -10,6 +10,7 @@ import {
   House,
   LogOut,
   Menu,
+  Settings,
   ShieldCheck,
   Users,
   type LucideIcon,
@@ -24,6 +25,7 @@ const navIcons: Record<string, LucideIcon> = {
   "/admin/applicants": ClipboardList,
   "/admin/staff": Users,
   "/admin/reports": FileClock,
+  "/admin/settings": Settings,
   "/admin/audit": ShieldCheck,
 };
 
@@ -52,6 +54,74 @@ function Brand() {
   );
 }
 
+function isActive(pathname: string, href: string) {
+  return href === "/admin"
+    ? pathname === "/admin"
+    : pathname.startsWith(href);
+}
+
+function NavItems({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {ADMIN_NAV.map((item) => {
+        const active = isActive(pathname, item.href);
+        const Icon = navIcons[item.href] ?? FileClock;
+        return (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              onClick={onNavigate}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground",
+                active
+                  ? "bg-white text-primary"
+                  : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground",
+              )}
+            >
+              <Icon aria-hidden className="size-[1.125rem] shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function LogoutButton({
+  onLogout,
+  loggingOut,
+  mobile = false,
+}: {
+  onLogout: () => void;
+  loggingOut: boolean;
+  mobile?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onLogout}
+      disabled={loggingOut}
+      className={cn(
+        "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60",
+        mobile
+          ? "text-foreground hover:bg-surface hover:text-primary focus-visible:outline-primary"
+          : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground focus-visible:outline-primary-foreground",
+      )}
+    >
+      <LogOut aria-hidden className="size-[1.125rem] shrink-0" />
+      {loggingOut ? "Signing out…" : "Sign out"}
+    </button>
+  );
+}
+
 export function AdminNav({ adminEmail }: { adminEmail: string }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -68,60 +138,6 @@ export function AdminNav({ adminEmail }: { adminEmail: string }) {
     }
     router.replace("/admin/login");
     router.refresh();
-  }
-
-  function isActive(href: string) {
-    return href === "/admin"
-      ? pathname === "/admin"
-      : pathname.startsWith(href);
-  }
-
-  function NavItems({ onNavigate }: { onNavigate?: () => void }) {
-    return (
-      <ul className="flex flex-col gap-1">
-        {ADMIN_NAV.map((item) => {
-          const active = isActive(item.href);
-          const Icon = navIcons[item.href] ?? FileClock;
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                onClick={onNavigate}
-                className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground",
-                  active
-                    ? "bg-white text-primary"
-                    : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground",
-                )}
-              >
-                <Icon aria-hidden className="size-[1.125rem] shrink-0" />
-                <span>{item.label}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  }
-
-  function LogoutButton({ mobile = false }: { mobile?: boolean }) {
-    return (
-      <button
-        type="button"
-        onClick={handleLogout}
-        disabled={loggingOut}
-        className={cn(
-          "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60",
-          mobile
-            ? "text-foreground hover:bg-surface hover:text-primary focus-visible:outline-primary"
-            : "text-primary-foreground/82 hover:bg-primary-foreground/12 hover:text-primary-foreground focus-visible:outline-primary-foreground",
-        )}
-      >
-        <LogOut aria-hidden className="size-[1.125rem] shrink-0" />
-        {loggingOut ? "Signing out…" : "Sign out"}
-      </button>
-    );
   }
 
   return (
@@ -141,10 +157,10 @@ export function AdminNav({ adminEmail }: { adminEmail: string }) {
           </p>
         </div>
         <nav aria-label="Admin console navigation" className="mt-6">
-          <NavItems />
+          <NavItems pathname={pathname} />
         </nav>
         <div className="mt-auto border-t border-primary-foreground/15 pt-5">
-          <LogoutButton />
+          <LogoutButton onLogout={handleLogout} loggingOut={loggingOut} />
         </div>
       </aside>
 
@@ -183,11 +199,11 @@ export function AdminNav({ adminEmail }: { adminEmail: string }) {
             </Drawer.Header>
             <Drawer.Body>
               <nav aria-label="Mobile Admin console navigation">
-                <NavItems onNavigate={() => setIsOpen(false)} />
+                <NavItems pathname={pathname} onNavigate={() => setIsOpen(false)} />
               </nav>
             </Drawer.Body>
             <Drawer.Footer>
-              <LogoutButton mobile />
+              <LogoutButton onLogout={handleLogout} loggingOut={loggingOut} mobile />
             </Drawer.Footer>
           </Drawer.Dialog>
         </Drawer.Content>

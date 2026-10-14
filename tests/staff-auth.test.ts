@@ -111,7 +111,7 @@ describe("Stage 7 — Email OTP", () => {
       "VALIDATION_ERROR",
       "unknown email request",
     );
-    expect(error.error.fields?.email).toMatch(
+    expect(error.fields?.email).toMatch(
       /No active FinFam Staff account/i,
     );
     // No notification row was queued for a non-account email.

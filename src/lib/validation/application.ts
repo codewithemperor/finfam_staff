@@ -40,10 +40,61 @@ export const applicationFormSchema = z.object({
     .trim()
     .max(20, "Phone number must be 20 digits or fewer")
     .regex(PHONE_PATTERN, "Enter a valid phone number, e.g. 0803 000 0000"),
+  residentialAddress: z
+    .string()
+    .trim()
+    .max(250, "Address must be 250 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
   city: z
     .string()
     .trim()
     .max(60, "City must be 60 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  state: z
+    .string()
+    .trim()
+    .max(60, "State must be 60 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  highestQualification: z
+    .string()
+    .trim()
+    .max(100, "Qualification must be 100 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  institution: z
+    .string()
+    .trim()
+    .max(150, "Institution name must be 150 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  courseOfStudy: z
+    .string()
+    .trim()
+    .max(150, "Course of study must be 150 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  graduationYear: z
+    .string()
+    .trim()
+    .max(10, "Graduation year must be 10 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  cvUrl: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  passportPhotoUrl: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  idCardUrl: z
+    .string()
+    .trim()
     .optional()
     .transform((value) => (value ? value : undefined)),
   roleTitle: z

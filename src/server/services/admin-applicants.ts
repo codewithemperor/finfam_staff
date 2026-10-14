@@ -14,7 +14,16 @@ export interface ApplicantDirectoryRow {
   fullName: string;
   email: string;
   phone: string;
+  residentialAddress?: string | null;
   city: string | null;
+  state?: string | null;
+  highestQualification?: string | null;
+  institution?: string | null;
+  courseOfStudy?: string | null;
+  graduationYear?: string | null;
+  cvUrl?: string | null;
+  passportPhotoUrl?: string | null;
+  idCardUrl?: string | null;
   status: CandidateStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -39,7 +48,16 @@ const applicantSelect = {
   fullName: true,
   email: true,
   phone: true,
+  residentialAddress: true,
   city: true,
+  state: true,
+  highestQualification: true,
+  institution: true,
+  courseOfStudy: true,
+  graduationYear: true,
+  cvUrl: true,
+  passportPhotoUrl: true,
+  idCardUrl: true,
   status: true,
   createdAt: true,
   updatedAt: true,
@@ -56,7 +74,16 @@ function toDirectoryRow(row: {
   fullName: string;
   email: string;
   phone: string;
+  residentialAddress?: string | null;
   city: string | null;
+  state?: string | null;
+  highestQualification?: string | null;
+  institution?: string | null;
+  courseOfStudy?: string | null;
+  graduationYear?: string | null;
+  cvUrl?: string | null;
+  passportPhotoUrl?: string | null;
+  idCardUrl?: string | null;
   status: CandidateStatus;
   createdAt: Date;
   updatedAt: Date;

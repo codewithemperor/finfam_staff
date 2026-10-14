@@ -279,7 +279,7 @@ describe("Stage 7 — Staff Account provisioning", () => {
       "suspended request-code",
     );
     // Field error, no code row created.
-    expect(error.error.fields?.email).toMatch(
+    expect(error.fields?.email).toMatch(
       /No active FinFam Staff account/i,
     );
     expect(

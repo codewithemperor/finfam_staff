@@ -1,152 +1,211 @@
 import type { AgreementSection } from "@/types/recruitment";
 
 /**
- * FinFam Responsibility & Reward Agreement — stage 3 content (CLIENT-SAFE).
+ * FinFam Responsibility & Reward Policy — stage 3 content (CLIENT-SAFE).
  *
- * The formal agreement a candidate reviews and accepts after passing the
- * assessment. The `version` below is the content identifier recorded with
- * every acceptance (agreements.version) — a meaning-bearing change to any
- * section MUST bump the version so accepted versions stay auditable
- * (docs/CONTENT-QUESTIONS.md §17).
+ * Section 5: FINFAM RESPONSIBILITY & REWARD POLICY ACCEPTANCE
+ * Marketing & Customer Care Executive Offer Review.
  *
- * v1.3 (current): the role is now consistently identified as Marketing &
- * Customer Care Executive, and the confirmed reward structure uses the approved
- * Milestone Bonuses wording and worked examples. Compensation and
- * Established Member definitions were
- * formally confirmed by the Provisional Letter of Appointment dated
- * September 1, 2026 (Ref: FFL/HR/PLA/012). The reward structure now
- * publishes the confirmed figures (₦650 per Established Member, the
- * ₦5,000 threshold, the non-cumulative bonus tiers, the 200-member
- * monthly target, the payment timing, the referral-link tracking rule
- * and the December 2026 annual-recognition note), a concise
- * "Important conditions" section was added from the same letter, and the
- * confirmed privacy rule was added to Professional conduct. Candidates
- * who already accepted an earlier version keep that version on their record — v1.3
- * applies to candidates who have not yet accepted
- * (docs/CONTENT-QUESTIONS.md §17 interim proposal).
+ * The `version` below is the content identifier recorded with every acceptance
+ * (agreements.version) — any meaning-bearing change MUST bump the version so
+ * accepted versions stay auditable.
  *
- * Rules for this file (see docs/CONTENT-QUESTIONS.md):
- * - Content is drawn strictly from the supplied FinFam material. No
- *   employment/legal terms are invented (§18) — the "Important conditions"
- *   section contains only terms the appointment letter confirms.
- * - No unconfirmed benefit claims (including the ₦500 cashback item, §10).
+ * v2.0 (current): Full official policy text and reward structure update.
+ * Reward structure confirmed:
+ * - Monthly Earnings = Established Member (₦650) + Referral Bonus (₦500)
+ * - 1 Established Member = ₦650
+ * - 1 Referral Bonus = ₦500 (per New User onboarded who reaches threshold of ₦2,000)
+ * - Established Member threshold = ₦2,000 maintained within first month
+ * - Worked examples: 100 members = ₦115,000; 200 members = ₦230,000
+ * - Monthly Performance Target = 200 Established Members (8/day for 25 days)
+ * - Below target earnings paid based on number achieved
  */
 export const AGREEMENT_META = {
-  version: "1.3",
+  version: "2.0",
 } as const;
 
 /**
  * The acknowledgement the candidate must explicitly confirm before the
- * Accept action opens. Wording follows the Stage 3 brief and is flagged
- * for business approval (docs/CONTENT-QUESTIONS.md §18).
+ * Accept action opens.
  */
 export const AGREEMENT_ACKNOWLEDGEMENT_LABEL =
-  "I have read and understood the Responsibility & Reward Agreement and agree to the responsibilities, support package, reward structure, reporting requirements, professional standards, and applicable policies described above.";
+  "I Accept the FinFam Responsibility & Reward Policy";
 
 export const AGREEMENT_SECTIONS: AgreementSection[] = [
   {
     id: "your-role",
-    title: "Your role",
+    title: "YOUR ROLE AT FINFAM",
     blocks: [
       {
-        type: "paragraph",
-        text: "This agreement covers the Marketing & Customer Care Executive role. You will work remotely as part of the FinFam team, attracting and onboarding new members before supporting their savings and day-to-day service needs.",
+        type: "heading",
+        text: "Marketing & Customer Care Executive",
       },
       {
         type: "paragraph",
-        text: "It is a field and service role. You represent FinFam to members and prospective members, support their savings activity, and look after the relationships you build. The role carries real responsibilities toward the people who trust FinFam with their money.",
+        text: "As a Marketing & Customer Care Executive, you are a FINFAM GROWTH AMBASSADOR.",
       },
-    ],
-  },
-  {
-    id: "responsibilities",
-    title: "Responsibilities",
-    blocks: [
       {
         type: "paragraph",
-        text: "The responsibilities of the role are:",
+        text: "Your responsibility is to help build a strong financial community by:",
       },
       {
         type: "list",
         items: [
-          "Community building — introducing FinFam to new people and helping grow the FinFam community.",
-          "Supporting consistent savings — helping members start, and keep up, their savings and contributions.",
-          "Building strong member relationships — staying in regular, respectful contact with the members you serve.",
-          "Customer care and member support — answering questions accurately and helping members resolve issues.",
+          "✓ Introducing individuals, groups, and businesses to FinFam",
+          "✓ Educating prospective members about FinFam opportunities",
+          "✓ Supporting members during their onboarding journey",
+          "✓ Encouraging consistent savings habits",
+          "✓ Providing excellent customer care",
+          "✓ Building trust and long-term relationships",
         ],
       },
       {
         type: "paragraph",
-        text: "These responsibilities are the core of the role, and the reward structure is attached to them. How you carry them out is covered by the professional conduct standards later in this agreement.",
+        text: "You are not only acquiring members. You are helping people build stronger financial futures.",
+      },
+    ],
+  },
+  {
+    id: "core-responsibilities",
+    title: "CORE RESPONSIBILITIES",
+    blocks: [
+      {
+        type: "heading",
+        text: "A. Community Building",
+      },
+      {
+        type: "paragraph",
+        text: "Your primary responsibility is to contribute to FinFam community growth. You are expected to:",
+      },
+      {
+        type: "list",
+        items: [
+          "✓ Identify potential individuals, groups, and communities that can benefit from FinFam",
+          "✓ Create and maintain a list of prospects",
+          "✓ Introduce prospects to FinFam professionally",
+          "✓ Support successful membership registration",
+          "✓ Guide members through their first steps",
+          "✓ Maintain positive relationships with members",
+        ],
+      },
+      {
+        type: "heading",
+        text: "B. Supporting Consistent Savings",
+      },
+      {
+        type: "paragraph",
+        text: "Your role continues after member registration. You should encourage members to:",
+      },
+      {
+        type: "list",
+        items: [
+          "✓ Make their first deposit",
+          "✓ Activate savings goals",
+          "✓ Build consistent saving habits",
+          "✓ Fund their Main Balance regularly",
+          "✓ Remain active within the FinFam ecosystem",
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "Remember: A registered member is the beginning. An active and consistent member represents meaningful growth.",
+      },
+      {
+        type: "heading",
+        text: "C. Connections Explore",
+      },
+      {
+        type: "paragraph",
+        text: "FinFam believes in the power of community. You are expected to encourage members to:",
+      },
+      {
+        type: "list",
+        items: [
+          "✓ Connect trusted family members and friends",
+          "✓ Build supportive financial networks",
+          "✓ Participate actively in the FinFam community",
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "Strong connections help members achieve better financial outcomes.",
       },
     ],
   },
   {
     id: "support-package",
-    title: "Support package",
+    title: "FINFAM STAFF SUPPORT PACKAGE",
     blocks: [
       {
         type: "paragraph",
-        text: "FinFam provides the following support to help you carry out the role:",
+        text: "Every approved Marketing & Customer Care Executive receives support resources to help perform effectively. These include:",
       },
       {
         type: "list",
         items: [
-          "A FinFam identity card confirming your role.",
-          "A branded shirt design for official FinFam activities.",
-          "Customizable marketing flyers you can use in your community.",
-          "Orientation and training resources, including the Staff Orientation Workshop you have completed.",
+          "✓ FinFam Identity Card",
+          "✓ FinFam Branded Shirt Design",
+          "✓ Customisable Marketing Flyers",
+          "✓ Orientation Materials",
+          "✓ Training Resources",
         ],
       },
       {
         type: "paragraph",
-        text: "If any additional support is made available, it will be communicated to you in writing.",
+        text: "FinFam provides the tools. Your responsibility is to use them professionally to grow the community.",
       },
     ],
   },
   {
     id: "reward-structure",
-    title: "Reward structure",
+    title: "REWARD STRUCTURE",
     blocks: [
       {
         type: "paragraph",
-        text: "Your monthly earnings follow one confirmed formula:",
+        text: "FinFam rewards staff based on meaningful community growth.",
       },
       {
         type: "paragraph",
-        text: "Monthly earnings = Established Members × ₦650 + applicable target bonus.",
-      },
-      {
-        type: "paragraph",
-        text: "An Established Member is a member who, during their first month, completes all three of the following:",
-      },
-      {
-        type: "list",
-        items: [
-          "Membership signup.",
-          "A first deposit.",
-          "Savings of not less than ₦5,000 maintained during their first month.",
-        ],
+        text: "Your monthly earnings are calculated using: MONTHLY EARNINGS = Established Member + Referral Bonus",
       },
       {
         type: "heading",
-        text: "3. MILESTONE BONUSES",
-      },
-      {
-        type: "paragraph",
-        text: "Bonuses are progressive by achievement level and are not cumulative. You qualify for only one bonus tier per month.",
-      },
-      {
-        type: "paragraph",
-        text: "Established Members and Applicable Bonus",
+        text: "UNDERSTANDING POINT VALUE (PV):",
       },
       {
         type: "list",
         items: [
-          "Established Members: 0–99 — Applicable Bonus: ₦0",
-          "Established Members: 100–199 — Applicable Bonus: ₦10,000",
-          "Established Members: 200 and above — Applicable Bonus: ₦20,000",
+          "• 1 Established Member = ₦650",
+          "• 1 Referral Bonus = ₦500",
         ],
+      },
+      {
+        type: "paragraph",
+        text: "PLEASE NOTE: ₦500 per New User you onboard that reaches threshold of ₦2,000.",
+      },
+      {
+        type: "heading",
+        text: "WHAT MAKES AN ESTABLISHED MEMBER AND REFERRAL BONUS",
+      },
+      {
+        type: "paragraph",
+        text: "A member qualifies as an Established Member when they complete all three requirements:",
+      },
+      {
+        type: "list",
+        items: [
+          "1. Complete FinFam Membership Signup",
+          "2. Make Their First Deposit",
+          "3. Maintain Savings/Transaction Volume of Not Less Than ₦2,000 Within Their First Month",
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "The moment a member deposits minimum of ₦2,000, you get ₦500 Referral Bonus credited to your Main Balance.",
+      },
+      {
+        type: "paragraph",
+        text: "Earnings apply based on: ✅ Established Members created AND(+) ✅ Referral Bonus",
       },
       {
         type: "heading",
@@ -155,94 +214,127 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
       {
         type: "list",
         items: [
-          "100 Members: 100 × ₦650 + ₦10,000 = ₦75,000",
-          "200 Members: 200 × ₦650 + ₦20,000 = ₦150,000",
-          "300 Members: 300 × ₦650 + ₦20,000 = ₦215,000",
+          "100 Established Members: 100 × (₦650 + ₦500) = ₦115,000",
+          "200 Established Members: 200 × (₦650 + ₦500) = ₦230,000",
         ],
       },
       {
-        type: "paragraph",
-        text: "The monthly target is 200 Established Members. The target is not a ceiling — every Established Member above 200 continues to earn ₦650.",
+        type: "heading",
+        text: "Monthly Performance Target",
       },
       {
         type: "paragraph",
-        text: "Monthly earnings are paid at month end, or at the latest during the first week of the following month.",
+        text: "The FinFam monthly performance target is: 200 Established Members — that's 8 New Members Per Day for 25 Days. This target represents the level of strong community contribution expected from high-performing staff.",
       },
       {
         type: "paragraph",
-        text: "Your referral link is how the members you bring in are tracked. The link itself does not generate commissions — your earnings come from your Established Members, as described above.",
+        text: "However: 200 Established Members is not an earning limit. Every additional Established Member continues to attract ₦650 earnings and ₦500 Referral Bonus (that's altogether ₦1,150) for you.",
       },
       {
-        type: "paragraph",
-        text: "Year-end recognition of top performers and community builders takes effect from December 2026. Details will be communicated before it applies.",
+        type: "alert",
+        tone: "accent",
+        title: "Earning Security Note",
+        text: "While we expect you to meet your target and earn fully, if you still perform below the expected target of 200 New Established Members, you will still be paid based on the number of Established Member(s) you achieve for the month.",
       },
     ],
   },
   {
-    id: "performance-accountability",
-    title: "Performance & accountability",
+    id: "staff-performance-reporting",
+    title: "STAFF PERFORMANCE & REPORTING",
     blocks: [
       {
         type: "paragraph",
-        text: "The role is measured by the work you actually do:",
+        text: "Although this is a remote role, FinFam operates as a digitally connected organisation. Every staff member is expected to demonstrate:",
       },
       {
         type: "list",
         items: [
-          "Daily reporting — you report your daily activity in the way FinFam requires.",
-          "Monitoring and evaluation — your work may be reviewed by the recruitment or operations team.",
-          "Quality monitoring — secret shopper checks may be used to verify service quality where applicable.",
-          "Accountability — you are accountable for the accuracy of what you report and for the members you serve.",
+          "✓ Accountability",
+          "✓ Professionalism",
+          "✓ Consistency",
+          "✓ Transparency",
         ],
       },
       {
-        type: "paragraph",
-        text: "These expectations exist so that members receive consistent service and FinFam can rely on what is reported. The exact reporting process and tools are communicated to you by the recruitment team.",
+        type: "heading",
+        text: "Daily Activity Reporting",
       },
-    ],
-  },
-  {
-    id: "important-conditions",
-    title: "Important conditions",
-    blocks: [
       {
         type: "paragraph",
-        text: "Your participation under this agreement is provisional and subject to performance review. Confirmation is expected in December 2026, upon meeting the stated requirements; those requirements will be communicated to you by FinFam.",
-      },
-    ],
-  },
-  {
-    id: "professional-conduct",
-    title: "Professional conduct",
-    blocks: [
-      {
-        type: "paragraph",
-        text: "As a FinFam representative you must:",
+        text: "Every staff member shall submit daily reports covering:",
       },
       {
         type: "list",
         items: [
-          "Represent FinFam accurately and honestly at all times.",
-          "Never create fake accounts or register members without their knowledge and consent.",
-          "Never submit false or misleading reports.",
-          "Never misuse member or customer information, and protect it from anyone who should not have it.",
-          "Never request a member's account balances or login details.",
-          "Never share your passwords or account access, or allow anyone else to use them.",
+          "Community Building: Prospects contacted, Individuals/groups engaged, New members acquired, Established Members created",
+          "Savings Activation: First deposits achieved, Savings goals activated, Member savings support provided",
+          "Connections Explore: New community connections, Referral encouragement activities, Member engagement activities",
         ],
       },
       {
         type: "paragraph",
-        text: "These standards protect members, protect you, and protect FinFam. They are conditions of the role, not suggestions — as covered in your orientation, fraud and misrepresentation lead to dismissal.",
+        text: "Daily reports shall be individually submitted and evaluated.",
       },
     ],
   },
   {
-    id: "policy-updates",
-    title: "Policy updates",
+    id: "professional-conduct-ethics",
+    title: "PROFESSIONAL CONDUCT & ETHICS",
     blocks: [
       {
         type: "paragraph",
-        text: "FinFam may communicate relevant updates to its policies and processes from time to time. You are expected to follow the current, approved policies as they are communicated to you.",
+        text: "Every FinFam representative must protect: Customer trust, Customer privacy, FinFam reputation, and Professional standards.",
+      },
+      {
+        type: "heading",
+        text: "Staff Must NOT:",
+      },
+      {
+        type: "list",
+        items: [
+          "✗ Request customer passwords",
+          "✗ Access customer accounts without authorization",
+          "✗ Provide false information",
+          "✗ Create fake accounts",
+          "✗ Submit fraudulent reports",
+          "✗ Misrepresent FinFam products or opportunities",
+        ],
+      },
+      {
+        type: "heading",
+        text: "Fraud & Misrepresentation Policy",
+      },
+      {
+        type: "paragraph",
+        text: "Any fraudulent or unethical activity may result in: Immediate sanctions, Termination of appointment, Report to relevant government authorities, and Legal action and litigation where applicable.",
+      },
+    ],
+  },
+  {
+    id: "quality-assurance-monitoring",
+    title: "QUALITY ASSURANCE & MONITORING",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "To maintain excellent service standards, FinFam may conduct: Performance reviews, Physical Monitoring and Evaluation visits, Unannounced spot checks, and Secret shopper assessments.",
+      },
+      {
+        type: "paragraph",
+        text: "Secret shoppers may engage staff as customers to evaluate: Response quality, Communication skills, Product knowledge, Professional behaviour, and Customer support effectiveness.",
+      },
+      {
+        type: "paragraph",
+        text: "Poor performance or unethical conduct may result in: Corrective actions, Additional training, Sanctions, or Termination of appointment where necessary.",
+      },
+    ],
+  },
+  {
+    id: "policy-review",
+    title: "POLICY REVIEW",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "FinFam is a growing organisation. Therefore, all documents, policies, reward structures, and operational procedures are subject to continuous review and improvement. Staff will be informed of important updates when necessary.",
       },
     ],
   },

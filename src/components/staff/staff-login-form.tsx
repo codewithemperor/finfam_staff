@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Alert,
   Button,
   FieldError,
   Input,
@@ -10,6 +11,7 @@ import {
   Spinner,
   TextField,
 } from "@heroui/react";
+import { X } from "lucide-react";
 
 import { ApiClientError, apiFetch } from "@/lib/api/client";
 
@@ -41,6 +43,7 @@ export function StaffLoginForm() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [dismissedNotice, setDismissedNotice] = useState(false);
   const [devCode, setDevCode] = useState<string | null>(null);
 
   const [requesting, setRequesting] = useState(false);
@@ -63,6 +66,7 @@ export function StaffLoginForm() {
     setEmailError(null);
     setCodeError(null);
     setNotice(null);
+    setDismissedNotice(false);
     setRequesting(true);
 
     try {
@@ -160,7 +164,23 @@ export function StaffLoginForm() {
       {/* Step-change/status region: announced politely by screen readers
        * when the code step appears (remediation §25). */}
       <div aria-live="polite">
-        <p className="text-sm leading-6 text-foreground">{notice}</p>
+        {!dismissedNotice && notice && (
+          <Alert status="success" className="relative pr-9">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>Login code sent</Alert.Title>
+              <Alert.Description>{notice}</Alert.Description>
+            </Alert.Content>
+            <button
+              type="button"
+              onClick={() => setDismissedNotice(true)}
+              aria-label="Dismiss notice"
+              className="absolute right-2.5 top-2.5 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <X className="size-4" />
+            </button>
+          </Alert>
+        )}
         {devCode && (
           <p
             role="status"

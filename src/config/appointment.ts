@@ -46,7 +46,7 @@ import type { AppointmentContent } from "@/types/recruitment";
  *   September 1, 2026 letter, so it is omitted rather than asserted).
  */
 export const APPOINTMENT_META = {
-  version: "1.2",
+  version: "1.3",
 } as const;
 
 /** Official appointment designation used in the letter (approved default). */
@@ -429,6 +429,147 @@ export const APPOINTMENT_CONTENT_VERSIONS: Record<string, AppointmentContent> = 
       {
         type: "paragraph",
         text: "You must never request a member's account balances or login details. You are also expected to uphold the professional standards already set out in your Responsibility & Reward Agreement, including honest representation of FinFam and careful protection of member information.",
+      },
+      {
+        type: "subheading",
+        text: "Community impact",
+      },
+      {
+        type: "paragraph",
+        text: "The role supports responsible financial habits, community growth and meaningful member impact. Your performance is about more than raw registration numbers — the quality of the members you bring in and the value they actually receive matter.",
+      },
+      {
+        type: "subheading",
+        text: "Annual recognition",
+      },
+      {
+        type: "paragraph",
+        text: "Annual recognition and rewards become applicable from December 2026. Top performers and community builders may be eligible, and further details will be communicated to you before then.",
+      },
+      {
+        type: "subheading",
+        text: "Provisional appointment",
+      },
+      {
+        type: "paragraph",
+        text: "This appointment is provisional and subject to performance review. Confirmation is expected in December 2026 upon meeting the required expectations; those expectations will be communicated to you by FinFam.",
+      },
+    ],
+  },
+  "1.3": {
+    subject: "Provisional Letter of Appointment – Marketing & Customer Care Executive",
+    body: [
+      {
+        type: "paragraph",
+        text: "FinFam Multipurpose Cooperative Society Limited is pleased to offer you a provisional appointment as a Marketing & Customer Care Executive of the cooperative. This appointment is provisional and is subject to the performance expectations set out in this letter.",
+      },
+      {
+        type: "subheading",
+        text: "Your role",
+      },
+      {
+        type: "paragraph",
+        text: "Your primary responsibility is to grow FinFam's community and look after the members you bring in. In particular, the role involves:",
+      },
+      {
+        type: "list",
+        items: [
+          "Growing FinFam's community.",
+          "Onboarding new members.",
+          "Guiding members on how FinFam works.",
+          "Supporting members as they save and participate.",
+          "Operating in line with FinFam's mission.",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "Compensation and incentive policy",
+      },
+      {
+        type: "paragraph",
+        text: "Your monthly earnings follow the confirmed formula:",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly Earnings = Established Member + Referral Bonus.",
+      },
+      {
+        type: "subheading",
+        text: "Understanding Point Value (PV)",
+      },
+      {
+        type: "list",
+        items: [
+          "1 Established Member = ₦650",
+          "1 Referral Bonus = ₦500 (per New User you onboard that reaches threshold of ₦2,000)",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "What Makes an Established Member and Referral Bonus",
+      },
+      {
+        type: "paragraph",
+        text: "A member qualifies as an Established Member when they complete all three requirements during their first month:",
+      },
+      {
+        type: "list",
+        items: [
+          "Complete FinFam Membership Signup.",
+          "Make Their First Deposit.",
+          "Maintain Savings/Transaction Volume of Not Less Than ₦2,000 Within Their First Month.",
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "The moment a member deposits a minimum of ₦2,000, you get ₦500 Referral Bonus credited to your Main Balance.",
+      },
+      {
+        type: "paragraph",
+        text: "Earnings apply based on: Established Members created (₦650) + Referral Bonus (₦500) = ₦1,150 total.",
+      },
+      {
+        type: "subheading",
+        text: "Earnings Examples",
+      },
+      {
+        type: "list",
+        items: [
+          "100 Established Members: 100 × (₦650 + ₦500) = ₦115,000",
+          "200 Established Members: 200 × (₦650 + ₦500) = ₦230,000",
+        ],
+      },
+      {
+        type: "subheading",
+        text: "Monthly Performance Target",
+      },
+      {
+        type: "paragraph",
+        text: "The FinFam monthly performance target is 200 Established Members (8 New Members Per Day for 25 Days). 200 Established Members is not an earning limit — every additional Established Member continues to attract ₦650 earnings and ₦500 Referral Bonus (₦1,150 altogether) for you.",
+      },
+      {
+        type: "paragraph",
+        text: "While we expect you to meet your target and earn fully, if you still perform below the expected target of 200 New Established Members, you will still be paid based on the number of Established Member(s) you achieve for the month.",
+      },
+      {
+        type: "paragraph",
+        text: "Monthly earnings are paid at month end, or no later than the first week of the following month.",
+      },
+      {
+        type: "subheading",
+        text: "Your referral link",
+      },
+      {
+        type: "paragraph",
+        text: "You must use your referral link when bringing members to FinFam. The link is how the members you bring in are tracked; the link itself does not generate commission — your earnings come from your Established Members and Referral Bonuses, as set out above.",
+      },
+      {
+        type: "subheading",
+        text: "Member privacy and professional conduct",
+      },
+      {
+        type: "paragraph",
+        text: "You must never request a member's account balances or login details. You are also expected to uphold the professional standards already set out in your Responsibility & Reward Policy, including honest representation of FinFam and careful protection of member information.",
       },
       {
         type: "subheading",
