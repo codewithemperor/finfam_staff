@@ -218,20 +218,21 @@ describe("Stage 10 — /staff/resources page (brief §9)", () => {
     expect(page.html).not.toContain("/api/staff/resources");
   });
 
-  it("creates NO /api/staff/resources route — the API decision holds (brief §32)", async () => {
-    // Raw probes: the route must 404 with Next's NON-JSON default body
-    // (fetchRaw throws on non-JSON by design — this is the one intentional
-    // exception, asserting the route genuinely does not exist).
+  it("guards /api/staff/resources with staff authentication", async () => {
     const base = process.env.FLOW_TEST_BASE_URL ?? "http://127.0.0.1:3000";
+    const withoutCookie = await fetch(`${base}/api/staff/resources`, {
+      signal: AbortSignal.timeout(20_000),
+    });
+    expect(withoutCookie.status).toBe(401);
+
     const withCookie = await fetch(`${base}/api/staff/resources`, {
       headers: { cookie },
       signal: AbortSignal.timeout(20_000),
     });
-    expect(withCookie.status).toBe(404);
-    const withoutCookie = await fetch(`${base}/api/staff/resources`, {
-      signal: AbortSignal.timeout(20_000),
-    });
-    expect(withoutCookie.status).toBe(404);
+    expect(withCookie.status).toBe(200);
+    const json = await withCookie.json();
+    expect(json.ok).toBe(true);
+    expect(Array.isArray(json.data.resources)).toBe(true);
   });
 
   it("keeps the honest per-account availability line", async () => {

@@ -180,7 +180,7 @@ export function AdminLoginForm() {
               type="button"
               onClick={() => setDismissedNotice(true)}
               aria-label="Dismiss notice"
-              className="absolute right-2.5 top-2.5 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+              className="absolute right-2.5 top-2.5 rounded-md p-1 text-muted-foreground transition-colors hover:bg-zinc-200 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
             >
               <X className="size-4" />
             </button>

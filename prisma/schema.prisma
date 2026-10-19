@@ -1003,3 +1003,21 @@ model SystemSetting {
   @@map("system_settings")
 }
 
+/// Downloadable or reference resources uploaded by administrators for staff.
+model StaffResource {
+  id          String   @id @default(cuid())
+  title       String
+  category    String
+  description String?
+  fileUrl     String
+  fileName    String
+  fileType    String
+  fileSize    Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@map("staff_resources")
+}
+
+

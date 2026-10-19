@@ -86,7 +86,7 @@ export function AdminSettingsForm({
                   href={whatsappLink.trim()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:bg-muted"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:bg-zinc-100"
                 >
                   <ExternalLink className="size-4" />
                   Test link
@@ -95,7 +95,7 @@ export function AdminSettingsForm({
             </div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               Paste the full invite link (e.g.{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
+              <code className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[11px] text-zinc-800">
                 https://chat.whatsapp.com/ABC123xyz...
               </code>
               ). When this link is updated or reset by WhatsApp, change it here to immediately update all staff dashboards.

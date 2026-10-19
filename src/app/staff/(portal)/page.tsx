@@ -92,7 +92,7 @@ export default async function StaffHomePage() {
                 Join WhatsApp Group ↗
               </a>
             ) : (
-              <span className="inline-block rounded-md bg-muted px-3 py-2 text-xs font-medium text-muted-foreground">
+              <span className="inline-block rounded-md border border-zinc-200 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-700">
                 Group link updating — check back shortly
               </span>
             )}

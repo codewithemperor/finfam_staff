@@ -377,6 +377,7 @@ export interface StaffSessionContext {
     referenceNumber: string;
     fullName: string;
     email: string;
+    passportPhotoUrl?: string | null;
   };
 }
 
@@ -414,6 +415,7 @@ export async function resolveStaffSession(
                   referenceNumber: true,
                   fullName: true,
                   email: true,
+                  passportPhotoUrl: true,
                 },
               },
             },
@@ -443,6 +445,7 @@ export async function resolveStaffSession(
       referenceNumber: row.account.staff.candidate.referenceNumber,
       fullName: row.account.staff.candidate.fullName,
       email: row.account.staff.candidate.email,
+      passportPhotoUrl: row.account.staff.candidate.passportPhotoUrl,
     },
   };
 }

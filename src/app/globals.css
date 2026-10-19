@@ -27,6 +27,7 @@
   --color-surface-elevated: var(--overlay);
 
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted-bg);
   --color-muted-foreground: var(--muted);
 
   --color-border: var(--border);
@@ -58,6 +59,7 @@
   --overlay: #ffffff;
 
   /* Neutrals */
+  --muted-bg: #f4f4f5;
   --muted: #71717a;
   --default: #f4f4f5;
 

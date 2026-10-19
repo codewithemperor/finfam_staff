@@ -137,6 +137,12 @@ describe("Stage 10 — card content & identity fields (brief §14–§24)", () =
   beforeAll(async () => {
     const driven = await driveToActivation("idcard-a");
     EMAILS.push(driven.email);
+    await db.candidate.update({
+      where: { email: driven.email },
+      data: {
+        passportPhotoUrl: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+      },
+    });
     const cookie = (await loginAsStaff(driven.email, "idcard A login")).cookie;
     const staffRow = await db.staff.findUnique({
       where: { staffId: driven.staffId },
@@ -161,13 +167,14 @@ describe("Stage 10 — card content & identity fields (brief §14–§24)", () =
     expect(html).toContain(STAFF_ID_CARD_LABEL); // card heading
     expect(html).toMatch(/FF-STF-\d{4}/);
     expect(html).toContain(staffA.staffId);
-    expect(html).toContain("Marketing & Customer Care Executive");
-    expect(html).toContain(STAFF_PORTAL_OPERATIONAL_ROLE);
+    expect(html).toMatch(
+      new RegExp(STAFF_PORTAL_OPERATIONAL_ROLE.replace("&", "(&amp;|&)")),
+    );
     expect(html).toContain("Role");
-    expect(html).toContain("Work arrangement");
+    expect(html).toContain("Work");
     expect(html).toContain("Activated");
-    expect(html).toContain("Identity reference only");
-    expect(html).toContain(`Card template v${STAFF_ID_CARD_TEMPLATE_VERSION}`);
+    expect(html).not.toContain("Identity reference only");
+    expect(html).not.toContain(`Card template v${STAFF_ID_CARD_TEMPLATE_VERSION}`);
     expect(html).toContain(STAFF_ID_CARD_DISCLAIMER);
   });
 
@@ -189,12 +196,16 @@ describe("Stage 10 — card content & identity fields (brief §14–§24)", () =
 
     expect(html).toContain("Print / Save as PDF");
     expect(html).toContain('data-testid="staff-id-card"');
+    expect(html).toContain('data-testid="staff-id-card-back"');
+    expect(html).toContain("Property of FinFam");
+    expect(html).toContain("or the nearest police station");
+    expect(html).not.toContain("Authorized Signatory");
     // Page-level supporting copy + the shell chrome all opt out of print.
     expect(countOccurrences(html, "print:hidden")).toBeGreaterThanOrEqual(4);
     expect(html).toContain("Back to Profile");
   });
 
-  it("contains NO sensitive fields on the card — and no photo/QR/signature/expiry (brief §16–§23/§38)", async () => {
+  it("contains NO sensitive fields on the card — and renders passport photo on card", async () => {
     const page = await fetchPage("/staff/id-card", staffA.cookie);
     const html = page.html;
 
@@ -221,13 +232,25 @@ describe("Stage 10 — card content & identity fields (brief §14–§24)", () =
     expect(cardHtml).not.toMatch(/\bQR\b/i);
     expect(cardHtml).not.toMatch(/expir/i);
     expect(cardHtml).not.toMatch(/signature/i);
-    expect(cardHtml).not.toMatch(/\bDownload\b/);
 
     // Page-level: the concrete sensitive values never render anywhere.
     expect(html).not.toContain(staffA.email);
     expect(html).not.toContain(staffA.referenceNumber);
     expect(html).not.toContain("FFL-");
-    expect(html).not.toContain("<img"); // no photo, no image-rendered credential
+    expect(cardHtml).toContain("<img"); // passport photo is rendered
+  });
+
+  it("prompts the staff to upload a passport photo when not yet provided", async () => {
+    const fresh = await driveToActivation("idcard-nopassport");
+    EMAILS.push(fresh.email);
+    const { cookie: freshCookie } = await loginAsStaff(
+      fresh.email,
+      "idcard no passport login",
+    );
+    const page = await fetchPage("/staff/id-card", freshCookie);
+    expect(page.status).toBe(200);
+    expect(page.html).toContain("Passport Photograph Required");
+    expect(page.html).not.toContain('data-testid="staff-id-card"');
   });
 });
 
@@ -238,6 +261,12 @@ describe("Stage 10 — query manipulation & cross-staff isolation (brief §38/§
   beforeAll(async () => {
     const a = await driveToActivation("idcard-iso-a");
     EMAILS.push(a.email);
+    await db.candidate.update({
+      where: { email: a.email },
+      data: {
+        passportPhotoUrl: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+      },
+    });
     staffA = {
       staffId: a.staffId,
       referenceNumber: a.referenceNumber,
