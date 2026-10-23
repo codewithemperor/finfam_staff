@@ -55,7 +55,12 @@ prompt
 server.log
 # Skills directory
 /skills/
-# finfam local postgres
-/db/pg-data/
-/db/postgres.log/
-/db/postgres.log
+# finfam local database and legacy directories
+/db/
+/.zscripts/
+/tool-results/
+/tool-result/
+/upload/
+/uploads/
+/tmp/
+/output/

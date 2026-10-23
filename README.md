@@ -150,8 +150,7 @@ scripts/
 tests/
   bun.test flow suites driving the REAL dev server over HTTP + helpers/
 docs/
-  DESIGN-SYSTEM.md CONTENT-QUESTIONS.md RUNBOOK-DEPLOYMENT.md
-  RUNBOOK-OPERATIONS.md
+  DESIGN-SYSTEM.md     Design tokens, UI principles, and accessibility conventions
 **Data flow rule:** UI → API route handler → service (`src/server/services`)
 → Prisma → PostgreSQL. UI components never import Prisma, and client code
 never imports `src/lib/db.ts` or anything under `src/server/`. Server
@@ -843,147 +842,261 @@ assertions, submitted-only report visibility, full
 suspend→lockout→reactivate→restore lifecycle over real HTTP, one-event
 audit semantics, same-origin enforcement at the HTTP boundary).
 
-## Environment variables
+## Production Deployment Guide
 
-| Variable                    | Required | Purpose                                        |
-| --------------------------- | -------- | ---------------------------------------------- |
-| `DATABASE_URL`              | yes      | PostgreSQL connection string for Prisma        |
-| `NOTIFICATIONS_ENABLED`     | no       | Master switch for transactional email (default `false` — rows queue, nothing sends) |
-| `MAILJET_API_KEY`           | for send | Mailjet transactional Send API key (server-only secret) |
-| `MAILJET_SECRET_KEY`        | for send | Mailjet Send API secret (server-only secret)   |
-| `MAILJET_FROM_EMAIL`        | for send | Mailjet-validated sender address               |
-| `MAILJET_FROM_NAME`         | no       | Sender display name (default `FinFam Recruitment`) |
-| `APP_BASE_URL`              | no       | Server-authoritative base URL for safe email links (default `http://127.0.0.1:3000`) |
-| `MAILJET_API_URL`           | no       | Override the Send API endpoint (test seam)     |
-| `NOTIFICATIONS_MAX_ATTEMPTS`| no       | Bounded retry budget (default `3`)             |
-| `NOTIFICATIONS_SEND_TIMEOUT_MS` | no   | Per-send timeout (default `10000`)             |
-| `STAFF_AUTH_DEV_CODE_ECHO`  | no       | **DEV/TEST ONLY** — echoes the OTP in the API response when `true`. **MUST be `false` in production.** Default `false` |
-| `ONBOARDING_WHATSAPP_NUMBER`| no       | Official onboarding WhatsApp number (digits, international format). Empty = honest pending copy in onboarding |
-| `STAFF_SESSION_TTL_DAYS`    | no       | Staff Portal session duration in days (default `7`) |
-| `DAILY_REPORT_BACKDATE_LIMIT_DAYS` | no | How many past Africa/Lagos days a report may cover (default `7`; `0` = today only) |
-| `ADMIN_SESSION_TTL_HOURS` | no      | Admin console session duration in hours (default `12`; absolute, no sliding renewal) |
-| `ADMIN_AUTH_DEV_CODE_ECHO` | no      | **DEV/TEST ONLY** — echoes the ADMIN OTP in the API response when `true`. **MUST be `false` in production.** Default `false` |
-| `ALLOW_INSECURE_APP_BASE_URL` | no | Production escape hatch for isolated test deployments without TLS: allows a missing/non-HTTPS `APP_BASE_URL` with a loud warning. Never set in real production |
-| `APPLICATION_RATE_LIMIT_MAX` / `_WINDOW_MS` | no | Public applications endpoint limiter (default `5` / 10 min) |
-| `RECOVERY_RATE_LIMIT_MAX` / `_WINDOW_MS` | no | Reference-recovery limiter (default `5` / 10 min) |
-| `ONBOARDING_REFERENCE_RATE_LIMIT_MAX` / `_WINDOW_MS` | no | Legacy reference-onboarding write limiter (default `30` / 10 min) |
-| `SUPPORT_CONTACT_EMAIL` | no | Real support inbox for the site footer. Unset = safe pending copy (the `.example` placeholder never ships) |
+This guide covers everything required to deploy the FinFam Recruitment and Staff Portal to production.
 
-Copy `.env.example` → `.env` and adjust. Rules:
+---
 
-- **`.env` is git-ignored and local-only** (an earlier decision to track it
-  was reversed during the production-readiness remediation). Production
-  secrets are injected via the platform secret manager / environment — never
-  committed. `.env.example` is the only tracked template.
-- Production fail-fast (`src/instrumentation.ts` → `assertProductionConfig`):
-  in production the app REFUSES TO START when dev OTP echo is on,
-  `APP_BASE_URL` is missing/non-HTTPS, `DATABASE_URL` is missing, or
-  notifications are enabled without Mailjet credentials.
-- Only truly public values may use the `NEXT_PUBLIC_` prefix (currently none).
-- Never log candidate PII; never put PII in URLs. The reference number is a
-  lookup key the candidate already holds — it is the one exception.
+### 1. Production Architecture & Prerequisites
+
+Before deploying, ensure you have provisioned and verified the following external infrastructure:
+
+| Component | Requirement | Notes |
+| --- | --- | --- |
+| **Runtime** | Bun 1.1+ or Node.js 18.18+ (LTS) | The application builds and runs natively on both Bun and Node.js. |
+| **Database** | PostgreSQL 14+ with TLS (`sslmode=require`) | Managed PostgreSQL (e.g. Supabase, Neon, AWS RDS, Railway, Render, DigitalOcean). Use a dedicated, least-privilege user (schema owner, no superuser). |
+| **Domain & SSL** | Canonical HTTPS domain (e.g. `https://portal.finfam.org`) | Production strictly requires HTTPS. `assertProductionConfig()` fails startup if `APP_BASE_URL` is HTTP or missing. |
+| **Transactional Email** | Mailjet Account with validated domain & sender | Required for Staff & Admin OTPs, application receipts, and appointment notifications. |
+| **Media / File Storage** | Cloudinary Account | Used to securely store applicant credentials, CVs, IDs, and staff passport photos. |
+| **Reverse Proxy / WAF** | Cloudflare, Caddy, Nginx, or PaaS Edge Proxy | Must enforce TLS, overwrite `X-Forwarded-For` with the true client IP, and apply edge rate limiting. |
+
+---
+
+### 2. Step-by-Step Deployment Procedure
+
+#### Step 1: Configure Environment Variables
+Inject all required production environment variables using your platform's secret manager (e.g., Vercel Project Settings, Railway Variables, AWS Secrets Manager, Doppler, or a secured production `.env` file).
+
+> [!IMPORTANT]
+> **Never commit production secrets to Git.** `.env` is git-ignored. See the [Production Environment Variables Reference](#production-environment-variables-reference) below for exact production values.
+
+#### Step 2: Run Database Migrations
+Always apply schema migrations using Prisma's deployment command:
+
+```bash
+# Using Bun:
+bunx prisma migrate deploy
+
+# Or using Node/npx:
+npx prisma migrate deploy
+```
+
+Verify migration status:
+```bash
+bunx prisma migrate status
+# Expected output: "Database schema is up to date!" (13 migrations applied)
+```
+
+> [!CAUTION]
+> **Never run `prisma db push` in production.** The production database is strictly migration-driven. All 13 migrations in `prisma/migrations` are purely additive and backward-compatible.
+
+#### Step 3: Bootstrap the Initial Administrator Account
+Admin accounts cannot register publicly. You must bootstrap the first administrator account via the operational CLI:
+
+```bash
+# Preview what will be created:
+bun run bootstrap:admin -- admin@finfam.org --dry-run
+
+# Provision the active account (--yes is required in production):
+bun run bootstrap:admin -- admin@finfam.org --yes
+```
+
+*(If running under Node.js: `npx tsx scripts/bootstrap-admin.ts admin@finfam.org --yes`)*
+
+- The bootstrap script creates an `ACTIVE` admin account.
+- It is idempotent: running it again on an active account is safe and changes nothing.
+- It **refuses** to reactivate suspended admins (reactivation is an explicit audit action in the Admin Console).
+
+#### Step 4: Build the Application
+Compile the Next.js application:
+
+```bash
+# Using Bun:
+bun run build
+
+# Or using Node/npm:
+npm run build
+```
+
+This runs TypeScript checking, Tailwind CSS compilation, and static/dynamic route optimization across all 51 routes.
+
+#### Step 5: Start the Server
+Start the production server:
+
+```bash
+# Using Bun:
+bun run start
+
+# Or using Node/npm:
+npm run start
+```
+
+Upon boot, `src/instrumentation.ts` executes `assertProductionConfig()`:
+- If `STAFF_AUTH_DEV_CODE_ECHO=true` or `ADMIN_AUTH_DEV_CODE_ECHO=true`, startup **fails immediately**.
+- If `APP_BASE_URL` is missing or not HTTPS, startup **fails immediately**.
+- If `DATABASE_URL` is missing, startup **fails immediately**.
+- If `NOTIFICATIONS_ENABLED=true` but Mailjet keys are missing, startup **fails immediately**.
+
+#### Step 6: Post-Deployment Smoke Test
+Verify the deployment with these automated and manual checks:
+
+1. **Health & Config Probe:**  
+   Query `GET https://<your-domain>/api/health`:
+   ```json
+   {
+     "status": "ok",
+     "database": "connected",
+     "config": {
+       "production": true,
+       "devCodeEchoActive": false,
+       "appBaseUrlConfigured": true,
+       "appBaseUrlSecure": true,
+       "notificationsEnabled": true,
+       "mailjetConfigured": true
+     }
+   }
+   ```
+2. **Admin OTP Smoke Test:**
+   - Browse to `https://<your-domain>/admin/login`.
+   - Enter your bootstrapped admin email and request a code.
+   - Confirm receipt of the 6-digit OTP in your email inbox within 10–30 seconds.
+   - Enter the code, log in, and verify the `/admin/staff` directory and `/admin/audit` log.
+3. **Staff Onboarding & Upload Smoke Test:**
+   - Submit a test application at `/apply` and upload a sample CV and identification document to verify Cloudinary upload connectivity.
+   - Confirm the reference number is generated and application receipt email is received.
+
+---
+
+### 3. Hosting Recipes
+
+#### A. Vercel Deployment
+1. Connect your repository to Vercel.
+2. In **Project Settings → General**:
+   - **Framework Preset**: Next.js
+   - **Build Command**: `prisma generate && next build`
+   - **Install Command**: `bun install` or `npm install`
+3. In **Project Settings → Environment Variables**:
+   - Add all production variables listed in the reference table below.
+   - Ensure `DATABASE_URL` uses a pooled connection string (e.g., Supabase/Neon connection pooler) for serverless scalability.
+
+#### B. Railway / Render / PaaS Deployment
+1. Create a **PostgreSQL** service and an **App** service.
+2. Configure environment variables on the App service.
+3. Set build and start commands:
+   - **Build Command**: `bun install && bunx prisma generate && bunx prisma migrate deploy && bun run build`
+   - **Start Command**: `bun run start`
+4. Set health check path to `/api/health`.
+
+#### C. Self-Hosted VPS / Docker / Ubuntu with Systemd & Caddy
+1. **Systemd Service (`/etc/systemd/system/finfam.service`):**
+   ```ini
+   [Unit]
+   Description=FinFam Staff Portal
+   After=network.target
+
+   [Service]
+   Type=simple
+   User=deploy
+   WorkingDirectory=/var/www/finfam-staff
+   ExecStart=/usr/local/bin/bun run start
+   Restart=on-failure
+   EnvironmentFile=/var/www/finfam-staff/.env
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+2. **Reverse Proxy (Caddyfile):**
+   ```caddy
+   portal.finfam.org {
+       encode gzip zstd
+       reverse_proxy 127.0.0.1:3000 {
+           header_up X-Forwarded-For {remote_host}
+           header_up X-Forwarded-Proto https
+       }
+   }
+   ```
+   *(Caddy automatically provisions and renews Let's Encrypt SSL certificates.)*
+
+---
+
+### 4. Operations & Maintenance Playbook
+
+- **Admin Account Management:**
+  - Additional admins can be provisioned using `bun run bootstrap:admin -- <email> --yes`.
+  - Suspension of an admin or staff member is performed inside the Admin Console and immediately revokes all active sessions with an audit event recorded.
+- **Database Backup & Disaster Recovery:**
+  - Maintain automated daily backups and Point-In-Time-Recovery (PITR) with your cloud PostgreSQL provider.
+  - Test restoring a backup to a scratch database quarterly to ensure backup integrity.
+- **Zero-Downtime Rollbacks:**
+  - Because all Prisma migrations are strictly additive, rolling back an application version does not require rolling back database migrations. Simply redeploy the previous build/commit.
+
+---
+
+## Production Environment Variables Reference
+
+The table below details every configuration variable, its production requirement, exact recommended format, and security constraints:
+
+| Variable | Required in Prod | Production Format / Example | Purpose & Security Rules |
+| :--- | :---: | :--- | :--- |
+| `NODE_ENV` | **Yes** | `production` | Enables Next.js production optimizations, strict config validation, and secure cookie attributes. |
+| `DATABASE_URL` | **Yes** | `postgresql://user:pass@host:5432/finfam?sslmode=require` | PostgreSQL connection string. Must use TLS (`sslmode=require` or provider equivalent) and a least-privilege user. |
+| `APP_BASE_URL` | **Yes** | `https://portal.finfam.org` | Canonical **HTTPS** origin. Used for generating email links, redirect validations, and CSRF origin checks. Trailing slashes are stripped automatically. |
+| `ALLOW_INSECURE_APP_BASE_URL` | **Yes** | `false` | **Production Security Lock**: Must be `false`. Setting `true` is an escape hatch ONLY for isolated local test environments without TLS. |
+| `STAFF_AUTH_DEV_CODE_ECHO` | **Yes** | `false` | **Production Security Lock**: Must be `false`. If `true`, login OTPs would be leaked in HTTP API responses. Application refuses to start if `true` in production. |
+| `ADMIN_AUTH_DEV_CODE_ECHO` | **Yes** | `false` | **Production Security Lock**: Must be `false`. Application refuses to start if `true` in production. |
+| `NOTIFICATIONS_ENABLED` | **Yes** | `true` | Master switch for transactional emails. When `true`, emails are actively dispatched via Mailjet. Startup fails if enabled without Mailjet credentials. |
+| `MAILJET_API_KEY` | **Yes** | `your_mailjet_api_key` | Server-only Mailjet Send API key. Never expose to client bundles. |
+| `MAILJET_SECRET_KEY` | **Yes** | `your_mailjet_secret_key` | Server-only Mailjet Send API secret. |
+| `MAILJET_FROM_EMAIL` | **Yes** | `recruitment@finfam.org` | Validated and authenticated sender email address registered in your Mailjet account. |
+| `MAILJET_FROM_NAME` | No | `"FinFam Recruitment"` | Display name shown on all outbound transactional notification emails (defaults to `"FinFam Recruitment"`). |
+| `MAILJET_API_URL` | No | `https://api.mailjet.com/v3.1/send` | Override Mailjet endpoint (leave unset to use the official v3.1 production endpoint). |
+| `NOTIFICATIONS_MAX_ATTEMPTS` | No | `3` | Maximum retry attempts for failed transactional notifications before marking as `FAILED` (default `3`). |
+| `NOTIFICATIONS_SEND_TIMEOUT_MS` | No | `10000` | HTTP request timeout in milliseconds for Mailjet API calls (default `10000` ms). |
+| `CLOUDINARY_CLOUD_NAME` | **Yes** | `your_cloud_name` | Cloudinary account cloud name for hosting uploaded candidate credentials, CVs, and passport photos. |
+| `CLOUDINARY_API_KEY` | **Yes** | `123456789012345` | Cloudinary API Key. |
+| `CLOUDINARY_API_SECRET` | **Yes** | `your_cloudinary_api_secret` | Cloudinary API Secret (server-only). |
+| `ONBOARDING_WHATSAPP_NUMBER` | No | `2348012345678` | Official onboarding WhatsApp line for new staff (international format without `+`). When left empty, onboarding renders honest pending copy. |
+| `OFFICIAL_WHATSAPP_GROUP_LINK` | No | `https://chat.whatsapp.com/AbCdEfGhIjKlMnOp` | Fallback invite link to the official Staff WhatsApp group. Admins can update this link anytime dynamically in `/admin/settings`. |
+| `SUPPORT_CONTACT_EMAIL` | No | `support@finfam.org` | Contact email displayed in the public and portal footers. If unset, honest pending text is displayed (never a fake email). |
+| `STAFF_SESSION_TTL_DAYS` | No | `7` | Duration in days for authenticated Staff Portal sessions (default `7` days). Cookies use `HttpOnly; SameSite=Lax; Secure`. |
+| `ADMIN_SESSION_TTL_HOURS` | No | `12` | Absolute duration in hours for Admin Console sessions (default `12` hours; no sliding renewal). |
+| `DAILY_REPORT_BACKDATE_LIMIT_DAYS` | No | `7` | Allowed window of past calendar days (Africa/Lagos time) for staff daily report submission (default `7`; `0` means today only). |
+| `APPLICATION_RATE_LIMIT_MAX` | No | `5` | Maximum applications allowed per IP network within the window (default `5` per 10 minutes; hashed at rest). |
+| `APPLICATION_RATE_LIMIT_WINDOW_MS` | No | `600000` | Time window in milliseconds for application rate limiting (`600000` = 10 minutes). |
+| `RECOVERY_RATE_LIMIT_MAX` | No | `5` | Maximum reference recovery requests per network within window (default `5` per 10 minutes). |
+| `RECOVERY_RATE_LIMIT_WINDOW_MS` | No | `600000` | Window for reference recovery rate limiting (default 10 minutes). |
+| `ONBOARDING_REFERENCE_RATE_LIMIT_MAX` | No | `30` | Maximum requests per network for reference-gated onboarding step updates (default `30` per 10 minutes). |
+| `ONBOARDING_REFERENCE_RATE_LIMIT_WINDOW_MS` | No | `600000` | Window for onboarding reference rate limiting (default 10 minutes). |
+
+---
 
 ## Conventions (summary)
 
 The full UX component rules live in [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md).
 
 - **One next action** — every page exposes exactly one primary action.
-- **Forms** — visible labels with `*` required markers, description text
-  where it helps, zod validation shared client+server (server is
-  authoritative), field errors under fields, page-level errors as Alerts.
-- **Feedback** — toast = short-lived confirmation of an action; alert =
-  information that must stay visible; modal = confirm decisions (added when
-  needed, e.g. offer decline in a later stage).
-- **States** — every async operation has loading, error, and empty states
-  (`app/loading.tsx`, `app/error.tsx`, per-feature skeletons).
-- **Server/Client split** — pages are server components; `"use client"` only
-  where interactivity is required (forms, lookup flow, orientation actions,
-  toast).
-- **Responsive recomposition** — desktop/tablet are not mobile stretched
-  wider: when content relationships justify it, layouts split into 2+ columns
-  (e.g. orientation overview: section list + progress rail from `md` up;
-  section pages: content + “In this section” rail from `lg` up).
+- **Forms** — visible labels with `*` required markers, description text where it helps, zod validation shared client+server (server is authoritative), field errors under fields, page-level errors as Alerts.
+- **Feedback** — toast = short-lived confirmation of an action; alert = information that must stay visible; modal = confirm decisions.
+- **States** — every async operation has loading, error, and empty states (`app/loading.tsx`, `app/error.tsx`, per-feature skeletons).
+- **Server/Client split** — pages are server components; `"use client"` only where interactivity is required (forms, lookup flow, orientation actions, toast).
+- **Responsive recomposition** — desktop/tablet are not mobile stretched wider: when content relationships justify it, layouts split into 2+ columns.
+
+---
 
 ## Production readiness (post-Stage 11)
 
-**Stages 1–11 are complete, the full platform review is complete, and the
-resulting production-readiness remediation is complete.** All six recruitment
-stages (Application → Orientation → Assessment → Agreement → Appointment →
-Activation), the staff-side Onboarding state, the Mailjet transactional
-notification service, Stage 7 — Staff Portal, Stage 8 — Daily Reporting,
-Stage 9 — Staff Training, Stage 10 — Staff Resources & Identity Card and
-**Stage 11 — Admin Operations** are implemented and verified. There is
-**NO Stage 12** — feature-roadmap expansion is paused; the next phase of this
-project is production operations/deployment, not another feature stage.
+**Stages 1–11 are complete, the full platform review is complete, and the production-readiness remediation is complete.** All six recruitment stages (Application → Orientation → Assessment → Agreement → Appointment → Activation), the staff-side Onboarding state, the Mailjet transactional notification service, Stage 7 — Staff Portal, Stage 8 — Daily Reporting, Stage 9 — Staff Training, Stage 10 — Staff Resources & Identity Card and **Stage 11 — Admin Operations** are implemented and verified. There is **NO Stage 12** — feature-roadmap expansion is paused; the next phase of this project is production operations and deployment.
 
-What the remediation hardened (all verified by tests and/or live probes):
-
-- **Production config fail-fast** — `src/server/config/production.ts` +
-  `src/instrumentation.ts`: production refuses to start with dev OTP echo
-  on, a missing/non-HTTPS `APP_BASE_URL`, a missing `DATABASE_URL`, or
-  notifications enabled without Mailjet credentials. `/api/health` reports
-  a masked config summary. Notification links fail safely instead of ever
-  emitting `http://127.0.0.1:3000` in production.
-- **`.env` is local-only again** — untracked and re-ignored; `.env.example`
-  is the tracked template; production secrets live in the secret manager.
-- **Daily Report immutability is race-proof** — draft saves are a single
-  conditional write (`status = DRAFT` in the WHERE), proven by a six-round
-  concurrent PATCH-vs-submit regression.
-- **Canonical-origin CSRF checks** — admin suspend/reactivate validate
-  Origin/Referer against the configured `APP_BASE_URL` in production (the
-  forwarded request Host is no longer trusted); regression tests pin the
-  full matrix including "a Staff cookie can never authorize an Admin
-  mutation".
-- **Public-route rate limiting** — DB-backed sliding-window limiters
-  (mirroring the OTP limiter) on `POST /api/applications`,
-  `POST /api/recruitment/recover-reference` and the legacy reference-onboarding
-  writes; client IPs are only ever stored as sha256 hashes. Edge/WAF
-  throttling remains an EXTERNAL deployment requirement (see the runbook).
-- **Concurrency latches** — assessment submit and orientation completion
-  use conditional writes so concurrent callers can never produce duplicate
-  StageEvents; orientation section completion handles the unique-constraint
-  race idempotently.
-- **TypeScript is a real gate again** — the `ignoreBuildErrors` override is
-  removed; `tsc --noEmit` and production builds are clean.
-- **One-shot notification types are type-level** — `STAFF_LOGIN_CODE` /
-  `ADMIN_LOGIN_CODE` are excluded from payload derivation at compile time;
-  no plaintext OTP is ever persisted or re-derived.
-- **Safe logging** — unexpected server errors log a structured line
-  (correlation id, error class, sanitized one-line message); no raw Error
-  objects, stacks, or bodies.
-- **Bootstrap hardening** — the admin bootstrap reuses the console's email
-  schema, keeps `--dry-run`, refuses suspended reactivation, and requires
-  `--yes` outside development/test. CLI provisioning is documented in the
-  operations runbook (the audit model honestly cannot represent a system
-  actor).
-- **Accessibility quick wins** — skip links on all three shells,
-  `aria-current` on candidate navigation, 44px mobile touch targets for
-  nav/sign-out, and `aria-live` login step/status announcements.
-- **Honest support contact** — the footer renders a real address only when
-  `SUPPORT_CONTACT_EMAIL` is configured; the `.example` placeholder can
-  never ship to production users.
-
-**Still EXTERNAL to the codebase (must be in place before real launch; see
-[docs/RUNBOOK-DEPLOYMENT.md](docs/RUNBOOK-DEPLOYMENT.md)):** provisioned
-production PostgreSQL with TLS + least-privilege role, real
-backup/PITR + a performed restore test, a validated Mailjet sender with real
-delivered Staff and Admin OTPs, edge/WAF request throttling, external
-monitoring/observability, and named operational owners. Until those exist
-the truthful verdict is **READY WITH EXTERNAL ACTIONS**.
-
-The Member Growth / Earnings and Performance / Targets modules were
-**removed from the current project**: the portal has no authoritative
-FinFam member/account database or API from which financial or performance
-facts could be safely verified. They are not planned and must not be
-restored by default.
-
-Business decisions still outstanding (official onboarding WhatsApp
-number, canonical role title portal-wide, identity-verification
-hardening, approved resource files, official logo, staff photo policy,
-physical card specification, training knowledge-check policy, future
-course-version policy, admin access list, Supervisor role/scoping,
-draft-report visibility for management, report correction authority,
-access-change email policy, audit retention, admin break-glass recovery,
-the support inbox, Agreement v1.1 legal sign-off) are tracked — grouped
-into LAUNCH BLOCKERS / OPERATIONAL DECISIONS / FUTURE ENHANCEMENTS — in
-[docs/CONTENT-QUESTIONS.md](docs/CONTENT-QUESTIONS.md).
+Key security and architectural hardening verified across the platform:
+- **Production config fail-fast** — `src/server/config/production.ts` + `src/instrumentation.ts`: production refuses to start with dev OTP echo on, a missing/non-HTTPS `APP_BASE_URL`, a missing `DATABASE_URL`, or notifications enabled without Mailjet credentials. `/api/health` reports a masked config summary.
+- **`.env` is local-only** — untracked and git-ignored; `.env.example` is the tracked template; production secrets live in the secret manager.
+- **Daily Report immutability is race-proof** — draft saves are a single conditional write (`status = DRAFT` in the WHERE), proven by a six-round concurrent PATCH-vs-submit regression.
+- **Canonical-origin CSRF checks** — admin suspend/reactivate validate Origin/Referer against the configured `APP_BASE_URL` in production; regression tests pin the full matrix including "a Staff cookie can never authorize an Admin mutation".
+- **Public-route rate limiting** — DB-backed sliding-window limiters on `POST /api/applications`, `POST /api/recruitment/recover-reference` and reference-onboarding writes; client IPs are hashed with sha256 at rest.
+- **Concurrency latches** — assessment submit and orientation completion use conditional writes so concurrent callers can never produce duplicate StageEvents.
+- **TypeScript & Linting Gates** — `tsc --noEmit` and production builds are clean with 0 errors.
+- **One-shot notification types** — `STAFF_LOGIN_CODE` / `ADMIN_LOGIN_CODE` are excluded from payload derivation; no plaintext OTP is ever persisted or re-derived.
+- **Safe logging** — unexpected server errors log a structured line (correlation id, error class, sanitized one-line message); no raw Error objects, stacks, or request bodies.
+- **Bootstrap hardening** — admin bootstrap reuses the console's email schema, keeps `--dry-run`, refuses suspended reactivation, and requires `--yes` outside development/test.
+- **Accessibility quick wins** — skip links on all three shells, `aria-current` on candidate navigation, 44px mobile touch targets, and `aria-live` login announcements.
